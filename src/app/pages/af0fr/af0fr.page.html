@@ -1,0 +1,344 @@
+<div class="max-w-7xl mx-auto px-6 py-16 space-y-20">
+
+    <!-- HERO -->
+    <section class="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] items-center">
+        <div>
+            <div
+                    class="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-sm text-cyan-100 backdrop-blur"
+            >
+                Amateur Radio · Antenna Design · RF Investigation
+            </div>
+
+            <div class="mt-6 text-xs uppercase tracking-[0.34em] text-cyan-300">Callsign</div>
+            <h1 class="mt-3 text-5xl font-semibold tracking-tight text-white sm:text-6xl">
+                AF0FR
+            </h1>
+
+            <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
+                This route showcases my ham identity, a downloadable contact card, and a
+                hands-on antenna project built around a folded end-fed half-wave design
+                for the 2 meter band.
+            </p>
+
+            <div class="mt-8 flex flex-wrap gap-4">
+                <a
+                        href="/assets/contact/AF0FR-contact-template.vcf"
+                        download
+                        class="inline-flex items-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-950 transition hover:scale-[1.02]"
+                >
+                    Download contact card
+                </a>
+
+                <button
+                        type="button"
+                        (click)="scrollToAntennaBuild()"
+                        class="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/10"
+                >
+                    View antenna build
+                </button>
+            </div>
+
+            <!-- keep project identity cards up top -->
+            <div class="mt-10 grid gap-4 sm:grid-cols-3">
+                <div class="rounded-2xl border border-white/10 bg-slate-900/60 p-4 backdrop-blur">
+                    <div class="text-xs uppercase tracking-[0.22em] text-slate-400">Target</div>
+                    <div class="mt-2 text-base font-medium text-white">145 MHz</div>
+                </div>
+
+                <div class="rounded-2xl border border-white/10 bg-slate-900/60 p-4 backdrop-blur">
+                    <div class="text-xs uppercase tracking-[0.22em] text-slate-400">Type</div>
+                    <div class="mt-2 text-base font-medium text-white">Folded End-Fed Half-Wave</div>
+                </div>
+
+                <div class="rounded-2xl border border-white/10 bg-slate-900/60 p-4 backdrop-blur">
+                    <div class="text-xs uppercase tracking-[0.22em] text-slate-400">Band</div>
+                    <div class="mt-2 text-base font-medium text-white">2m</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTACT CARD PREVIEW -->
+        <div class="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur-xl">
+            <div class="text-xs uppercase tracking-[0.32em] text-cyan-300">Ham contact card</div>
+
+            <div class="mt-5 rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <div class="text-xs uppercase tracking-[0.3em] text-cyan-300">Amateur Radio</div>
+                        <div class="mt-3 text-3xl font-semibold text-white">AF0FR</div>
+                        <div class="mt-2 text-sm text-slate-400">Taylor Turner</div>
+                    </div>
+
+                    <div class="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100">
+                        VCF
+                    </div>
+                </div>
+
+                <div class="mt-8 grid gap-4 sm:grid-cols-2">
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <div class="text-xs uppercase tracking-[0.22em] text-slate-400">Focus</div>
+                        <div class="mt-2 text-sm font-medium text-white">Antenna design + RF experimentation</div>
+                    </div>
+
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <div class="text-xs uppercase tracking-[0.22em] text-slate-400">Featured build</div>
+                        <div class="mt-2 text-sm font-medium text-white">Folded End-Fed Half-Wave</div>
+                    </div>
+
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:col-span-2">
+                        <div class="text-xs uppercase tracking-[0.22em] text-slate-400">Purpose</div>
+                        <div class="mt-2 text-sm leading-7 text-slate-300">
+                            A simple downloadable card for callsign identity and a direct link back to this page.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <p class="mt-5 text-sm leading-7 text-slate-400">
+                This card can evolve later with station details, links, and updated contact information.
+            </p>
+        </div>
+    </section>
+
+    <!-- HERO IMAGE -->
+    <section id="antenna-build" class="space-y-6">
+        <div class="max-w-3xl">
+            <div class="text-xs uppercase tracking-[0.28em] text-cyan-300">Featured build</div>
+            <h2 class="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+                Folded End-Fed Half-Wave antenna investigation
+            </h2>
+            <p class="mt-4 text-base leading-8 text-slate-300">
+                Built and tuned for the 2 meter band with the goal of achieving low SWR while also building
+                an intuitive understanding of how geometry changes impedance, resonance, and matching behavior.
+                The Slim Jim form is part of that story, but the focus here is the overall folded end-fed half-wave design and how it behaved in practice.
+            </p>
+        </div>
+
+        <div class="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900/70">
+            <div class="flex items-center justify-center bg-slate-950 p-4">
+                <img
+                        src="/assets/images/slimjim/general.jpeg"
+                        alt="General view of the folded end-fed half-wave antenna build"
+                        class="max-h-[34rem] w-auto object-contain"
+                />
+            </div>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div class="text-xs uppercase tracking-[0.22em] text-slate-400">Height</div>
+                <div class="mt-2 text-lg font-medium text-white">58"</div>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div class="text-xs uppercase tracking-[0.22em] text-slate-400">Wire</div>
+                <div class="mt-2 text-lg font-medium text-white">14 AWG THHN</div>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div class="text-xs uppercase tracking-[0.22em] text-slate-400">Spacing</div>
+                <div class="mt-2 text-lg font-medium text-white">0.5"</div>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div class="text-xs uppercase tracking-[0.22em] text-slate-400">Final feedpoint</div>
+                <div class="mt-2 text-lg font-medium text-white">3"</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- BUILD BREAKDOWN -->
+    <section class="space-y-8">
+        <div class="max-w-3xl">
+            <div class="text-xs uppercase tracking-[0.28em] text-cyan-300">Build breakdown</div>
+            <h2 class="mt-4 text-3xl font-semibold tracking-tight text-white">
+                The geometry that mattered
+            </h2>
+            <p class="mt-4 text-base leading-8 text-slate-300">
+                The investigation centered on understanding feedpoint position, stub length, capacitive gap,
+                and spacing as a system rather than as isolated dimensions.
+            </p>
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-2">
+            <article class="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl shadow-slate-950/20 backdrop-blur-xl">
+                <div class="flex items-center justify-center bg-slate-950 p-4">
+                    <img
+                            src="/assets/images/slimjim/parallel-spacing.jpeg"
+                            alt="Parallel wire spacing on the antenna"
+                            class="max-h-72 w-auto object-contain"
+                    />
+                </div>
+                <div class="p-6">
+                    <div class="text-xs uppercase tracking-[0.24em] text-cyan-300">Parallel wire spacing</div>
+                    <h3 class="mt-3 text-xl font-semibold text-white">0.5 inch spacing</h3>
+                    <p class="mt-3 text-sm leading-7 text-slate-300">
+                        The parallel section acts like a two-wire transmission line. In this build, about 0.5 inch spacing
+                        with 14 AWG wire gave a usable impedance transformation profile and let the feedpoint pass through the
+                        50Ω region during tuning.
+                    </p>
+                </div>
+            </article>
+
+            <article class="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl shadow-slate-950/20 backdrop-blur-xl">
+                <div class="flex items-center justify-center bg-slate-950 p-4">
+                    <img
+                            src="/assets/images/slimjim/capacitive-gap.jpeg"
+                            alt="Capacitive gap of the antenna"
+                            class="max-h-72 w-auto object-contain"
+                    />
+                </div>
+                <div class="p-6">
+                    <div class="text-xs uppercase tracking-[0.24em] text-cyan-300">Capacitive gap</div>
+                    <h3 class="mt-3 text-xl font-semibold text-white">Fine reactance control</h3>
+                    <p class="mt-3 text-sm leading-7 text-slate-300">
+                        The bottom gap was reduced from 1.0 inch to 0.5 inch, increasing capacitance and helping cancel residual
+                        inductive reactance after the larger tuning moves were made.
+                    </p>
+                </div>
+            </article>
+
+            <article class="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl shadow-slate-950/20 backdrop-blur-xl">
+                <div class="flex items-center justify-center bg-slate-950 p-4">
+                    <img
+                            src="/assets/images/slimjim/feedpoint-position.jpeg"
+                            alt="Feedpoint position on the antenna"
+                            class="max-h-72 w-auto object-contain"
+                    />
+                </div>
+                <div class="p-6">
+                    <div class="text-xs uppercase tracking-[0.24em] text-cyan-300">Feedpoint position</div>
+                    <h3 class="mt-3 text-xl font-semibold text-white">Primary resistance control</h3>
+                    <p class="mt-3 text-sm leading-7 text-slate-300">
+                        Raising the feedpoint from 1.5 inches to 3 inches moved resistance toward the desired 50Ω region.
+                        This was the strongest and most immediate impedance-matching adjustment.
+                    </p>
+                </div>
+            </article>
+
+            <article class="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl shadow-slate-950/20 backdrop-blur-xl">
+                <div class="flex items-center justify-center bg-slate-950 p-4">
+                    <img
+                            src="/assets/images/slimjim/air-choke.jpeg"
+                            alt="Air choke at the feedpoint"
+                            class="max-h-72 w-auto object-contain"
+                    />
+                </div>
+                <div class="p-6">
+                    <div class="text-xs uppercase tracking-[0.24em] text-cyan-300">Air choke</div>
+                    <h3 class="mt-3 text-xl font-semibold text-white">Common-mode suppression</h3>
+                    <p class="mt-3 text-sm leading-7 text-slate-300">
+                        A 4 inch diameter air-wound choke with 0.25 inch turn spacing was added to suppress common-mode current,
+                        reduce feedline radiation, and stabilize measurements.
+                    </p>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <!-- MEASUREMENT RESULTS -->
+    <section class="space-y-8">
+        <div class="max-w-3xl">
+            <div class="text-xs uppercase tracking-[0.28em] text-cyan-300">Measurement results</div>
+            <h2 class="mt-4 text-3xl font-semibold tracking-tight text-white">
+                Tuning, then validating in deployment
+            </h2>
+            <p class="mt-4 text-base leading-8 text-slate-300">
+                The antenna was measured directly at the feedpoint during tuning and then again through a 15 meter coax run
+                at the transmitter to compare true antenna behavior against system-level behavior.
+            </p>
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-3">
+            <article class="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl shadow-slate-950/20 backdrop-blur-xl">
+                <div class="p-6">
+                    <div class="text-xs uppercase tracking-[0.24em] text-cyan-300">Initial build</div>
+                    <div class="mt-3 text-2xl font-semibold text-white">33.28 + j28.6 Ω</div>
+                    <div class="mt-1 text-sm font-medium text-rose-300">SWR 2.6</div>
+                    <p class="mt-4 text-sm leading-7 text-slate-300">
+                        Low resistance and positive reactance indicated a feedpoint that was too low and an antenna that was still electrically short.
+                    </p>
+                </div>
+            </article>
+
+            <article class="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl shadow-slate-950/20 backdrop-blur-xl">
+                <div class="flex items-center justify-center bg-slate-950 p-4">
+                    <img
+                            src="/assets/images/slimjim/nanovna-tuned.png"
+                            alt="Tuned NanoVNA measurement"
+                            class="max-h-72 w-auto object-contain"
+                    />
+                </div>
+                <div class="p-6">
+                    <div class="text-xs uppercase tracking-[0.24em] text-cyan-300">Tuned configuration</div>
+                    <div class="mt-3 text-2xl font-semibold text-white">56.31 − j8.02 Ω</div>
+                    <div class="mt-1 text-sm font-medium text-amber-300">SWR 1.21</div>
+                    <p class="mt-4 text-sm leading-7 text-slate-300">
+                        After moving the feedpoint, extending the stub, and reducing the gap, the system landed near the target with only slight capacitive reactance.
+                    </p>
+                </div>
+            </article>
+
+            <article class="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl shadow-slate-950/20 backdrop-blur-xl">
+                <div class="flex items-center justify-center bg-slate-950 p-4">
+                    <img
+                            src="/assets/images/slimjim/nanovna-deployed.png"
+                            alt="Deployed NanoVNA measurement through 15 meter coax"
+                            class="max-h-72 w-auto object-contain"
+                    />
+                </div>
+                <div class="p-6">
+                    <div class="text-xs uppercase tracking-[0.24em] text-cyan-300">Deployed at transmitter</div>
+                    <div class="mt-3 text-2xl font-semibold text-white">49.15 + j4.42 Ω</div>
+                    <div class="mt-1 text-sm font-medium text-emerald-300">SWR 1.095</div>
+                    <p class="mt-4 text-sm leading-7 text-slate-300">
+                        Measured through 15 meters of coax, the system appears closer to ideal — but that improvement is partly the result of impedance rotation and loss masking in the feedline.
+                    </p>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <!-- STORY / INSIGHTS -->
+    <section class="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/30 backdrop-blur-xl sm:p-8">
+        <div class="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+            <div>
+                <div class="text-xs uppercase tracking-[0.28em] text-cyan-300">Key takeaways</div>
+                <h2 class="mt-4 text-3xl font-semibold tracking-tight text-white">
+                    What the build actually taught
+                </h2>
+                <p class="mt-4 text-base leading-8 text-slate-300">
+                    The build wasn’t just about getting a low SWR. It was about understanding how geometry,
+                    measurement location, and transmission-line effects change what the antenna seems to be doing.
+                </p>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
+                    <div class="text-sm font-semibold text-white">Feedpoint dominates resistance</div>
+                    <p class="mt-2 text-sm leading-7 text-slate-300">
+                        The fastest way to move toward a 50Ω match was raising the feedpoint.
+                    </p>
+                </div>
+
+                <div class="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
+                    <div class="text-sm font-semibold text-white">Stub length controls resonance</div>
+                    <p class="mt-2 text-sm leading-7 text-slate-300">
+                        Lengthening the stub lowered resonance and reduced inductive reactance.
+                    </p>
+                </div>
+
+                <div class="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
+                    <div class="text-sm font-semibold text-white">Gap fine-tunes reactance</div>
+                    <p class="mt-2 text-sm leading-7 text-slate-300">
+                        The capacitive gap acted as a small correction after the main tuning moves.
+                    </p>
+                </div>
+
+                <div class="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
+                    <div class="text-sm font-semibold text-white">Coax can mislead</div>
+                    <p class="mt-2 text-sm leading-7 text-slate-300">
+                        Long coax can rotate impedance and hide mismatch, so direct feedpoint measurement still matters.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
