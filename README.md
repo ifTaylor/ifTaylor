@@ -1,30 +1,72 @@
-# iftaylor.com Angular starter
+# Taylor Turner
 
-A resume-ready personal site scaffold built for **Angular standalone components** and **Tailwind CSS**.
+Software, controls, and system integration — usually where hardware and reality stop behaving nicely.
 
-## Included routes
+---
 
-- `/` home page with a strong personal-brand landing layout
-- `/AF0FR` ham radio route for license info, contact card download, and projects
-- `/projects` placeholder route
-- `/writing` placeholder route
-- `/lab` placeholder route
+## About
 
-## Run locally
+Work tends to sit at the intersection of:
+- Software engineering
+- Controls & automation
+- Robotics integration
+- Real-world system behavior (timing, latency, edge cases)
 
-```bash
-npm install
-npm start
-```
+Outside of that, a lot of time goes into building things, experimenting, and figuring out why something doesn’t work the way it should.
 
-## Build
+---
 
-```bash
-npm run build
-```
+## Current Interests
 
-## Notes
+- Robotics + vision systems
+- Low-latency system design
+- RF and antenna experimentation
+- Data pipelines for real-world systems
+- Linux performance tuning
 
-- The AF0FR route includes a downloadable placeholder vCard at `src/assets/contact/AF0FR-contact-template.vcf`.
-- The Slim Jim investigation is presented as a narrative shell ready for your real content, screenshots, and PDF link.
-- Replace placeholder copy with your exact license details and project material before publishing.
+---
+
+## Amateur Radio — AF0FR
+
+Licensed amateur radio operator focused on practical RF experimentation and antenna design.
+
+Recent build:
+**Folded End-Fed Half-Wave (Slim Jim variant)**
+
+- Custom-built and tuned using NanoVNA
+- Feedpoint + capacitive gap tuning
+- Common-mode suppression via air choke
+- Tested across 2m band
+
+More details:
+👉 https://iftaylor.com/AF0FR
+
+---
+
+## Projects
+
+This repo backs:
+👉 https://iftaylor.com
+
+The site is intentionally simple:
+- Angular (standalone components)
+- Tailwind CSS (inline styling)
+- No heavy frameworks or UI libraries
+- Focus on clarity and content
+
+---
+
+## Links
+
+- 🌐 Website: https://iftaylor.com
+- 💼 LinkedIn: https://www.linkedin.com/in/ifTaylorthenHire
+- 📄 Resume: https://github.com/ifTaylor/Resume/blob/main/TaylorJTurnerResume.pdf
+
+---
+
+## Philosophy
+
+Build things.  
+Test them.  
+Understand why.  
+Repeat.
