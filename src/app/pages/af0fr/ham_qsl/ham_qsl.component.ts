@@ -96,27 +96,59 @@ export class HamQSL {
         }
     }
 
-    downloadCard(): void {
+    async downloadCard(): Promise<void> {
         const node = document.getElementById('contact-card-export');
         if (!node) return;
 
-        htmlToImage
-            .toPng(node, {
+        try {
+            const dataUrl = await htmlToImage.toPng(node, {
                 pixelRatio: 2,
                 backgroundColor: '#f97316',
                 cacheBust: true,
                 style: {
                     padding: '20px',
                 },
-            })
-            .then((dataUrl) => {
-                const link = document.createElement('a');
-                link.download = 'AF0FR-contact.png';
-                link.href = dataUrl;
-                link.click();
-            })
-            .catch((err) => {
-                console.error('Error generating image:', err);
             });
+
+            const response = await fetch(dataUrl);
+            const blob = await response.blob();
+            const file = new File([blob], 'AF0FR-contact.png', { type: 'image/png' });
+
+            if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: 'AF0FR contact card',
+                });
+                return;
+            }
+            const objectUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = 'AF0FR-contact.png';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+        } catch (err) {
+            console.error('Error generating image:', err);
+            try {
+                const node = document.getElementById('contact-card-export');
+                if (!node) return;
+
+                const dataUrl = await htmlToImage.toPng(node, {
+                    pixelRatio: 2,
+                    backgroundColor: '#f97316',
+                    cacheBust: true,
+                    style: {
+                        padding: '20px',
+                    },
+                });
+
+                window.open(dataUrl, '_blank');
+            } catch (fallbackErr) {
+                console.error('Fallback failed:', fallbackErr);
+            }
+        }
     }
 }
