@@ -4,6 +4,7 @@
             <div class="text-sm uppercase tracking-[0.32em] text-orange-500">
                 Ham QSL Card
             </div>
+
             <div class="flex gap-2">
                 <button
                         type="button"
@@ -12,6 +13,7 @@
                 >
                     <svg lucidePencil class="h-5 w-5"></svg>
                 </button>
+
                 <button
                         type="button"
                         (click)="downloadCard()"
@@ -21,9 +23,11 @@
                 </button>
             </div>
         </div>
-        <div id="contact-card" class="mt-5 rounded-[1.75rem] bg-orange-500 p-2">
+
+        <!-- Web view -->
+        <div id="contact-card" (click)="toggleEditor()" class="mt-5 rounded-[1.75rem] bg-orange-500 p-2">
             <div
-                    id="contact-card-export"
+                    id="contact-card-web"
                     class="rounded-[1.75rem] border border-white/80 bg-orange-500 p-5 shadow-2xl shadow-orange-900/20"
             >
                 <div class="flex items-start justify-between gap-4">
@@ -32,10 +36,10 @@
 
                         <div class="flex items-center">
                             <img
-                                [src]="logoDataUrl || logoSrc"
-                                alt="AF0FR logo"
-                                crossorigin="anonymous"
-                                class="mt-2 h-32 w-auto object-contain"
+                                    [src]="logoDataUrl || logoSrc"
+                                    alt="AF0FR logo"
+                                    crossorigin="anonymous"
+                                    class="mt-2 h-32 w-auto object-contain"
                             />
                         </div>
 
@@ -92,7 +96,6 @@
                     </div>
                 </div>
 
-                <!-- Classic QSL table -->
                 <div class="mt-6 rounded-xl border border-white/70 bg-orange-400/30 p-3">
                     <div class="mb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-800">
                         QSO Record
@@ -137,7 +140,123 @@
         </div>
     </div>
 </section>
-@if (showEditor) {
+
+    <!-- Export view -->
+    <div class="pointer-events-none fixed left-[-10000px] top-0 opacity-0">
+        <div
+                id="contact-card-export"
+                class="h-[1200px] w-[1800px] overflow-hidden rounded-[48px] border-[4px] border-white/80 bg-orange-500 px-14 py-12 text-slate-900 shadow-2xl"
+        >
+            <div class="flex h-full flex-col">
+                <div class="flex items-start justify-between gap-8">
+                    <div>
+                        <div class="text-[26px] uppercase tracking-[0.42em] text-slate-800">
+                            Amateur Radio QSL
+                        </div>
+
+                        <img
+                                [src]="logoDataUrl || logoSrc"
+                                alt="AF0FR logo"
+                                crossorigin="anonymous"
+                                class="mt-6 h-56 w-auto object-contain"
+                        />
+
+                        <div class="mt-8 text-[48px] font-semibold leading-none text-slate-900">
+                            {{ card.operatorName }}
+                        </div>
+
+                        <div class="mt-4 text-[24px] uppercase tracking-[0.22em] text-slate-800">
+                            {{ card.location }} · {{ card.grid }}
+                        </div>
+                    </div>
+
+                    <div class="mt-4 flex flex-col gap-4 text-right">
+                        <div class="rounded-xl border-[3px] border-slate-800 px-5 py-4 text-[28px] leading-tight text-slate-900">
+                            {{ card.licenseClass }}
+                        </div>
+                        <div class="rounded-xl border-[3px] border-slate-800 px-5 py-4 text-[28px] leading-tight text-slate-900">
+                            {{ card.echolink }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-10 grid grid-cols-3 gap-x-12 gap-y-8 text-[30px] leading-snug">
+                    <div>
+                        <div class="mb-2 text-[20px] uppercase tracking-[0.24em] text-slate-800">Focus</div>
+                        <div class="text-white break-words">{{ card.focus }}</div>
+                    </div>
+
+                    <div>
+                        <div class="mb-2 text-[20px] uppercase tracking-[0.24em] text-slate-800">Primary Build</div>
+                        <div class="text-white break-words">{{ card.build }}</div>
+                    </div>
+
+                    <div>
+                        <div class="mb-2 text-[20px] uppercase tracking-[0.24em] text-slate-800">Active Bands</div>
+                        <div class="text-white">{{ card.bands }}</div>
+                    </div>
+
+                    <div>
+                        <div class="mb-2 text-[20px] uppercase tracking-[0.24em] text-slate-800">Modes</div>
+                        <div class="text-white">{{ card.modes }}</div>
+                    </div>
+
+                    <div>
+                        <div class="mb-2 text-[20px] uppercase tracking-[0.24em] text-slate-800">GMRS</div>
+                        <div class="text-white">{{ card.gmrs }}</div>
+                    </div>
+
+                    <div>
+                        <div class="mb-2 text-[20px] uppercase tracking-[0.24em] text-slate-800">Web</div>
+                        <div class="text-white">{{ card.website }}</div>
+                        <div class="text-white">{{ card.email }}</div>
+                        <div class="text-white">{{ card.qrzUrl }}</div>
+                    </div>
+                </div>
+
+                <div class="mt-auto">
+                    <div class="rounded-[28px] px-5">
+                        <div class="mb-4 text-[20px] font-semibold uppercase tracking-[0.28em] text-slate-800">
+                            QSO Record
+                        </div>
+
+                        <div class="grid grid-cols-4 border-[3px] border-slate-800 text-[22px] text-slate-900">
+                            <div class="border-b border-r border-slate-800 bg-orange-200 px-4 py-2 font-semibold">Your Call Sign</div>
+                            <div class="border-b border-r border-slate-800 px-4 py-3">{{ card.toRadio || '' }}</div>
+                            <div class="border-b border-r border-slate-800 bg-orange-200 px-4 py-2 font-semibold">Date</div>
+                            <div class="border-b border-slate-800 px-4 py-3">{{ card.qsoDate || '' }}</div>
+
+                            <div class="border-b border-r border-slate-800 bg-orange-200 px-4 py-2 font-semibold">UTC</div>
+                            <div class="border-b border-r border-slate-800 px-4 py-3">{{ card.qsoTimeUtc || '' }}</div>
+                            <div class="border-b border-r border-slate-800 bg-orange-200 px-4 py-2 font-semibold">MHz</div>
+                            <div class="border-b border-slate-800 px-4 py-3">{{ card.mhz || '' }}</div>
+
+                            <div class="border-b border-r border-slate-800 bg-orange-200 px-4 py-2 font-semibold">Band</div>
+                            <div class="border-b border-r border-slate-800 px-4 py-3">{{ card.band || '' }}</div>
+                            <div class="border-b border-r border-slate-800 bg-orange-200 px-4 py-2 font-semibold">Mode</div>
+                            <div class="border-b border-slate-800 px-4 py-3">{{ card.mode || '' }}</div>
+
+                            <div class="border-r border-slate-800 bg-orange-200 px-4 py-2 font-semibold">RST Sent</div>
+                            <div class="border-r border-slate-800 px-4 py-3">{{ card.rstSent || '' }}</div>
+                            <div class="border-r border-slate-800 bg-orange-200 px-4 py-2 font-semibold">RST Rcvd</div>
+                            <div class="px-4 py-3">{{ card.rstRecv || '' }}</div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 border-t-[3px] border-white/80 pt-6">
+                        <div class="flex items-center justify-between gap-6">
+                            <div class="max-w-[900px] text-[22px] leading-relaxed text-slate-800">
+                                {{ card.notes }}
+                            </div>
+                            <div class="text-[42px] font-semibold text-slate-800">73</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (showEditor) {
     <div
             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
             (click)="closeEditor()"
