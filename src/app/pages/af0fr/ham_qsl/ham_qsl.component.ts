@@ -115,6 +115,15 @@ export class HamQSL implements OnInit {
         }
     }
 
+    private async waitForLogoDataUrl(): Promise<void> {
+        if (this.logoDataUrl) return;
+
+        for (let i = 0; i < 20; i++) {
+            if (this.logoDataUrl) return;
+            await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+    }
+
     private async waitForImages(container: HTMLElement): Promise<void> {
         const images = Array.from(container.querySelectorAll('img'));
 
@@ -149,8 +158,9 @@ export class HamQSL implements OnInit {
         if (!node) return;
 
         try {
+            await this.waitForLogoDataUrl();
             await this.waitForImages(node);
-            await new Promise((resolve) => setTimeout(resolve, 100));
+            await new Promise((resolve) => setTimeout(resolve, 150));
 
             const dataUrl = await htmlToImage.toPng(node, {
                 pixelRatio: 2,
