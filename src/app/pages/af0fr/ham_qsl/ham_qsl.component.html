@@ -1,0 +1,216 @@
+<section class="w-full lg:ml-auto lg:mr-0">
+    <div class="rounded-[2rem] border border-orange-500/20 bg-slate-800 px-2 py-4 shadow-2xl shadow-orange-950/20 backdrop-blur-xl">
+        <div class="flex items-center justify-between gap-4 px-4">
+            <div class="text-sm uppercase tracking-[0.32em] text-orange-500">
+                Ham QSL Card
+            </div>
+            <div class="flex gap-2">
+                <button
+                        type="button"
+                        (click)="toggleEditor()"
+                        class="inline-flex items-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-950 transition hover:scale-[1.02]"
+                >
+                    <svg lucidePencil class="h-5 w-5"></svg>
+                </button>
+                <button
+                        type="button"
+                        (click)="downloadCard()"
+                        class="inline-flex items-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-950 transition hover:scale-[1.02]"
+                >
+                    <svg lucideDownload class="h-5 w-5"></svg>
+                </button>
+            </div>
+        </div>
+        <div id="contact-card" class="mt-5 rounded-[1.75rem] bg-orange-500 p-2">
+            <div
+                    id="contact-card-export"
+                    class="rounded-[1.75rem] border border-white/80 bg-orange-500 p-5 shadow-2xl shadow-orange-900/20"
+            >
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <div class="text-[10px] uppercase tracking-[0.3em] text-slate-800">Amateur Radio QSL</div>
+
+                        <div class="flex items-center">
+                            <img
+                                    src="/assets/images/logo.png"
+                                    alt="logo"
+                                    class="mt-2 h-16 w-auto object-contain"
+                            />
+                        </div>
+
+                        <div class="mt-2 text-sm text-slate-800">
+                            {{ card.operatorName }}
+                        </div>
+
+                        <div class="mt-1 text-[11px] uppercase tracking-[0.2em] text-slate-800">
+                            {{ card.location }} · {{ card.grid }}
+                        </div>
+                    </div>
+
+                    <div class="space-y-1 text-right">
+                        <div class="rounded border border-slate-800 px-2 py-1 text-xs text-slate-800">
+                            {{ card.licenseClass }}
+                        </div>
+                        <div class="rounded border border-slate-800 px-2 py-1 text-xs text-slate-800">
+                            {{ card.echolink }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-5">
+                    <div class="text-4xl font-bold tracking-tight text-white">
+                        {{ card.callsign }}
+                    </div>
+                </div>
+
+                <div class="mt-5 grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <div class="text-[11px] uppercase tracking-[0.18em] text-slate-800">Focus</div>
+                        <div class="mt-1 text-white">{{ card.focus }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-[11px] uppercase tracking-[0.18em] text-slate-800">Primary Build</div>
+                        <div class="mt-1 text-white">{{ card.build }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-[11px] uppercase tracking-[0.18em] text-slate-800">Active Bands</div>
+                        <div class="mt-1 text-white">{{ card.bands }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-[11px] uppercase tracking-[0.18em] text-slate-800">Modes</div>
+                        <div class="mt-1 text-white">{{ card.modes }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-[11px] uppercase tracking-[0.18em] text-slate-800">GMRS</div>
+                        <div class="mt-1 text-white">{{ card.gmrs }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-[11px] uppercase tracking-[0.18em] text-slate-800">Web</div>
+                        <div class="mt-1 text-white">{{ card.website }}</div>
+                        <div class="text-white">{{ card.email }}</div>
+                        <div class="text-white">{{ card.qrzUrl }}</div>
+                    </div>
+                </div>
+
+                <!-- Classic QSL table -->
+                <div class="mt-6 rounded-xl border border-white/70 bg-orange-400/30 p-3">
+                    <div class="mb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-800">
+                        QSO Record
+                    </div>
+
+                    <div class="grid grid-cols-2 border border-slate-800 text-[11px] text-slate-900 sm:grid-cols-4">
+                        <div class="border-b border-r border-slate-800 bg-orange-200 px-2 py-1 font-semibold">Your Call Sign</div>
+                        <div class="border-b border-slate-800 px-2 py-1 sm:border-r">{{ card.toRadio || '—' }}</div>
+
+                        <div class="border-b border-r border-slate-800 bg-orange-200 px-2 py-1 font-semibold">Date</div>
+                        <div class="border-b border-slate-800 px-2 py-1">{{ card.qsoDate || '—' }}</div>
+
+                        <div class="border-b border-r border-slate-800 bg-orange-200 px-2 py-1 font-semibold">UTC</div>
+                        <div class="border-b border-slate-800 px-2 py-1 sm:border-r">{{ card.qsoTimeUtc || '—' }}</div>
+
+                        <div class="border-b border-r border-slate-800 bg-orange-200 px-2 py-1 font-semibold">MHz</div>
+                        <div class="border-b border-slate-800 px-2 py-1">{{ card.mhz || '—' }}</div>
+
+                        <div class="border-b border-r border-slate-800 bg-orange-200 px-2 py-1 font-semibold">Band</div>
+                        <div class="border-b border-slate-800 px-2 py-1 sm:border-r">{{ card.band || '—' }}</div>
+
+                        <div class="border-b border-r border-slate-800 bg-orange-200 px-2 py-1 font-semibold">Mode</div>
+                        <div class="border-b border-slate-800 px-2 py-1">{{ card.mode || '—' }}</div>
+
+                        <div class="border-b border-r border-slate-800 bg-orange-200 px-2 py-1 font-semibold">RST Sent</div>
+                        <div class="border-b border-slate-800 px-2 py-1 sm:border-r">{{ card.rstSent || '—' }}</div>
+
+                        <div class="border-b border-r border-slate-800 bg-orange-200 px-2 py-1 font-semibold">RST Rcvd</div>
+                        <div class="border-b border-slate-800 px-2 py-1">{{ card.rstRecv || '—' }}</div>
+                    </div>
+                </div>
+
+                <div class="mt-6 border-t border-white/80 pt-4">
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="text-xs text-slate-800">
+                            {{ card.notes }}
+                        </div>
+                        <div class="text-sm font-medium text-slate-800">73</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+@if (showEditor) {
+    <div
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+            (click)="closeEditor()"
+    >
+        <div
+                class="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl"
+                (click)="$event.stopPropagation()"
+        >
+            <div class="mb-6 flex items-center justify-between gap-4">
+                <div>
+                    <div class="text-lg font-semibold text-slate-950">Edit QSL card</div>
+                    <div class="text-sm text-slate-600">
+                        Thank you for the conversation! Feel free to update with your information and download.
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-2">
+                <label class="block">
+                    <div class="mb-1 text-sm font-semibold text-slate-900">Your Call Sign</div>
+                    <input [(ngModel)]="card.toRadio" class="w-full rounded-xl border border-slate-300 px-3 py-2" />
+                </label>
+
+                <label class="block">
+                    <div class="mb-1 text-sm font-semibold text-slate-900">Date</div>
+                    <input [(ngModel)]="card.qsoDate" placeholder="04/01/2026" class="w-full rounded-xl border border-slate-300 px-3 py-2" />
+                </label>
+
+                <label class="block">
+                    <div class="mb-1 text-sm font-semibold text-slate-900">UTC Time</div>
+                    <input [(ngModel)]="card.qsoTimeUtc" placeholder="1942" class="w-full rounded-xl border border-slate-300 px-3 py-2" />
+                </label>
+
+                <label class="block">
+                    <div class="mb-1 text-sm font-semibold text-slate-900">MHz</div>
+                    <input [(ngModel)]="card.mhz" class="w-full rounded-xl border border-slate-300 px-3 py-2" />
+                </label>
+
+                <label class="block">
+                    <div class="mb-1 text-sm font-semibold text-slate-900">Band</div>
+                    <input [(ngModel)]="card.band" class="w-full rounded-xl border border-slate-300 px-3 py-2" />
+                </label>
+
+                <label class="block">
+                    <div class="mb-1 text-sm font-semibold text-slate-900">Mode</div>
+                    <input [(ngModel)]="card.mode" class="w-full rounded-xl border border-slate-300 px-3 py-2" />
+                </label>
+
+                <label class="block">
+                    <div class="mb-1 text-sm font-semibold text-slate-900">RST Sent</div>
+                    <input [(ngModel)]="card.rstSent" class="w-full rounded-xl border border-slate-300 px-3 py-2" />
+                </label>
+
+                <label class="block">
+                    <div class="mb-1 text-sm font-semibold text-slate-900">RST Received</div>
+                    <input [(ngModel)]="card.rstRecv" class="w-full rounded-xl border border-slate-300 px-3 py-2" />
+                </label>
+            </div>
+
+            <div class="mt-2 flex justify-end">
+                <button
+                        type="button"
+                        (click)="closeEditor()"
+                        class="inline-flex items-center rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+                >
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+}
