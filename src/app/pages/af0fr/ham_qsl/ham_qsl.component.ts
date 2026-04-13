@@ -43,22 +43,6 @@ export class HamQSL implements OnInit {
     logoSrc = 'assets/images/logo.png';
     logoDataUrl: string | null = null;
 
-    async ngOnInit(): Promise<void> {
-        try {
-            const response = await fetch(this.logoSrc);
-            const blob = await response.blob();
-
-            this.logoDataUrl = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-        } catch (error) {
-            console.error('Failed to preload logo:', error);
-        }
-    }
-
     showEditor = false;
 
     card: QslCardModel = {
@@ -86,6 +70,22 @@ export class HamQSL implements OnInit {
         rstRecv: '59',
         toRadio: 'KZ0ZZZ',
     };
+
+    async ngOnInit(): Promise<void> {
+        try {
+            const response = await fetch(this.logoSrc);
+            const blob = await response.blob();
+
+            this.logoDataUrl = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (error) {
+            console.error('Failed to preload logo:', error);
+        }
+    }
 
     getCurrentDate(): string {
         const now = new Date();
@@ -124,9 +124,7 @@ export class HamQSL implements OnInit {
                     if ('decode' in img) {
                         try {
                             await img.decode();
-                        } catch {
-                            // ignore decode failure
-                        }
+                        } catch {}
                     }
                     return;
                 }
@@ -140,9 +138,7 @@ export class HamQSL implements OnInit {
                 if ('decode' in img) {
                     try {
                         await img.decode();
-                    } catch {
-                        // ignore decode failure
-                    }
+                    } catch {}
                 }
             })
         );
@@ -154,16 +150,12 @@ export class HamQSL implements OnInit {
 
         try {
             await this.waitForImages(node);
-
             await new Promise((resolve) => setTimeout(resolve, 100));
 
             const dataUrl = await htmlToImage.toPng(node, {
                 pixelRatio: 2,
                 backgroundColor: '#f97316',
                 cacheBust: true,
-                style: {
-                    padding: '20px',
-                },
             });
 
             const response = await fetch(dataUrl);
@@ -189,24 +181,6 @@ export class HamQSL implements OnInit {
             setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
         } catch (err) {
             console.error('Error generating image:', err);
-
-            try {
-                await this.waitForImages(node);
-                await new Promise((resolve) => setTimeout(resolve, 100));
-
-                const dataUrl = await htmlToImage.toPng(node, {
-                    pixelRatio: 2,
-                    backgroundColor: '#f97316',
-                    cacheBust: true,
-                    style: {
-                        padding: '20px',
-                    },
-                });
-
-                window.open(dataUrl, '_blank');
-            } catch (fallbackErr) {
-                console.error('Fallback failed:', fallbackErr);
-            }
         }
     }
 }
