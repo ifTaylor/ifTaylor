@@ -1,0 +1,15 @@
+<div class="rounded-2xl border border-slate-700 bg-slate-900 p-4 shadow">
+    <h2 class="mb-4 text-lg font-semibold text-white">Session Log</h2>
+
+    <div class="space-y-2 text-sm">
+        <div
+                *ngFor="let entry of entries"
+                class="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-200"
+        >
+            <div class="text-xs text-slate-400">
+                {{ entry.timestamp | date:'HH:mm:ss' }}
+            </div>
+            <div>{{ entry.message }}</div>
+        </div>
+    </div>
+</div>
