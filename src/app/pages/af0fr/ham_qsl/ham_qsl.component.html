@@ -32,9 +32,10 @@
 
                         <div class="flex items-center">
                             <img
-                                    src="/assets/images/logo.png"
-                                    alt="logo"
-                                    class="mt-2 h-32 w-auto object-contain"
+                                [src]="logoDataUrl || logoSrc"
+                                alt="AF0FR logo"
+                                crossorigin="anonymous"
+                                class="mt-2 h-32 w-auto object-contain"
                             />
                         </div>
 

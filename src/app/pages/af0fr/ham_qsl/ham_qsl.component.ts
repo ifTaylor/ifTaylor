@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import * as htmlToImage from 'html-to-image';
 import { LucidePencil, LucideDownload } from '@lucide/angular';
@@ -39,7 +39,26 @@ interface QslCardModel {
     ],
     templateUrl: './ham_qsl.component.html',
 })
-export class HamQSL {
+export class HamQSL implements OnInit {
+    logoSrc = 'assets/images/logo.png';
+    logoDataUrl: string | null = null;
+
+    async ngOnInit(): Promise<void> {
+        try {
+            const response = await fetch(this.logoSrc);
+            const blob = await response.blob();
+
+            this.logoDataUrl = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (error) {
+            console.error('Failed to preload logo:', error);
+        }
+    }
+
     showEditor = false;
 
     card: QslCardModel = {
@@ -70,12 +89,12 @@ export class HamQSL {
 
     getCurrentDate(): string {
         const now = new Date();
-        return now.toISOString().slice(0, 10); // YYYY-MM-DD
+        return now.toISOString().slice(0, 10);
     }
 
     getCurrentUtcTime(): string {
         const now = new Date();
-        return now.toISOString().slice(11, 16); // HH:MM (UTC)
+        return now.toISOString().slice(11, 16);
     }
 
     openEditor(): void {
@@ -96,11 +115,48 @@ export class HamQSL {
         }
     }
 
+    private async waitForImages(container: HTMLElement): Promise<void> {
+        const images = Array.from(container.querySelectorAll('img'));
+
+        await Promise.all(
+            images.map(async (img) => {
+                if (img.complete && img.naturalWidth > 0) {
+                    if ('decode' in img) {
+                        try {
+                            await img.decode();
+                        } catch {
+                            // ignore decode failure
+                        }
+                    }
+                    return;
+                }
+
+                await new Promise<void>((resolve) => {
+                    const finish = () => resolve();
+                    img.addEventListener('load', finish, { once: true });
+                    img.addEventListener('error', finish, { once: true });
+                });
+
+                if ('decode' in img) {
+                    try {
+                        await img.decode();
+                    } catch {
+                        // ignore decode failure
+                    }
+                }
+            })
+        );
+    }
+
     async downloadCard(): Promise<void> {
         const node = document.getElementById('contact-card-export');
         if (!node) return;
 
         try {
+            await this.waitForImages(node);
+
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
             const dataUrl = await htmlToImage.toPng(node, {
                 pixelRatio: 2,
                 backgroundColor: '#f97316',
@@ -121,6 +177,7 @@ export class HamQSL {
                 });
                 return;
             }
+
             const objectUrl = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = objectUrl;
@@ -132,9 +189,10 @@ export class HamQSL {
             setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
         } catch (err) {
             console.error('Error generating image:', err);
+
             try {
-                const node = document.getElementById('contact-card-export');
-                if (!node) return;
+                await this.waitForImages(node);
+                await new Promise((resolve) => setTimeout(resolve, 100));
 
                 const dataUrl = await htmlToImage.toPng(node, {
                     pixelRatio: 2,
