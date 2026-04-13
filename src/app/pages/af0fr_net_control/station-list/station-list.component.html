@@ -1,0 +1,81 @@
+<div class="rounded-2xl border border-slate-700 bg-slate-900 p-4 shadow">
+    <h2 class="mb-4 text-lg font-semibold text-white">Stations</h2>
+
+    <div class="space-y-3">
+        <div
+                *ngFor="let station of displayStations"
+                class="rounded-xl border border-slate-700 bg-slate-800 p-3"
+                [class.opacity-75]="station.status === 'complete'"
+        >
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="font-semibold text-white">{{ station.callsign }}</div>
+
+                        <span
+                                *ngIf="station.status === 'complete'"
+                                class="rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white"
+                        >
+              Completed
+            </span>
+
+                        <span
+                                *ngIf="station.status === 'active'"
+                                class="rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white"
+                        >
+              Active
+            </span>
+                    </div>
+
+                    <div class="text-sm text-slate-300">
+                        {{ station.name || 'Unknown' }}
+                        <span *ngIf="station.location">· {{ station.location }}</span>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap justify-end gap-2">
+                    <span
+                            class="rounded-full px-2 py-1 text-xs font-semibold"
+                            [ngClass]="trafficClass(station.trafficType)"
+                    >
+            {{ station.trafficType }}
+          </span>
+
+                    <span
+                            class="rounded-full px-2 py-1 text-xs font-semibold"
+                            [ngClass]="statusClass(station.status)"
+                    >
+            {{ station.status }}
+          </span>
+                </div>
+            </div>
+
+            <div class="mt-2 text-sm text-slate-300" *ngIf="station.notes">
+                {{ station.notes }}
+            </div>
+
+            <div class="mt-3 flex flex-wrap gap-2">
+                <button
+                        class="rounded-lg bg-blue-600 px-3 py-1 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        (click)="setActive.emit(station.id)"
+                        [disabled]="station.status === 'complete'"
+                >
+                    Make active
+                </button>
+                <button
+                        class="rounded-lg bg-emerald-600 px-3 py-1 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        (click)="markComplete.emit(station.id)"
+                        [disabled]="station.status === 'complete'"
+                >
+                    Complete
+                </button>
+                <button
+                        class="rounded-lg bg-rose-600 px-3 py-1 text-sm text-white"
+                        (click)="removeStation.emit(station.id)"
+                >
+                    Remove
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

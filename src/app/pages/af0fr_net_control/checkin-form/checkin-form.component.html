@@ -1,0 +1,60 @@
+<div class="rounded-2xl border border-slate-700 bg-slate-900 p-4 shadow">
+    <h2 class="mb-4 text-lg font-semibold text-white">Check-in</h2>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-3">
+        <input
+                formControlName="callsign"
+                placeholder="Callsign"
+                class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-white"
+        />
+
+        <div class="grid gap-3 md:grid-cols-2">
+            <input
+                    formControlName="name"
+                    placeholder="Name"
+                    class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-white"
+            />
+            <input
+                    formControlName="location"
+                    placeholder="Location"
+                    class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-white"
+            />
+        </div>
+
+        <select
+                formControlName="trafficType"
+                class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-white"
+        >
+            <option value="none">No traffic</option>
+            <option value="announcement">Announcement</option>
+            <option value="formal">Formal traffic</option>
+            <option value="priority">Priority</option>
+            <option value="emergency">Emergency</option>
+        </select>
+
+        <textarea
+                formControlName="notes"
+                rows="3"
+                placeholder="Notes"
+                class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-white"
+        ></textarea>
+
+        <div class="flex gap-4 text-sm text-slate-200">
+            <label class="flex items-center gap-2">
+                <input type="checkbox" formControlName="visitor" />
+                Visitor
+            </label>
+            <label class="flex items-center gap-2">
+                <input type="checkbox" formControlName="firstTime" />
+                First time
+            </label>
+        </div>
+
+        <button
+                type="submit"
+                class="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white hover:bg-orange-400"
+        >
+            Add station
+        </button>
+    </form>
+</div>

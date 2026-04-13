@@ -1,0 +1,21 @@
+<div class="rounded-2xl border border-slate-700 bg-slate-900 p-4 shadow">
+    <h2 class="mb-4 text-lg font-semibold text-white">Queue</h2>
+
+    <div class="space-y-2">
+        <div
+                *ngFor="let station of queue; let i = index"
+                class="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-800 p-3"
+        >
+            <div class="text-white">
+                <span class="mr-2 text-slate-400">{{ i + 1 }}.</span>
+                {{ station.callsign }}
+            </div>
+
+            <div class="flex gap-2">
+                <button class="rounded bg-slate-700 px-2 py-1 text-sm text-white" (click)="moveUp.emit(station.id)">↑</button>
+                <button class="rounded bg-slate-700 px-2 py-1 text-sm text-white" (click)="moveDown.emit(station.id)">↓</button>
+                <button class="rounded bg-orange-500 px-3 py-1 text-sm text-white" (click)="activate.emit(station.id)">Call</button>
+            </div>
+        </div>
+    </div>
+</div>
