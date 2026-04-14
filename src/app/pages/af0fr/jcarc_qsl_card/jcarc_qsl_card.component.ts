@@ -103,42 +103,47 @@ export class JCARCQSLCard {
         document.body.style.overflow = '';
     }
 
-    private waitForImages(node: HTMLElement): Promise<void> {
-        const images = Array.from(node.querySelectorAll('img'));
+    private async waitForImages(container: HTMLElement): Promise<void> {
+        const images = Array.from(container.querySelectorAll('img'));
 
-        if (images.length === 0) {
-            return Promise.resolve();
-        }
-
-        return Promise.all(
-            images.map((img) => {
-                if (img.complete) {
-                    return Promise.resolve();
+        await Promise.all(
+            images.map(async (img) => {
+                if (img.complete && img.naturalWidth > 0) {
+                    if ('decode' in img) {
+                        try {
+                            await img.decode();
+                        } catch {}
+                    }
+                    return;
                 }
 
-                return new Promise<void>((resolve) => {
-                    const done = () => resolve();
-                    img.addEventListener('load', done, { once: true });
-                    img.addEventListener('error', done, { once: true });
+                await new Promise<void>((resolve) => {
+                    const finish = () => resolve();
+                    img.addEventListener('load', finish, { once: true });
+                    img.addEventListener('error', finish, { once: true });
                 });
-            }),
-        ).then(() => undefined);
+
+                if ('decode' in img) {
+                    try {
+                        await img.decode();
+                    } catch {}
+                }
+            })
+        );
     }
 
     async downloadCard(): Promise<void> {
         const node = document.getElementById('qsl-card-export-image');
-        if (!node) {
-            return;
-        }
+        if (!node) return;
 
         try {
             await this.waitForImages(node);
-            await new Promise((resolve) => setTimeout(resolve, 100));
+            await new Promise((resolve) => setTimeout(resolve, 150));
 
             const dataUrl = await htmlToImage.toPng(node, {
                 cacheBust: true,
                 backgroundColor: '#f8fafc',
-                pixelRatio: 1,
+                pixelRatio: 2,
                 width: 1800,
                 height: 1200,
                 style: {
@@ -147,10 +152,33 @@ export class JCARCQSLCard {
                 },
             });
 
+            const response = await fetch(dataUrl);
+            const blob = await response.blob();
+            const file = new File([blob], 'jcarc-qsl-card-6x4.png', {
+                type: 'image/png',
+            });
+
+            if (
+                navigator.canShare &&
+                navigator.share &&
+                navigator.canShare({ files: [file] })
+            ) {
+                await navigator.share({
+                    files: [file],
+                    title: 'JCARC QSL Card',
+                });
+                return;
+            }
+
+            const objectUrl = URL.createObjectURL(blob);
             const link = document.createElement('a');
+            link.href = objectUrl;
             link.download = 'jcarc-qsl-card-6x4.png';
-            link.href = dataUrl;
+            document.body.appendChild(link);
             link.click();
+            link.remove();
+
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
         } catch (error) {
             console.error('Failed to download QSL card as PNG:', error);
         }
