@@ -8,6 +8,7 @@ import { ScriptPanel } from './script-panel/script-panel.component';
 import { SessionLog } from './session-log/session-log.component';
 import { Station } from './models/station.model';
 import { LogEntry } from './models/log-entry.model';
+import { JCARCQSLCard } from '../af0fr/jcarc_qsl_card/jcarc_qsl_card.component';
 
 interface SavedNetControlSession {
     id: string;
@@ -32,6 +33,7 @@ interface SavedNetControlSession {
         QueuePanel,
         ScriptPanel,
         SessionLog,
+        JCARCQSLCard
     ],
     templateUrl: './af0fr_net_control.page.html',
 })

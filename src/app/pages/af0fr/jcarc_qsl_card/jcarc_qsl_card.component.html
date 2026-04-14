@@ -1,0 +1,540 @@
+<div class="min-h-screen bg-slate-100 p-4 sm:p-6">
+  <div class="mx-auto flex w-full max-w-6xl flex-col gap-4">
+    <div class="flex justify-end gap-3">
+      <button
+        type="button"
+        (click)="openEditor()"
+        class="inline-flex items-center gap-2 rounded-full border border-[#3c4c79] bg-white px-4 py-2 text-sm font-semibold text-[#3c4c79] shadow-sm transition hover:scale-[1.02]"
+      >
+        Edit Card
+      </button>
+
+      <button
+        type="button"
+        (click)="downloadCard()"
+        class="inline-flex items-center gap-2 rounded-full bg-[#3c4c79] px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:scale-[1.02] hover:bg-[#334165]"
+      >
+        <svg lucideDownload class="h-4 w-4"></svg>
+        Download PNG
+      </button>
+    </div>
+
+    <div
+      id="qsl-card-export"
+      class="relative mx-auto w-full max-w-6xl overflow-hidden rounded-[2rem] bg-[#f5f5f3] shadow-2xl"
+    >
+      <!-- Desktop lower background -->
+      <div
+        class="absolute inset-x-0 bottom-0 hidden h-[46%] overflow-hidden lg:block"
+      >
+        <div
+          class="absolute inset-0 opacity-[0.12]"
+          style="
+            background-image:
+              linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+            background-size: 24px 24px;
+          "
+        ></div>
+
+        <div
+          class="absolute inset-0 opacity-[0.14]"
+          style="
+            background:
+              radial-gradient(circle at 10% 78%, rgba(255,255,255,0.10) 0, rgba(255,255,255,0.10) 120px, transparent 121px),
+              radial-gradient(circle at 78% 72%, rgba(255,255,255,0.06) 0, rgba(255,255,255,0.06) 90px, transparent 91px),
+              radial-gradient(circle at 94% 28%, rgba(255,255,255,0.06) 0, rgba(255,255,255,0.06) 150px, transparent 151px);
+          "
+        ></div>
+
+        <div class="absolute left-10 top-8 text-xs font-semibold tracking-[0.45em] text-white/[0.16]">
+          ··· ——— ···
+        </div>
+
+        <div class="absolute right-10 top-5 text-[150px] font-black leading-none text-white/[0.05]">
+          CQ
+        </div>
+      </div>
+
+      <!-- Mobile lower background -->
+      <div class="relative lg:hidden">
+        <div class="absolute inset-0 bg-[#3c4c79]"></div>
+        <div class="absolute inset-0 bg-[linear-gradient(to_bottom,#51639c_0%,#334165_100%)]"></div>
+        <div
+          class="absolute inset-0 opacity-[0.10]"
+          style="
+            background-image:
+              linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+            background-size: 24px 24px;
+          "
+        ></div>
+      </div>
+
+      <div class="relative z-10 flex flex-col px-5 pb-8 pt-8 sm:px-8 lg:px-10 lg:pt-10">
+        <!-- Top -->
+        <section class="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.15fr] lg:gap-10">
+          <div class="flex flex-col items-center justify-center text-center">
+            <div class="mb-4 flex h-[170px] w-full items-center justify-center sm:h-[200px] lg:h-[220px]">
+              <div
+                class="relative flex h-[130px] w-[130px] items-center justify-center rounded-full border border-[#b9c5df] bg-[#f8f8f7] shadow-md sm:h-[145px] sm:w-[145px] lg:h-[160px] lg:w-[160px]"
+              >
+                <img
+                  src="assets/images/JCARC-Final-Logo-250x209-1.png"
+                  alt="Jefferson County Amateur Radio Club logo"
+                  class="h-[88px] w-auto object-contain sm:h-[96px] lg:h-[108px]"
+                />
+              </div>
+            </div>
+
+            <h1
+              class="max-w-xl text-[16px] font-bold uppercase tracking-[0.20em] text-[#3c4c79] sm:text-[18px] sm:tracking-[0.24em] lg:tracking-[0.28em]"
+            >
+              Jefferson County Amateur Radio Club
+            </h1>
+
+            <p
+              class="mt-3 text-[13px] tracking-[0.14em] text-[#61759e] sm:text-[14px] sm:tracking-[0.20em]"
+            >
+              Amateur Radio QSL Card
+            </p>
+          </div>
+
+          <div class="flex flex-col justify-center gap-6 pt-2 lg:pt-4">
+            <div>
+              <div
+                class="mb-3 text-[11px] font-bold uppercase tracking-[0.30em] text-[#61759e] sm:text-xs sm:tracking-[0.35em]"
+              >
+                Transmitting Station
+              </div>
+              <div class="flex items-end gap-4">
+                <span
+                  class="min-w-[115px] text-[22px] font-semibold text-slate-800 sm:min-w-[130px] sm:text-[26px] lg:min-w-[150px] lg:text-[28px]"
+                >
+                  Tx Call Sign
+                </span>
+                <div class="relative mb-1 h-9 flex-1 border-b-2 border-[#6c7faa] sm:h-10">
+                  <span
+                    class="absolute bottom-1 left-0 text-[22px] font-semibold leading-none text-slate-800 sm:text-[26px] lg:text-[28px]"
+                  >
+                    {{ form.txCallSign || '' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div
+                class="mb-3 text-[11px] font-bold uppercase tracking-[0.30em] text-[#61759e] sm:text-xs sm:tracking-[0.35em]"
+              >
+                Receiving Station
+              </div>
+              <div class="flex items-end gap-4">
+                <span
+                  class="min-w-[115px] text-[22px] font-semibold text-slate-800 sm:min-w-[130px] sm:text-[26px] lg:min-w-[150px] lg:text-[28px]"
+                >
+                  Rx Call Sign
+                </span>
+                <div class="relative mb-1 h-9 flex-1 border-b-2 border-[#6c7faa] sm:h-10">
+                  <span
+                    class="absolute bottom-1 left-0 text-[22px] font-semibold leading-none text-slate-800 sm:text-[26px] lg:text-[28px]"
+                  >
+                    {{ form.rxCallSign || '' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6 pt-1 lg:gap-8 lg:pt-2">
+              <div>
+                <div
+                  class="text-[11px] font-bold uppercase tracking-[0.30em] text-[#61759e] sm:text-xs sm:tracking-[0.35em]"
+                >
+                  Grid Square
+                </div>
+                <div class="mt-2 text-sm font-medium text-slate-700 sm:text-base">
+                  {{ form.gridSquare || ' ' }}
+                </div>
+              </div>
+
+              <div>
+                <div
+                  class="text-[11px] font-bold uppercase tracking-[0.30em] text-[#61759e] sm:text-xs sm:tracking-[0.35em]"
+                >
+                  Operator
+                </div>
+                <div class="mt-2 text-sm font-medium text-slate-700 sm:text-base">
+                  {{ form.operator || ' ' }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Lower section -->
+        <section
+          class="mt-8 rounded-[1.5rem] border border-white/10 bg-[linear-gradient(to_bottom,rgba(81,99,156,0.96),rgba(51,65,101,0.96))] px-4 py-5 text-white backdrop-blur-[1px] sm:px-5 lg:flex-1 lg:px-6"
+        >
+          <div class="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-5">
+            <div>
+              <div class="mb-2 text-[11px] font-bold uppercase tracking-[0.30em] text-white/80">
+                QTH
+              </div>
+              <div
+                class="flex min-h-11 items-center rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white/95 shadow-inner"
+              >
+                {{ form.qth }}
+              </div>
+            </div>
+
+            <div>
+              <div class="mb-2 text-[11px] font-bold uppercase tracking-[0.30em] text-white/80">
+                Grid
+              </div>
+              <div
+                class="flex min-h-11 items-center rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white/95 shadow-inner"
+              >
+                {{ form.gridSquare }}
+              </div>
+            </div>
+
+            <div>
+              <div class="mb-2 text-[11px] font-bold uppercase tracking-[0.30em] text-white/80">
+                QSL Via
+              </div>
+              <div
+                class="flex min-h-11 items-center rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white/95 shadow-inner"
+              >
+                {{ form.qslVia }}
+              </div>
+            </div>
+
+            <div>
+              <div class="mb-2 text-[11px] font-bold uppercase tracking-[0.30em] text-white/80">
+                PWR / Rig
+              </div>
+              <div
+                class="flex min-h-11 items-center rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white/95 shadow-inner"
+              >
+                {{ form.powerRig }}
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:gap-8">
+            <div>
+              <div
+                class="mb-2 text-[11px] font-bold uppercase tracking-[0.30em] text-white/80 sm:text-xs sm:tracking-[0.35em]"
+              >
+                Receiver
+              </div>
+              <div
+                class="flex min-h-12 items-center rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white/95 shadow-inner"
+              >
+                {{ form.receiver }}
+              </div>
+            </div>
+
+            <div>
+              <div
+                class="mb-2 text-[11px] font-bold uppercase tracking-[0.30em] text-white/80 sm:text-xs sm:tracking-[0.35em]"
+              >
+                Antenna
+              </div>
+              <div
+                class="flex min-h-12 items-center rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white/95 shadow-inner"
+              >
+                {{ form.antenna }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Desktop table -->
+          <div
+            class="hidden overflow-hidden rounded-[1rem] border border-white/15 bg-white/[0.06] shadow-[0_10px_30px_rgba(0,0,0,0.12)] backdrop-blur-sm lg:block"
+          >
+            <table class="w-full border-collapse">
+              <thead class="bg-white text-[#334165]">
+                <tr class="text-left text-[12px] font-bold uppercase tracking-[0.24em]">
+                  <th class="w-[14%] border-r border-slate-300/70 px-4 py-4">Date UTC</th>
+                  <th class="w-[12%] border-r border-slate-300/70 px-4 py-4">Time UTC</th>
+                  <th class="w-[12%] border-r border-slate-300/70 px-4 py-4">Band</th>
+                  <th class="w-[13%] border-r border-slate-300/70 px-4 py-4">MHz</th>
+                  <th class="w-[12%] border-r border-slate-300/70 px-4 py-4">Mode</th>
+                  <th class="w-[13%] border-r border-slate-300/70 px-4 py-4">RST S/R</th>
+                  <th class="w-[24%] px-4 py-4">Remarks</th>
+                </tr>
+              </thead>
+
+              <tbody class="text-white">
+                <tr class="h-[84px] bg-transparent">
+                  <td class="border-r border-t border-white/15 px-4 pt-4 align-top text-sm">
+                    {{ form.dateUtc }}
+                  </td>
+                  <td class="border-r border-t border-white/15 px-4 pt-4 align-top text-sm">
+                    {{ form.timeUtc }}
+                  </td>
+                  <td class="border-r border-t border-white/15 px-4 pt-4 align-top text-sm">
+                    {{ form.band }}
+                  </td>
+                  <td class="border-r border-t border-white/15 px-4 pt-4 align-top text-sm">
+                    {{ form.mhz }}
+                  </td>
+                  <td class="border-r border-t border-white/15 px-4 pt-4 align-top text-sm">
+                    {{ form.mode }}
+                  </td>
+                  <td class="border-r border-t border-white/15 px-4 pt-4 align-top text-sm">
+                    {{ form.rstSent }}<span *ngIf="form.rstSent || form.rstReceived"> / </span>{{ form.rstReceived }}
+                  </td>
+                  <td class="border-t border-white/15 px-4 pt-4 align-top text-sm">
+                    {{ form.remarks }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Mobile stacked QSO details -->
+          <div class="grid grid-cols-1 gap-3 lg:hidden">
+            <div class="rounded-xl bg-white/10 p-4">
+              <div class="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <div class="text-[11px] font-bold uppercase tracking-[0.25em] text-white/70">
+                    Date UTC
+                  </div>
+                  <div class="mt-1 text-white">{{ form.dateUtc }}</div>
+                </div>
+
+                <div>
+                  <div class="text-[11px] font-bold uppercase tracking-[0.25em] text-white/70">
+                    Time UTC
+                  </div>
+                  <div class="mt-1 text-white">{{ form.timeUtc }}</div>
+                </div>
+
+                <div>
+                  <div class="text-[11px] font-bold uppercase tracking-[0.25em] text-white/70">
+                    Band
+                  </div>
+                  <div class="mt-1 text-white">{{ form.band }}</div>
+                </div>
+
+                <div>
+                  <div class="text-[11px] font-bold uppercase tracking-[0.25em] text-white/70">
+                    MHz
+                  </div>
+                  <div class="mt-1 text-white">{{ form.mhz }}</div>
+                </div>
+
+                <div>
+                  <div class="text-[11px] font-bold uppercase tracking-[0.25em] text-white/70">
+                    Mode
+                  </div>
+                  <div class="mt-1 text-white">{{ form.mode }}</div>
+                </div>
+
+                <div>
+                  <div class="text-[11px] font-bold uppercase tracking-[0.25em] text-white/70">
+                    RST S/R
+                  </div>
+                  <div class="mt-1 text-white">
+                    {{ form.rstSent }}<span *ngIf="form.rstSent || form.rstReceived"> / </span>{{ form.rstReceived }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <div class="text-[11px] font-bold uppercase tracking-[0.25em] text-white/70">
+                  Remarks
+                </div>
+                <div class="mt-1 text-sm text-white">{{ form.remarks }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <div class="text-white/80">Confirming a two-way amateur radio contact</div>
+            <div class="font-semibold tracking-[0.18em] text-white/95">jcarcmo.com</div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div
+  *ngIf="isEditorOpen"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4"
+  (click)="closeEditor()"
+>
+  <div
+    class="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="mb-6 flex items-start justify-between gap-4">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900">Edit QSL Card</h2>
+        <p class="mt-1 text-sm text-slate-500">Update the fields that appear on the card.</p>
+      </div>
+
+      <button
+        type="button"
+        (click)="closeEditor()"
+        class="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
+      >
+        Close
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-700">Tx Call Sign</label>
+        <input
+          [(ngModel)]="form.txCallSign"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#3c4c79]"
+        />
+      </div>
+
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-700">Rx Call Sign</label>
+        <input
+          [(ngModel)]="form.rxCallSign"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#3c4c79]"
+        />
+      </div>
+
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-700">Operator</label>
+        <input
+          [(ngModel)]="form.operator"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#3c4c79]"
+        />
+      </div>
+
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-700">Grid Square</label>
+        <input
+          [(ngModel)]="form.gridSquare"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#3c4c79]"
+        />
+      </div>
+
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-700">QTH</label>
+        <input
+          [(ngModel)]="form.qth"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#3c4c79]"
+        />
+      </div>
+
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-700">QSL Via</label>
+        <input
+          [(ngModel)]="form.qslVia"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#3c4c79]"
+        />
+      </div>
+
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-700">PWR / Rig</label>
+        <input
+          [(ngModel)]="form.powerRig"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#3c4c79]"
+        />
+      </div>
+
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-700">Receiver</label>
+        <input
+          [(ngModel)]="form.receiver"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#3c4c79]"
+        />
+      </div>
+
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-700">Antenna</label>
+        <input
+          [(ngModel)]="form.antenna"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#3c4c79]"
+        />
+      </div>
+
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-700">Date UTC</label>
+        <input
+          [(ngModel)]="form.dateUtc"
+          placeholder="DD/MM/YYYY"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#3c4c79]"
+        />
+      </div>
+
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-700">Time UTC</label>
+        <input
+          [(ngModel)]="form.timeUtc"
+          placeholder="HH:MM"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#3c4c79]"
+        />
+      </div>
+
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-700">Band</label>
+        <input
+          [(ngModel)]="form.band"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#3c4c79]"
+        />
+      </div>
+
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-700">MHz</label>
+        <input
+          [(ngModel)]="form.mhz"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#3c4c79]"
+        />
+      </div>
+
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-700">Mode</label>
+        <input
+          [(ngModel)]="form.mode"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#3c4c79]"
+        />
+      </div>
+
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-700">RST Sent</label>
+        <input
+          [(ngModel)]="form.rstSent"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#3c4c79]"
+        />
+      </div>
+
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-700">RST Received</label>
+        <input
+          [(ngModel)]="form.rstReceived"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#3c4c79]"
+        />
+      </div>
+
+      <div class="md:col-span-2">
+        <label class="mb-2 block text-sm font-semibold text-slate-700">Remarks</label>
+        <textarea
+          [(ngModel)]="form.remarks"
+          rows="4"
+          class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-[#3c4c79]"
+        ></textarea>
+      </div>
+    </div>
+
+    <div class="mt-6 flex justify-end gap-3">
+      <button
+        type="button"
+        (click)="closeEditor()"
+        class="rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+      >
+        Done
+      </button>
+    </div>
+  </div>
+</div>
