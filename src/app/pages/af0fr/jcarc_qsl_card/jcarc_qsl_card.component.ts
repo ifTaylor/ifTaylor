@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import {Component, OnInit} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideDownload } from '@lucide/angular';
 import * as htmlToImage from 'html-to-image';
@@ -35,7 +35,17 @@ interface Repeater {
     imports: [CommonModule, FormsModule, LucideDownload],
     templateUrl: './jcarc_qsl_card.component.html',
 })
-export class JCARCQSLCard {
+export class JCARCQSLCard implements OnInit {
+    ngOnInit(): void {
+        const utc = this.getCurrentUtc();
+
+        this.form = {
+            ...this.form,
+            dateUtc: this.form.dateUtc || utc.date,
+            timeUtc: this.form.timeUtc || utc.time,
+        };
+    }
+
     jcarcRepeaters: Repeater[] = [
         {
             band: 'VHF FM / EchoLink',
@@ -92,6 +102,21 @@ export class JCARCQSLCard {
         rstReceived: '',
         remarks: '',
     };
+
+    private getCurrentUtc(): { date: string; time: string } {
+        const now = new Date();
+
+        const date = now.toISOString().slice(0, 10);
+        const time = now.toISOString().slice(11, 16);
+
+        return { date, time };
+    }
+
+    setNowUtc(): void {
+        const utc = this.getCurrentUtc();
+        this.form.dateUtc = utc.date;
+        this.form.timeUtc = utc.time;
+    }
 
     openEditor(): void {
         this.isEditorOpen = true;
