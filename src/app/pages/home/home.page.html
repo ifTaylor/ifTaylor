@@ -207,6 +207,170 @@
                 </p>
             </div>
         </div>
+        <div class="mt-12 rounded-[2rem] border border-cyan-400/20 bg-cyan-400/5 p-6 shadow-2xl shadow-slate-950/20 backdrop-blur-xl sm:p-8">
+            <div class="grid gap-8 lg:grid-cols-[1fr_1.1fr] lg:items-center">
+                <div class="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/70">
+                    <img
+                            src="/assets/images/kalman.png"
+                            alt="Trend plot showing filtered position response from a 2-state Kalman filter investigation"
+                            class="h-full w-full object-cover"
+                    />
+                </div>
+
+                <div>
+                    <div class="text-xs uppercase tracking-[0.24em] text-cyan-300">Featured investigation</div>
+
+                    <h3 class="mt-3 text-2xl font-semibold text-white">
+                        2-state Kalman filtering for PLC-based motion signals
+                    </h3>
+
+                    <a
+                            href="https://github.com/ifTaylor/MotionControl/blob/main/plc/kalman_filter/2-State%20Kalman%20Filter%20for%20PLCs%20-%20Investigation%20Doc.pdf"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center gap-2 rounded-full bg-white mt-4 px-4 py-2 font-medium text-black shadow hover:bg-orange-600 transition"
+                    >
+                        View Investigation (pdf)
+                    </a>
+
+                    <p class="mt-4 text-sm leading-7 text-slate-300">
+                        One area of ongoing interest is how estimation and control theory translate into real industrial systems.
+                        This investigation focused on a 2-state observer for position and velocity running in a PLC environment,
+                        where the signal is measured under noise, scan timing is not perfectly uniform, and the implementation
+                        has to remain deterministic and maintainable.
+                    </p>
+
+                    <p class="mt-4 text-sm leading-7 text-slate-300">
+                        The work centered on smoothing measured position while producing a usable velocity estimate without
+                        introducing the lag of simple averaging or the noise amplification of raw differentiation. It also
+                        explored how theoretical filtering methods have to be adapted to practical constraints such as scan-based
+                        execution, limited computational primitives, commissioning simplicity, and numeric safety.
+                    </p>
+
+                    <p class="mt-4 text-sm leading-7 text-slate-300">
+                        More broadly, it reflects the kind of engineering problems that are most interesting to me:
+                        connecting physical system behavior, signal quality, and control theory to implementations that can
+                        actually survive production use.
+                    </p>
+
+                    <div class="mt-6 flex flex-wrap gap-3">
+                        <div class="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-xs text-slate-300">
+                            Estimation Theory
+                        </div>
+                        <div class="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-xs text-slate-300">
+                            PLC Constraints
+                        </div>
+                        <div class="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-xs text-slate-300">
+                            Signal Filtering
+                        </div>
+                        <div class="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-xs text-slate-300">
+                            Motion Systems
+                        </div>
+                        <div class="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-xs text-slate-300">
+                            Deterministic Execution
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mt-8 rounded-[2rem] border border-emerald-400/20 bg-emerald-400/5 p-6 shadow-2xl shadow-slate-950/20 backdrop-blur-xl sm:p-8">
+
+            <div class="mx-auto max-w-6xl">
+                <div class="text-xs uppercase tracking-[0.24em] text-emerald-300">Featured application</div>
+
+                <h3 class="mt-3 text-2xl font-semibold text-white">
+                    Feed-forward motion control in hydraulic PLC systems
+                </h3>
+
+                <div class="mt-6 grid gap-10 lg:grid-cols-[1.2fr_1fr]">
+
+                    <div>
+                        <p class="text-sm leading-7 text-slate-300">
+                            This work focuses on motion control in hydraulic systems where response is dominated by delay,
+                            compliance, and nonlinear load behavior. Rather than relying on purely reactive control,
+                            the implementation combines feedback (PID) with feed-forward terms derived from a target generator,
+                            including velocity, acceleration, and jerk.
+                        </p>
+
+                        <p class="mt-4 text-sm leading-7 text-slate-300">
+                            A key aspect of this implementation is that the control algorithm is designed specifically for
+                            PLC execution. Unlike idealized control environments, PLCs operate in discrete scan cycles with
+                            limited computational resources and strict requirements for determinism. The controller is structured
+                            around time-based updates, explicit state tracking, and simple scalar calculations so that behavior
+                            remains predictable and repeatable on every scan.
+                        </p>
+
+                        <p class="mt-4 text-sm leading-7 text-slate-300">
+                            The top plot shows a step-response experiment used to characterize the system using a first-order
+                            plus dead-time model. A change in control output is applied, and the resulting process variable
+                            response is observed. From this data, three parameters are extracted: process gain (how far the system
+                            ultimately moves), time constant (how quickly it approaches that response), and dead time (the delay
+                            before the system begins reacting).
+                        </p>
+
+                        <p class="mt-4 text-sm leading-7 text-slate-300">
+                            In hydraulic systems, these characteristics are driven by physical effects such as valve response,
+                            fluid compressibility, mechanical compliance, and load variation. The dead time represents the delay
+                            between command and measurable motion, while the time constant reflects how quickly pressure and flow
+                            translate into displacement.
+                        </p>
+
+                        <p class="mt-4 text-sm leading-7 text-slate-300">
+                            The bottom plot shows the resulting control performance, where the target trajectory, actual system
+                            response, and control output are plotted together. Feed-forward terms drive the system along the
+                            desired motion profile, while feedback terms correct for mismatch and disturbances. This results in
+                            improved tracking, reduced lag, and controlled overshoot despite system delay.
+                        </p>
+
+                        <p class="mt-4 text-sm leading-7 text-slate-300">
+                            By grounding tuning in measured response characteristics and structuring the algorithm for deterministic
+                            PLC execution, the controller remains both theoretically sound and practical to deploy in real industrial systems.
+                        </p>
+
+                        <div class="mt-6 flex flex-wrap gap-3">
+                            <div class="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-xs text-slate-300">
+                                Feed-Forward Control
+                            </div>
+                            <div class="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-xs text-slate-300">
+                                PID + Motion Profiling
+                            </div>
+                            <div class="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-xs text-slate-300">
+                                First-Order + Dead Time
+                            </div>
+                            <div class="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-xs text-slate-300">
+                                Hydraulic Dynamics
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-6">
+                        <div class="overflow-hidden rounded-xl border border-white/10 bg-slate-900/70">
+                            <div class="flex items-center justify-center p-4">
+                                <img
+                                        src="/assets/images/tuning.png"
+                                        class="max-h-[320px] w-auto max-w-full object-contain"
+                                />
+                            </div>
+                            <p class="px-4 pb-4 text-center text-xs text-slate-400">
+                                Step response used to extract process gain, time constant, and dead time
+                            </p>
+                        </div>
+                        <div class="overflow-hidden rounded-xl border border-white/10 bg-slate-900/70">
+                            <div class="flex items-center justify-center p-4">
+                                <img
+                                        src="/assets/images/control.png"
+                                        class="max-h-[320px] w-auto max-w-full object-contain"
+                                />
+                            </div>
+                            <p class="px-4 pb-4 text-center text-xs text-slate-400">
+                                Improved tracking using feed-forward combined with feedback correction
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
     </section>
 
     <section class="mx-auto max-w-7xl px-6 py-12 lg:px-8 lg:py-16">
