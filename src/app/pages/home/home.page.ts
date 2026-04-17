@@ -11,8 +11,9 @@ export class HomePage implements OnInit {
 
     private phrases = [
         'Software Engineer',
-        'Controls & Automation',
         'Robotics Integration',
+        'Controls & Automation',
+        'Hydraulics + Process Systems',
         'Amateur Radio Operator',
         'RF Experimenter',
         'Google-Fu Master',
