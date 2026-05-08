@@ -12,20 +12,20 @@
             These days, that’s turned into a lot of antenna tinkering and DIY radio setups. This page shares a bit of that.
             <br>
             - 73
+            <button
+                    type="button"
+                    (click)="openQrz()"
+                    class="mt-2 flex items-center justify-center h-12 rounded-full bg-white px-6 text-sm font-semibold text-slate-950 transition hover:scale-[1.02]"
+            >
+                <img
+                        src="/assets/images/qrz_com.png"
+                        alt="QRZ"
+                        class="h-8 w-auto"
+                />
+            </button>
         </p>
         <div class="mt-8 text-sm uppercase tracking-[0.34em] text-slate-800">Select a Project</div>
         <div class="flex items-center gap-4 mt-4">
-            <button
-                type="button"
-                (click)="openQrz()"
-                class="flex items-center justify-center h-12 rounded-full bg-white px-6 text-sm font-semibold text-slate-950 transition hover:scale-[1.02]"
-            >
-                <img
-                    src="/assets/images/qrz_com.png"
-                    alt="QRZ"
-                    class="h-8 w-auto"
-                />
-            </button>
             <button
                 type="button"
                 (click)="scrollToAntennaBuild()"
