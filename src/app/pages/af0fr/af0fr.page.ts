@@ -5,6 +5,7 @@ import {AntennaBuild} from "./antenna-build/antenna-build.component";
 import {EchoLink} from "./echo_link/echolink.component";
 import {Toolbox} from "./toolbox/toolbox.component";
 import {Keyer} from "./keyer/keyer.component";
+import {AntennaBuildEFHW} from "./antenna-build-efhw/antenna-build-efhw.component";
 
 @Component({
     standalone: true,
@@ -15,7 +16,8 @@ import {Keyer} from "./keyer/keyer.component";
         HamQSL,
         AntennaBuild,
         EchoLink,
-        Keyer
+        Keyer,
+        AntennaBuildEFHW
     ]
 })
 export class Af0frPage {}

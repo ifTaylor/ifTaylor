@@ -1,0 +1,203 @@
+<section id="antenna-build-efhw" class="px-4 space-y-8">
+    <div class="max-w-3xl">
+        <div class="text-sm uppercase tracking-[0.28em] text-slate-800">
+            Active antenna build
+        </div>
+        <h2 class="mt-4 ml-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+            80m End-Fed Half-Wave Antenna
+        </h2>
+        <div class="mt-6 flex items-center">
+            <img
+                    src="/assets/images/efhw/49_1.png"
+                    alt="End-fed half-wave antenna"
+                    class="max-h-175 w-auto object-contain"
+            />
+        </div>
+        <a
+                href="assets/images/efhw/Investigation%20-%20End-Fed-Half-Wave%20Antenna%20-%2080%20Meter%20Band.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-2 rounded-full bg-white mt-4 px-4 py-2 font-medium shadow hover:bg-orange-600 transition"
+        >
+            View Initial Investigation (pdf)
+        </a>
+        <a
+                href="assets/images/efhw/Investigation%20Follow-up%20-%20End-Fed-Half-Wave%20Antenna%20-%202_14%20Winding%20Ratio.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-2 rounded-full bg-white mt-4 ml-2 px-4 py-2 font-medium shadow hover:bg-orange-600 transition"
+        >
+            View Transformer Revision Investigation (pdf)
+        </a>
+        <p class="mt-4 text-base leading-8 text-slate-800">
+            This project follows my ongoing build of a multiband
+            <span class="font-semibold text-white">80 meter end-fed half-wave antenna</span>.
+            The design uses a homebrew 49:1 UNUN, a compensation coil near the feedpoint,
+            a short counterpoise, and NanoVNA measurements to work through the tuning process.
+            It is still in progress: the ferrite material needs to be changed, the antenna needs
+            to be fully deployed, and the main element still needs final trimming.
+        </p>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="rounded-2xl border border-orange-500/20 bg-slate-900/60 p-4 backdrop-blur">
+            <div class="text-xs uppercase tracking-[0.22em] text-slate-200">Main Element</div>
+            <div class="mt-2 text-base font-medium text-white">~134 ft / 40.8 m</div>
+        </div>
+
+        <div class="rounded-2xl border border-orange-500/20 bg-slate-900/60 p-4 backdrop-blur">
+            <div class="text-xs uppercase tracking-[0.22em] text-slate-200">Comp Coil</div>
+            <div class="mt-2 text-base font-medium text-white">6 turns · 78 in from feed</div>
+        </div>
+
+        <div class="rounded-2xl border border-orange-500/20 bg-slate-900/60 p-4 backdrop-blur">
+            <div class="text-xs uppercase tracking-[0.22em] text-slate-200">Counterpoise</div>
+            <div class="mt-2 text-base font-medium text-white">~13 ft / 4 m</div>
+        </div>
+
+        <div class="rounded-2xl border border-orange-500/20 bg-slate-900/60 p-4 backdrop-blur">
+            <div class="text-xs uppercase tracking-[0.22em] text-slate-200">Current Winding</div>
+            <div class="mt-2 text-base font-medium text-white">2:14 Turns</div>
+        </div>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-2">
+        <article class="rounded-3xl border border-orange-500/20 bg-white/5 p-6 shadow-2xl shadow-slate-950/20 backdrop-blur-xl">
+            <div class="text-xs uppercase tracking-[0.24em] text-slate-800">
+                Physical antenna details
+            </div>
+
+            <h3 class="mt-3 text-xl font-semibold text-white">
+                80m wire, compensation coil, and counterpoise
+            </h3>
+
+            <p class="mt-3 text-sm leading-7 text-slate-800">
+                The main radiator is expected to be around
+                <span class="font-semibold text-white">134 feet</span> for an 80 meter EFHW.
+                The current build uses a compensation coil with
+                <span class="font-semibold text-white">6 turns</span> placed about
+                <span class="font-semibold text-white">78 inches from the feedpoint</span>.
+                A short counterpoise of about
+                <span class="font-semibold text-white">13 feet / 4 meters</span> is being installed
+                at deployment. The final counterpoise position and antenna shape may still shift
+                the resonant points.
+            </p>
+        </article>
+
+        <article class="rounded-3xl border border-orange-500/20 bg-white/5 p-6 shadow-2xl shadow-slate-950/20 backdrop-blur-xl">
+            <div class="text-xs uppercase tracking-[0.24em] text-slate-800">
+                Current measurements
+            </div>
+
+            <h3 class="mt-3 text-xl font-semibold text-white">
+                NanoVNA measurement carousel
+            </h3>
+
+            <div class="mt-4">
+                <div
+                        class="rounded-2xl border bg-slate-950/80 p-3"
+                        [class]="activeSlide.borderClass"
+                >
+                    <img
+                            [src]="activeSlide.image"
+                            [alt]="activeSlide.alt"
+                            class="h-72 w-full rounded-xl object-contain"
+                    />
+
+                    <div class="mt-4 flex items-start justify-between gap-4">
+                        <div>
+                            <h4 class="text-sm font-semibold text-white">
+                                {{ activeSlide.title }}
+                            </h4>
+
+                            <p class="mt-2 text-xs leading-6 text-slate-300">
+                                {{ activeSlide.description }}
+                            </p>
+                        </div>
+
+                        <div class="shrink-0 text-xs text-slate-400">
+                            {{ activeSlideIndex + 1 }} / {{ vnaSlides.length }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex items-center justify-between gap-3">
+                    <button
+                            type="button"
+                            class="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+                            (click)="previousSlide()"
+                    >
+                        Previous
+                    </button>
+
+                    <div class="flex flex-wrap justify-center gap-2">
+                        @for (slide of vnaSlides; track slide.title; let index = $index) {
+                            <button
+                                    type="button"
+                                    class="h-2.5 w-2.5 rounded-full transition"
+                                    [class.bg-white]="index === activeSlideIndex"
+                                    [class.bg-white]="index !== activeSlideIndex ? false : true"
+                                    [class.bg-black]="index !== activeSlideIndex"
+                                    [attr.aria-label]="'Go to slide ' + (index + 1)"
+                                    (click)="setSlide(index)"
+                            ></button>
+                        }
+                    </div>
+
+                    <button
+                            type="button"
+                            class="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+                            (click)="nextSlide()"
+                    >
+                        Next
+                    </button>
+                </div>
+            </div>
+        </article>
+    </div>
+
+    <div class="rounded-[2rem] border border-orange-500/20 bg-slate-900/70 p-6 backdrop-blur">
+        <div class="text-xs uppercase tracking-[0.28em] text-orange-400">
+            Investigation notes
+        </div>
+
+        <h3 class="mt-3 text-2xl font-semibold text-white">
+            The 2:14 winding cleaned up the response
+        </h3>
+
+        <p class="mt-4 max-w-3xl text-sm leading-7 text-slate-200">
+            The earlier 3:21 winding on Type 31 material appeared to be too aggressive for this
+            transformer role. Type 31 is excellent for choking common-mode current, but with the
+            added turns it may have started acting too much like a choke and not enough like a
+            broadband impedance transformer. The current 2:14 version is closer to a conventional
+            49:1 EFHW transformer and produced cleaner harmonic behavior. Type 43 is still planned
+            because it should be more appropriate for this transformer application.
+        </p>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-3">
+        <article class="rounded-3xl border border-orange-500/20 bg-white/5 p-6 backdrop-blur-xl">
+            <div class="text-xs uppercase tracking-[0.24em] text-slate-800">Next step 01</div>
+            <h3 class="mt-3 text-lg font-semibold text-white">Change ferrite material</h3>
+            <p class="mt-3 text-sm leading-7 text-slate-800">
+                Replace the temporary Type 31 core with Type 43 material and repeat the measurements.
+            </p>
+        </article>
+
+        <article class="rounded-3xl border border-orange-500/20 bg-white/5 p-6 backdrop-blur-xl">
+            <div class="text-xs uppercase tracking-[0.24em] text-slate-800">Next step 02</div>
+            <h3 class="mt-3 text-lg font-semibold text-white">Final deployment</h3>
+            <p class="mt-3 text-sm leading-7 text-slate-800">
+                Raise the antenna into the final sloper or inverted-L shape before making permanent cuts.
+            </p>
+        </article>
+
+        <article class="rounded-3xl border border-orange-500/20 bg-white/5 p-6 backdrop-blur-xl">
+            <div class="text-xs uppercase tracking-[0.24em] text-slate-800">Next step 03</div>
+            <h3 class="mt-3 text-lg font-semibold text-white">Trim and retest</h3>
+            <p class="mt-3 text-sm leading-7 text-slate-800">
+                Trim the radiator incrementally after final deployment to move the 80m dip upward.
+            </p>
+        </article>
+    </div>
+</section>
