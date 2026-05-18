@@ -10,9 +10,6 @@ interface QslCardModel {
     grid: string;
     licenseClass: string;
     echolink: string;
-    email: string;
-    website: string;
-    qrzUrl: string;
     focus: string;
     build: string;
     bands: string;
@@ -52,15 +49,12 @@ export class HamQSL implements OnInit {
         grid: 'EM48UK',
         licenseClass: 'Extra Class',
         echolink: 'EchoLink 524009',
-        email: 'af0fr.radio@gmail.com',
-        website: 'ifTaylor.com/AF0FR',
-        qrzUrl: 'qrz.com/db/AF0FR',
         focus: 'Antenna Design / DIY Radio Interfaces',
         build: '25W Mobile, Folded-Stubbed EFHW',
         bands: '20m / 2m / 70cm',
         modes: 'FM / EchoLink',
         gmrs: 'WSLY962',
-        notes: 'Licensed 2026 · Built from curiosity, testing, and a lot of tinkering.',
+        notes: 'Licensed 2026 · ifTaylor.com/AF0FR · af0fr.radio@gmail.com',
         qsoDate: this.getCurrentDate(),
         qsoTimeUtc: this.getCurrentUtcTime(),
         mhz: '146.000',
