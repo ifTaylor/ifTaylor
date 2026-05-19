@@ -42,6 +42,22 @@ export class HamQSL implements OnInit {
 
     showEditor = false;
 
+    footerTicks = Array.from({ length: 41 }, (_, i) => {
+        const position = i % 10;
+
+        return {
+            height:
+                position === 0 ? 22 :
+                    position === 5 ? 16 :
+                        10,
+
+            opacity:
+                position === 0 ? 0.78 :
+                    position === 5 ? 0.58 :
+                        0.42,
+        };
+    });
+
     card: QslCardModel = {
         callsign: 'AF0FR',
         operatorName: 'Taylor Turner',

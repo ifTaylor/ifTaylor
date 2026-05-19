@@ -95,71 +95,129 @@
 </section>
 
     <!-- Export view -->
-    <div class="pointer-events-none fixed left-[-10000px] top-0">
+    <div class="pointer-events-none fixed left-[-10000px] top-20">
+        <div class="pointer-events-none absolute left-16 top-10 text-left text-xl uppercase tracking-[0.28em] text-white/60">
+            -.-. --.- &nbsp; -.-. --.-<br />
+            .- ..-. ----- ..-. .-.<br />
+            --... ...--
+        </div>
+        <div class="pointer-events-none absolute right-16 top-14 text-right text-[14px] uppercase tracking-[0.26em] text-white/40">
+            Amateur Radio Station<br />
+            AF0FR · Extra Class
+        </div>
         <div
-                id="contact-card-export"
-                class="h-[1050px] w-[1650px] overflow-hidden border-white/80 bg-orange-500 bg-cover bg-center px-14 py-12 text-slate-900 shadow-2xl"
-                style="background-image: url('/assets/images/qsl-bg.png');"
+            id="contact-card-export"
+            class="h-[1050px] w-[1650px] overflow-hidden border-white/80 bg-orange-500 bg-cover bg-center px-14 py-12 text-slate-900 shadow-2xl"
+            style="background-image: url('/assets/images/qsl-bg.png');"
         >
             <div class="flex h-full flex-col">
-                <div class="flex flex-col mt-10 items-center text-center">
+                <div class="mt-8 flex flex-col items-center text-center">
                     <img
                             [src]="logoDataUrl || logoSrc"
                             alt="AF0FR logo"
                             crossorigin="anonymous"
                             loading="eager"
                             decoding="sync"
-                            class="h-96 w-auto object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
+                            class="h-72 w-auto object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
                     />
-                </div>
-                <div class="m-4">
-                    <div class="mt-4 text-4xl text-slate-800">
+
+                    <div class="mt-5 text-5xl font-medium text-slate-900">
                         {{ card.operatorName }}
                     </div>
 
-                    <div class="mt-1 text-xl uppercase tracking-[0.2em] text-slate-800">
+                    <div class="mt-2 text-2xl uppercase tracking-[0.24em] text-slate-900">
                         {{ card.location }} · {{ card.grid }}
                     </div>
                 </div>
 
-                <div class="mt-6">
+                <div class="mt-20">
                     <div class="rounded-[28px] px-5">
-                        <div class="mb-4 text-[20px] font-semibold uppercase tracking-[0.28em] text-slate-800">
-                            QSO Record
+                        <div class="mb-3 flex items-end justify-between">
+                            <div class="text-2xl font-bold uppercase tracking-[0.28em] text-slate-900">
+                                QSO Record
+                            </div>
+
+                            <div class="text-[15px] font-semibold uppercase tracking-[0.24em] text-slate-800/70">
+                                Station Log · AF0FR
+                            </div>
                         </div>
 
-                        <div class="grid grid-cols-4 bg-white/30 border-[3px] border-slate-800 text-[22px] text-slate-900">
-                            <div class="border-b border-r border-slate-800 bg-orange-200/70 px-4 py-2 font-semibold">Confirming QSO With</div>
-                            <div class="border-b border-r border-slate-800 px-4 py-3 font-bold">{{ card.toRadio || '' }}</div>
-                            <div class="border-b border-r border-slate-800 bg-orange-200/70 px-4 py-2 font-semibold">Date</div>
-                            <div class="border-b border-slate-800 px-4 py-3 font-bold">{{ card.qsoDate || '' }}</div>
+                        <div class="grid grid-cols-4 bg-white/35 border-2 border-slate-800 text-[24px] text-slate-900">
+                            <div class="border-b border-r border-slate-800/80 bg-orange-200/70 px-5 py-3 font-semibold">
+                                Confirming QSO with
+                            </div>
+                            <div class="border-b border-r border-slate-800/80 px-5 py-3 font-bold">
+                                {{ card.toRadio || '' }}
+                            </div>
+                            <div class="border-b border-r border-slate-800/80 bg-orange-200/70 px-5 py-3 font-semibold">
+                                Date
+                            </div>
+                            <div class="border-b border-slate-800/80 px-5 py-3 font-bold">
+                                {{ card.qsoDate || '' }}
+                            </div>
 
-                            <div class="border-b border-r border-slate-800 bg-orange-200/70 px-4 py-2 font-semibold">UTC</div>
-                            <div class="border-b border-r border-slate-800 px-4 py-3 font-bold">{{ card.qsoTimeUtc || '' }}</div>
-                            <div class="border-b border-r border-slate-800 bg-orange-200/70 px-4 py-2 font-semibold">MHz</div>
-                            <div class="border-b border-slate-800 px-4 py-3 font-bold">{{ card.mhz || '' }}</div>
+                            <div class="border-b border-r border-slate-800/80 bg-orange-200/70 px-5 py-3 font-semibold">
+                                UTC
+                            </div>
+                            <div class="border-b border-r border-slate-800/80 px-5 py-3 font-bold">
+                                {{ card.qsoTimeUtc || '' }}
+                            </div>
+                            <div class="border-b border-r border-slate-800/80 bg-orange-200/70 px-5 py-3 font-semibold">
+                                MHz
+                            </div>
+                            <div class="border-b border-slate-800/80 px-5 py-3 font-bold">
+                                {{ card.mhz || '' }}
+                            </div>
 
-                            <div class="border-b border-r border-slate-800 bg-orange-200/70 px-4 py-2 font-semibold">Band</div>
-                            <div class="border-b border-r border-slate-800 px-4 py-3 font-bold">{{ card.band || '' }}</div>
-                            <div class="border-b border-r border-slate-800 bg-orange-200/70 px-4 py-2 font-semibold">Mode</div>
-                            <div class="border-b border-slate-800 px-4 py-3 font-bold">{{ card.mode || '' }}</div>
+                            <div class="border-b border-r border-slate-800/80 bg-orange-200/70 px-5 py-3 font-semibold">
+                                Band
+                            </div>
+                            <div class="border-b border-r border-slate-800/80 px-5 py-3 font-bold">
+                                {{ card.band || '' }}
+                            </div>
+                            <div class="border-b border-r border-slate-800/80 bg-orange-200/70 px-5 py-3 font-semibold">
+                                Mode
+                            </div>
+                            <div class="border-b border-slate-800/80 px-5 py-3 font-bold">
+                                {{ card.mode || '' }}
+                            </div>
 
-                            <div class="border-r border-slate-800 bg-orange-200/70 px-4 py-2 font-semibold">RST Sent</div>
-                            <div class="border-r border-slate-800 px-4 py-3 font-bold">{{ card.rstSent || '' }}</div>
-                            <div class="border-r border-slate-800 bg-orange-200/70 px-4 py-2 font-semibold">RST Rcvd</div>
-                            <div class="px-4 py-3 font-bold">{{ card.rstRecv || '' }}</div>
+                            <div class="border-r border-slate-800/80 bg-orange-200/70 px-5 py-3 font-semibold">
+                                RST Sent
+                            </div>
+                            <div class="border-r border-slate-800/80 px-5 py-3 font-bold">
+                                {{ card.rstSent || '' }}
+                            </div>
+                            <div class="border-r border-slate-800/80 bg-orange-200/70 px-5 py-3 font-semibold">
+                                RST Rcvd
+                            </div>
+                            <div class="px-5 py-3 font-bold">
+                                {{ card.rstRecv || '' }}
+                            </div>
                         </div>
                     </div>
 
-                    <div class="mt-8 border-t-[3px] border-white/80 pt-6">
-                        <div class="flex items-center justify-between gap-6">
+                    <div class="mt-8 px-5 pt-2">
+                        <div class="pointer-events-none flex items-end justify-between px-2">
+                            @for (tick of footerTicks; track $index) {
+                                <div
+                                        class="w-[3px] bg-white shadow-[0_0_2px_rgba(0,0,0,0.18)]"
+                                        [style.height.px]="tick.height"
+                                        [style.opacity]="tick.opacity"
+                                ></div>
+                            }
+                        </div>
+                        <div class="flex items-center justify-between gap-6 mt-4">
                             <div class="max-w-[900px] text-[22px] leading-relaxed text-slate-800">
                                 {{ card.notes }}
                             </div>
-                            <div class="text-[42px] font-semibold text-slate-800">73</div>
+                            <div class="text-[42px] font-semibold text-slate-800">
+                                73
+                            </div>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
