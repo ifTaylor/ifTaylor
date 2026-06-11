@@ -40,6 +40,11 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     lockedBearingDeg: number | null = null;
     compassEnabled = false;
 
+    locationEnabled = false;
+    currentPosition: L.LatLng | null = null;
+
+    private locationWatchId: number | null = null;
+    private locationMarker: L.Marker | null = null;
     private lockedPreviewLayer: L.Layer | null = null;
 
     lines: AzimuthLine[] = [];
@@ -94,6 +99,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         }
 
         this.disableCompass();
+        this.disableLocation();
 
         window.removeEventListener('resize', this.handleWindowResize);
         document.removeEventListener('visibilitychange', this.handleVisibilityChange);
@@ -120,6 +126,101 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         window.setTimeout(resize, 100);
         window.setTimeout(resize, 300);
         window.setTimeout(resize, 750);
+    }
+
+    toggleLocation(): void {
+        if (this.locationEnabled) {
+            this.disableLocation();
+            return;
+        }
+
+        this.enableLocation();
+    }
+
+    private enableLocation(): void {
+        if (!navigator.geolocation) {
+            alert('Geolocation is not available on this device.');
+            return;
+        }
+
+        this.locationEnabled = true;
+
+        this.locationWatchId = navigator.geolocation.watchPosition(
+            (position) => {
+                this.currentPosition = L.latLng(
+                    position.coords.latitude,
+                    position.coords.longitude
+                );
+
+                this.updateLocationMarker();
+
+                if (this.lockedBearingDeg !== null) {
+                    this.pendingStart = this.currentPosition;
+                    this.drawLockedAzimuthPreviewToMapEdge();
+                }
+            },
+            (error) => {
+                console.error('Failed to get location', error);
+                alert('Could not get your location.');
+                this.disableLocation();
+            },
+            {
+                enableHighAccuracy: true,
+                maximumAge: 1000,
+                timeout: 10000,
+            }
+        );
+    }
+
+    private disableLocation(): void {
+        if (this.locationWatchId !== null) {
+            navigator.geolocation.clearWatch(this.locationWatchId);
+            this.locationWatchId = null;
+        }
+
+        this.locationEnabled = false;
+        this.currentPosition = null;
+
+        if (this.locationMarker) {
+            this.map.removeLayer(this.locationMarker);
+            this.locationMarker = null;
+        }
+    }
+
+    private updateLocationMarker(): void {
+        if (!this.currentPosition) {
+            return;
+        }
+
+        const icon = L.divIcon({
+            className: '',
+            html: `
+                <div style="
+                    width: 18px;
+                    height: 18px;
+                    border-radius: 9999px;
+                    background: #0f172a;
+                    border: 3px solid #f97316;
+                    box-shadow: 0 0 0 4px rgba(249,115,22,0.25);
+                "></div>
+            `,
+            iconSize: [18, 18],
+            iconAnchor: [9, 9],
+        });
+
+        if (this.locationMarker) {
+            this.locationMarker.setLatLng(this.currentPosition);
+            this.locationMarker.setIcon(icon);
+            return;
+        }
+
+        this.locationMarker = L.marker(this.currentPosition, {
+            icon,
+        })
+            .addTo(this.map)
+            .bindPopup('Your location');
+
+        this.map.setView(this.currentPosition, Math.max(this.map.getZoom(), 14));
     }
 
     toggleCompass(): void {
@@ -194,13 +295,20 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             return;
         }
 
-        if (!this.pendingStart) {
-            alert('Tap the map first to set a start point.');
+        if (this.headingDeg === null) {
+            alert('Point the phone toward the signal and wait for a compass heading.');
             return;
         }
 
-        if (this.headingDeg === null) {
-            alert('Point the phone toward the signal and wait for a compass heading.');
+        if (this.locationEnabled) {
+            if (!this.currentPosition) {
+                alert('Waiting for GPS location. Try again in a moment.');
+                return;
+            }
+
+            this.setStartPoint(this.currentPosition, 'Location start point selected.');
+        } else if (!this.pendingStart) {
+            alert('Tap the map first to set a start point, or enable location.');
             return;
         }
 
@@ -306,26 +414,11 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         }
 
         if (!this.pendingStart) {
-            this.pendingStart = latlng;
-
-            if (this.pendingStartMarker) {
-                this.map.removeLayer(this.pendingStartMarker);
-            }
-
             const popupText = this.compassEnabled
                 ? 'Start point selected. Point phone, then lock azimuth.'
                 : 'Start point selected. Tap endpoint to draw manual azimuth.';
 
-            this.pendingStartMarker = L.circleMarker(latlng, {
-                radius: 6,
-                color: '#111827',
-                fillColor: '#f97316',
-                fillOpacity: 1,
-            })
-                .addTo(this.map)
-                .bindPopup(popupText)
-                .openPopup();
-
+            this.setStartPoint(latlng, popupText);
             return;
         }
 
@@ -343,6 +436,24 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             this.map.removeLayer(this.pendingStartMarker);
             this.pendingStartMarker = null;
         }
+    }
+
+    private setStartPoint(latlng: L.LatLng, popupText: string): void {
+        this.pendingStart = latlng;
+
+        if (this.pendingStartMarker) {
+            this.map.removeLayer(this.pendingStartMarker);
+        }
+
+        this.pendingStartMarker = L.circleMarker(latlng, {
+            radius: 6,
+            color: '#111827',
+            fillColor: '#f97316',
+            fillOpacity: 1,
+        })
+            .addTo(this.map)
+            .bindPopup(popupText)
+            .openPopup();
     }
 
     private saveAzimuthLine(

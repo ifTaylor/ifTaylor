@@ -13,6 +13,7 @@
                 Click once to set a start point, then click again to set the endpoint.
                 Or enable compass mode: tap a start point, point your phone toward the signal,
                 lock azimuth, then tap the map to set distance along that bearing.
+                With location enabled, Lock Azimuth uses your current location as the start point.
             </p>
 
             <div class="mt-4 flex flex-wrap gap-3">
@@ -41,6 +42,16 @@
             ></div>
 
             <div class="mt-4 flex flex-wrap justify-center gap-3">
+                <button
+                        type="button"
+                        class="rounded-full px-5 py-2 text-sm font-semibold text-white"
+                        [class.bg-slate-950]="!locationEnabled"
+                        [class.bg-blue-700]="locationEnabled"
+                        (click)="toggleLocation()"
+                >
+                    {{ locationEnabled ? 'Disable Location' : 'Enable Location' }}
+                </button>
+
                 <button
                         type="button"
                         class="rounded-full px-5 py-2 text-sm font-semibold text-white"
@@ -74,6 +85,12 @@
                 @if (headingDeg !== null) {
                     <div class="rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-950 ring-1 ring-slate-300">
                         Heading: {{ headingDeg.toFixed(0) }}°
+                    </div>
+                }
+
+                @if (locationEnabled === true && currentPosition !== null) {
+                    <div class="rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-950 ring-1 ring-slate-300">
+                        Location Ready
                     </div>
                 }
 
