@@ -1,6 +1,7 @@
-import { AfterViewInit, Component } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as L from 'leaflet';
+
 
 import { environment } from '../../../environments/environment';
 
@@ -28,7 +29,8 @@ type CallsignGroup = {
     selector: 'af0fr-azimuth-map-page',
     templateUrl: './af0fr_azimuth_map.page.html',
 })
-export class Af0frAzimuthMapPage implements AfterViewInit {
+export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
+    private refreshIntervalId: number | null = null;
     private map!: L.Map;
     private pendingStart: L.LatLng | null = null;
     private pendingStartMarker: L.Layer | null = null;
@@ -61,10 +63,19 @@ export class Af0frAzimuthMapPage implements AfterViewInit {
         }).addTo(this.map);
 
         this.loadLines();
+        this.refreshIntervalId = window.setInterval(() => {
+            this.loadLines();
+        }, 10000);
 
         this.map.on('click', (event: L.LeafletMouseEvent) => {
             this.handleMapClick(event.latlng);
         });
+    }
+
+    ngOnDestroy(): void {
+        if (this.refreshIntervalId !== null) {
+            window.clearInterval(this.refreshIntervalId);
+        }
     }
 
     private handleMapClick(latlng: L.LatLng): void {
@@ -161,7 +172,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit {
                 next: (lines) => {
                     this.lines = lines;
                     this.rebuildCallsignGroups();
-                    this.drawAllLines();
+                    this.redrawMapLines();
                 },
                 error: (error) => {
                     console.error('Failed to load shared azimuth lines', error);
