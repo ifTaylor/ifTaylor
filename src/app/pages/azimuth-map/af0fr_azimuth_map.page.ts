@@ -104,6 +104,26 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         document.removeEventListener('visibilitychange', this.handleVisibilityChange);
     }
 
+    get mapInstructionText(): string {
+        if (!this.pendingStart && !this.locationEnabled) {
+            return 'Select a start point on the map, or enable location.';
+        }
+
+        if (this.locationEnabled && !this.currentPosition) {
+            return 'Waiting for location...';
+        }
+
+        if (this.compassEnabled) {
+            return 'Point your phone toward the signal, then press Save Azimuth.';
+        }
+
+        if (this.pendingStart) {
+            return 'Select an endpoint on the map.';
+        }
+
+        return 'Select a start point on the map.';
+    }
+
     private handleWindowResize = (): void => {
         this.forceMapResize();
         this.refreshCompassPreview();
@@ -490,7 +510,8 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
 
             this.setStartPoint(
                 latlng,
-                'Start point selected. Press Save Azimuth to save it.'
+                'Start point selected. Press Save Azimuth to save it.',
+                false
             );
 
             this.refreshCompassPreview();
@@ -500,7 +521,8 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         if (!this.pendingStart) {
             this.setStartPoint(
                 latlng,
-                'Start point selected. Tap an endpoint to save a manual azimuth.'
+                'Start point selected. Tap an endpoint to save a manual azimuth.',
+                false
             );
 
             return;
