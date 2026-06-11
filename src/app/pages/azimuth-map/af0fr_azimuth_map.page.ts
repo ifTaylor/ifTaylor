@@ -1,5 +1,8 @@
 import { AfterViewInit, Component } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import * as L from 'leaflet';
+
+import { environment } from '../../../environments/environment';
 
 type AzimuthLine = {
     id: string;
@@ -10,6 +13,8 @@ type AzimuthLine = {
     toLng: number;
     bearingDeg: number;
     distanceMiles: number;
+    createdBy?: string | null;
+    createdAt?: string;
 };
 
 @Component({
@@ -22,6 +27,8 @@ export class Af0frAzimuthMapPage implements AfterViewInit {
     private pendingStart: L.LatLng | null = null;
     lines: AzimuthLine[] = [];
 
+    constructor(private http: HttpClient) {}
+
     ngAfterViewInit(): void {
         this.map = L.map('azimuth-map').setView([38.4700, -90.3040], 10);
 
@@ -31,7 +38,6 @@ export class Af0frAzimuthMapPage implements AfterViewInit {
         }).addTo(this.map);
 
         this.loadLines();
-        this.drawAllLines();
 
         this.map.on('click', (event: L.LeafletMouseEvent) => {
             this.handleMapClick(event.latlng);
@@ -64,13 +70,34 @@ export class Af0frAzimuthMapPage implements AfterViewInit {
             toLng: to.lng,
             bearingDeg,
             distanceMiles,
+            createdBy: 'AF0FR',
         };
 
-        this.lines.push(line);
-        this.saveLines();
-        this.drawLine(line);
+        this.http.post<AzimuthLine>(`${environment.apiUrl}/azimuth-lines`, line)
+            .subscribe({
+                next: (savedLine) => {
+                    this.lines.unshift(savedLine);
+                    this.drawLine(savedLine);
+                },
+                error: (error) => {
+                    console.error('Failed to save azimuth line', error);
+                },
+            });
 
         this.pendingStart = null;
+    }
+
+    private loadLines(): void {
+        this.http.get<AzimuthLine[]>(`${environment.apiUrl}/azimuth-lines`)
+            .subscribe({
+                next: (lines) => {
+                    this.lines = lines;
+                    this.drawAllLines();
+                },
+                error: (error) => {
+                    console.error('Failed to load shared azimuth lines', error);
+                },
+            });
     }
 
     private drawAllLines(): void {
@@ -105,37 +132,16 @@ export class Af0frAzimuthMapPage implements AfterViewInit {
             .bindPopup('End');
     }
 
+    refreshLines(): void {
+        window.location.reload();
+    }
+
     clearLines(): void {
-        localStorage.removeItem('af0fr-azimuth-lines');
         window.location.reload();
     }
 
     copyShareLink(): void {
-        const encoded = btoa(JSON.stringify(this.lines));
-        const url = `${window.location.origin}${window.location.pathname}?lines=${encodeURIComponent(encoded)}`;
-        navigator.clipboard.writeText(url);
-    }
-
-    private loadLines(): void {
-        const params = new URLSearchParams(window.location.search);
-        const sharedLines = params.get('lines');
-
-        if (sharedLines) {
-            try {
-                this.lines = JSON.parse(atob(sharedLines));
-                localStorage.setItem('af0fr-azimuth-lines', JSON.stringify(this.lines));
-                return;
-            } catch {
-                console.warn('Could not load shared azimuth lines.');
-            }
-        }
-
-        const saved = localStorage.getItem('af0fr-azimuth-lines');
-        this.lines = saved ? JSON.parse(saved) : [];
-    }
-
-    private saveLines(): void {
-        localStorage.setItem('af0fr-azimuth-lines', JSON.stringify(this.lines));
+        navigator.clipboard.writeText(window.location.href);
     }
 
     private calculateBearing(
