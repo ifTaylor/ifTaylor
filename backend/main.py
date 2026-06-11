@@ -62,6 +62,11 @@ def row_to_dict(row):
 def health():
     return {"ok": True}
 
+@app.get("/debug/cors")
+def debug_cors():
+    return {
+        "allowedOrigins": [origin.strip() for origin in ALLOWED_ORIGINS],
+    }
 
 @app.get("/azimuth-lines")
 def list_azimuth_lines():
