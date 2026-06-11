@@ -490,7 +490,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
 
             this.setStartPoint(
                 latlng,
-                'Start point selected. The orange dotted line follows your phone heading. Press Save Azimuth to save it.'
+                'Start point selected. Press Save Azimuth to save it.'
             );
 
             this.refreshCompassPreview();

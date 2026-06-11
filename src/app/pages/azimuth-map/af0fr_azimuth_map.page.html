@@ -76,18 +76,6 @@
                         Heading: {{ headingDeg.toFixed(0) }}°
                     </div>
                 }
-
-                @if (locationEnabled === true && currentPosition !== null) {
-                    <div class="rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-950 ring-1 ring-slate-300">
-                        Location Ready
-                    </div>
-                }
-
-                @if (compassEnabled === true && headingDeg !== null) {
-                    <div class="rounded-full bg-slate-950 px-5 py-2 text-sm font-semibold text-white">
-                        Preview active — press Save Azimuth
-                    </div>
-                }
             </div>
         </div>
 
