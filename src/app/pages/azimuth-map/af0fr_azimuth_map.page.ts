@@ -62,10 +62,17 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             attribution: '&copy; OpenStreetMap contributors',
         }).addTo(this.map);
 
+        setTimeout(() => {
+            this.map.invalidateSize();
+        }, 250);
+
         this.loadLines();
+
         this.refreshIntervalId = window.setInterval(() => {
-            this.loadLines();
-        }, 10000);
+            if (!document.hidden) {
+                this.loadLines();
+            }
+        }, 15000);
 
         this.map.on('click', (event: L.LeafletMouseEvent) => {
             this.handleMapClick(event.latlng);
@@ -108,7 +115,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         const createdBy = this.getOrPromptForCallsign();
 
         const line: AzimuthLine = {
-            id: crypto.randomUUID(),
+            id: this.createLocalId(),
             label: `${createdBy} ${Math.round(bearingDeg)}°`,
             fromLat: from.lat,
             fromLng: from.lng,
@@ -137,6 +144,14 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             this.map.removeLayer(this.pendingStartMarker);
             this.pendingStartMarker = null;
         }
+    }
+
+    private createLocalId(): string {
+        if (crypto && 'randomUUID' in crypto) {
+            return crypto.randomUUID();
+        }
+
+        return `local-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     }
 
     private getOrPromptForCallsign(): string {
