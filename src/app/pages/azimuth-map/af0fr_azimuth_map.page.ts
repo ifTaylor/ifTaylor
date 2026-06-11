@@ -42,6 +42,8 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     locationEnabled = false;
     currentPosition: L.LatLng | null = null;
 
+    pendingDeleteLineId: string | null = null;
+
     private locationWatchId: number | null = null;
     private locationMarker: L.Marker | null = null;
     private liveCompassPreviewLayer: L.Layer | null = null;
@@ -804,11 +806,8 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     }
 
     deleteLine(line: AzimuthLine): void {
-        const confirmed = window.confirm(
-            `Remove ${line.label} from the shared azimuth map?`
-        );
-
-        if (!confirmed) {
+        if (this.pendingDeleteLineId !== line.id) {
+            this.pendingDeleteLineId = line.id;
             return;
         }
 
@@ -818,9 +817,12 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
                     this.lines = this.lines.filter(existing => existing.id !== line.id);
                     this.rebuildCallsignGroups();
                     this.redrawMapLines();
+                    this.pendingDeleteLineId = null;
                 },
                 error: (error) => {
                     console.error('Failed to delete azimuth line', error);
+                    alert('Failed to remove azimuth line.');
+                    this.pendingDeleteLineId = null;
                 },
             });
     }
