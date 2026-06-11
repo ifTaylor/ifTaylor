@@ -12,13 +12,16 @@ from pydantic import BaseModel, Field
 load_dotenv()
 
 DATABASE_URL = os.environ["DATABASE_URL"]
-ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "http://localhost:4200")
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:4200",
+).split(",")
 
 app = FastAPI(title="AF0FR Azimuth Map API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[ALLOWED_ORIGIN],
+    allow_origins=[origin.strip() for origin in ALLOWED_ORIGINS],
     allow_credentials=False,
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
