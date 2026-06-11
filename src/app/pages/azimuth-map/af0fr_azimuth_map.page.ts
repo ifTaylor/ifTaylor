@@ -51,6 +51,13 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     lines: AzimuthLine[] = [];
     callsignGroups: CallsignGroup[] = [];
 
+    editingCallsign = false;
+    callsignDraft = '';
+
+    get currentCallsign(): string {
+        return localStorage.getItem('map-callsign') || 'N0CALL';
+    }
+
     private readonly colorPalette = [
         '#dc2626', // red
         '#2563eb', // blue
@@ -664,26 +671,35 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     }
 
     private getOrPromptForCallsign(): string {
-        const savedCallsign = localStorage.getItem('af0fr-map-callsign');
+        const savedCallsign = localStorage.getItem('map-callsign');
 
         if (savedCallsign) {
             return savedCallsign;
         }
 
-        const entered = window.prompt('Enter your call sign for this azimuth:', 'AF0FR');
-        const callsign = this.normalizeCallsign(entered || 'UNKNOWN');
+        const defaultCallsign = 'N0CALL';
+        localStorage.setItem('map-callsign', defaultCallsign);
 
-        localStorage.setItem('af0fr-map-callsign', callsign);
-
-        return callsign;
+        return defaultCallsign;
     }
 
     changeCallsign(): void {
-        const current = localStorage.getItem('af0fr-map-callsign') || '';
-        const entered = window.prompt('Enter your call sign:', current);
-        const callsign = this.normalizeCallsign(entered || 'UNKNOWN');
+        this.callsignDraft = this.currentCallsign;
+        this.editingCallsign = true;
+    }
 
-        localStorage.setItem('af0fr-map-callsign', callsign);
+    saveCallsign(value: string): void {
+        const callsign = this.normalizeCallsign(value || 'N0CALL');
+
+        localStorage.setItem('map-callsign', callsign);
+
+        this.callsignDraft = callsign;
+        this.editingCallsign = false;
+    }
+
+    cancelCallsignEdit(): void {
+        this.callsignDraft = '';
+        this.editingCallsign = false;
     }
 
     private normalizeCallsign(value: string): string {
