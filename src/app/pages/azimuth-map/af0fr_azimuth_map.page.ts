@@ -261,7 +261,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             .addTo(this.map)
             .bindPopup('Your location. With location enabled, Save Azimuth uses this as the start point.');
 
-        this.map.setView(this.currentPosition, Math.max(this.map.getZoom(), 14));
+        this.map.setView(this.currentPosition, Math.max(this.map.getZoom(), 11));
     }
 
     toggleCompass(): void {
