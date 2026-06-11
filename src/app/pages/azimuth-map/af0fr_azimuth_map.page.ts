@@ -46,6 +46,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     private locationWatchId: number | null = null;
     private locationMarker: L.Marker | null = null;
     private lockedPreviewLayer: L.Layer | null = null;
+    private liveCompassPreviewLayer: L.Layer | null = null;
 
     lines: AzimuthLine[] = [];
     callsignGroups: CallsignGroup[] = [];
@@ -107,11 +108,23 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
 
     private handleWindowResize = (): void => {
         this.forceMapResize();
+
+        if (this.lockedBearingDeg !== null) {
+            this.drawLockedAzimuthPreviewToMapEdge();
+        } else if (this.compassEnabled && this.pendingStart && this.headingDeg !== null) {
+            this.drawLiveCompassPreviewToMapEdge();
+        }
     };
 
     private handleVisibilityChange = (): void => {
         if (!document.hidden) {
             this.forceMapResize();
+
+            if (this.lockedBearingDeg !== null) {
+                this.drawLockedAzimuthPreviewToMapEdge();
+            } else if (this.compassEnabled && this.pendingStart && this.headingDeg !== null) {
+                this.drawLiveCompassPreviewToMapEdge();
+            }
         }
     };
 
@@ -154,20 +167,27 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
 
                 this.updateLocationMarker();
 
+                if (this.compassEnabled && this.lockedBearingDeg === null) {
+                    this.pendingStart = this.currentPosition;
+                    this.setStartPoint(this.currentPosition, 'Location start point selected.');
+                    this.drawLiveCompassPreviewToMapEdge();
+                }
+
                 if (this.lockedBearingDeg !== null) {
                     this.pendingStart = this.currentPosition;
+                    this.setStartPoint(this.currentPosition, 'Location start point selected.');
                     this.drawLockedAzimuthPreviewToMapEdge();
                 }
             },
             (error) => {
                 console.error('Failed to get location', error);
-                alert('Could not get your location.');
+                alert(this.getLocationErrorMessage(error));
                 this.disableLocation();
             },
             {
                 enableHighAccuracy: true,
                 maximumAge: 1000,
-                timeout: 10000,
+                timeout: 30000,
             }
         );
     }
@@ -184,6 +204,19 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         if (this.locationMarker) {
             this.map.removeLayer(this.locationMarker);
             this.locationMarker = null;
+        }
+    }
+
+    private getLocationErrorMessage(error: GeolocationPositionError): string {
+        switch (error.code) {
+            case error.PERMISSION_DENIED:
+                return 'Location permission was denied. Check Safari location permissions for this site.';
+            case error.POSITION_UNAVAILABLE:
+                return 'Location is unavailable. Try going outside or turning Wi-Fi/cellular location services on.';
+            case error.TIMEOUT:
+                return 'Location timed out. Try again, or move somewhere with better GPS reception.';
+            default:
+                return 'Could not get your location.';
         }
     }
 
@@ -257,6 +290,11 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
 
         window.addEventListener('deviceorientation', this.handleDeviceOrientation, true);
         this.compassEnabled = true;
+
+        if (this.locationEnabled && this.currentPosition) {
+            this.pendingStart = this.currentPosition;
+            this.setStartPoint(this.currentPosition, 'Location start point selected.');
+        }
     }
 
     private disableCompass(): void {
@@ -267,6 +305,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         this.compassEnabled = false;
         this.headingDeg = null;
         this.cancelLockedAzimuth();
+        this.clearLiveCompassPreview();
     }
 
     private handleDeviceOrientation = (event: DeviceOrientationEvent): void => {
@@ -287,6 +326,14 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         }
 
         this.headingDeg = (heading + 360) % 360;
+
+        if (this.locationEnabled && this.currentPosition && this.lockedBearingDeg === null) {
+            this.pendingStart = this.currentPosition;
+        }
+
+        if (this.compassEnabled && this.pendingStart && this.lockedBearingDeg === null) {
+            this.drawLiveCompassPreviewToMapEdge();
+        }
     };
 
     lockCurrentAzimuth(): void {
@@ -313,6 +360,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         }
 
         this.lockedBearingDeg = this.headingDeg;
+        this.clearLiveCompassPreview();
         this.drawLockedAzimuthPreviewToMapEdge();
     }
 
@@ -322,6 +370,46 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         if (this.lockedPreviewLayer) {
             this.map.removeLayer(this.lockedPreviewLayer);
             this.lockedPreviewLayer = null;
+        }
+
+        if (this.compassEnabled && this.pendingStart && this.headingDeg !== null) {
+            this.drawLiveCompassPreviewToMapEdge();
+        }
+    }
+
+    private drawLiveCompassPreviewToMapEdge(): void {
+        if (!this.pendingStart || this.headingDeg === null) {
+            return;
+        }
+
+        if (this.liveCompassPreviewLayer) {
+            this.map.removeLayer(this.liveCompassPreviewLayer);
+        }
+
+        const previewEnd = this.getMapEdgePointForBearing(
+            this.pendingStart,
+            this.headingDeg
+        );
+
+        this.liveCompassPreviewLayer = L.polyline(
+            [
+                [this.pendingStart.lat, this.pendingStart.lng],
+                [previewEnd.lat, previewEnd.lng],
+            ],
+            {
+                color: '#f97316',
+                weight: 3,
+                dashArray: '6, 8',
+            }
+        )
+            .addTo(this.map)
+            .bindPopup(`Live compass: ${this.headingDeg.toFixed(0)}°`);
+    }
+
+    private clearLiveCompassPreview(): void {
+        if (this.liveCompassPreviewLayer) {
+            this.map.removeLayer(this.liveCompassPreviewLayer);
+            this.liveCompassPreviewLayer = null;
         }
     }
 
@@ -333,6 +421,8 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         if (this.lockedPreviewLayer) {
             this.map.removeLayer(this.lockedPreviewLayer);
         }
+
+        this.clearLiveCompassPreview();
 
         const previewEnd = this.getMapEdgePointForBearing(
             this.pendingStart,
@@ -410,6 +500,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             }
 
             this.cancelLockedAzimuth();
+            this.clearLiveCompassPreview();
             return;
         }
 
@@ -419,6 +510,11 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
                 : 'Start point selected. Tap endpoint to draw manual azimuth.';
 
             this.setStartPoint(latlng, popupText);
+
+            if (this.compassEnabled && this.headingDeg !== null) {
+                this.drawLiveCompassPreviewToMapEdge();
+            }
+
             return;
         }
 
@@ -436,6 +532,8 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             this.map.removeLayer(this.pendingStartMarker);
             this.pendingStartMarker = null;
         }
+
+        this.clearLiveCompassPreview();
     }
 
     private setStartPoint(latlng: L.LatLng, popupText: string): void {
