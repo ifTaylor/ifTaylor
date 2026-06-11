@@ -69,7 +69,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     ngAfterViewInit(): void {
         this.map = L.map('azimuth-map', {
             preferCanvas: true,
-        }).setView([38.2320, -90.5629], 12);
+        }).setView([38.2320, -90.5629], 10);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             maxZoom: 19,
