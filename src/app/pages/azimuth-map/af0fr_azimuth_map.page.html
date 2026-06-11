@@ -10,10 +10,9 @@
             </h1>
 
             <p class="mt-3 max-w-3xl text-sm text-slate-700">
-                Click once to set a start point, then click again to set the endpoint.
-                Or enable compass mode: tap a start point, point your phone toward the signal,
-                lock azimuth, then tap the map to set distance along that bearing.
-                With location enabled, Lock Azimuth uses your current location as the start point.
+                Manual mode: tap a start point, then tap an endpoint.
+                Compass mode: enable compass, set a start point or enable location,
+                point your phone toward the signal, then press Save Azimuth.
             </p>
 
             <div class="mt-4 flex flex-wrap gap-3">
@@ -68,17 +67,7 @@
                             class="rounded-full bg-orange-500 px-5 py-2 text-sm font-semibold text-white ring-1 ring-orange-700"
                             (click)="lockCurrentAzimuth()"
                     >
-                        Lock Azimuth
-                    </button>
-                }
-
-                @if (lockedBearingDeg !== null) {
-                    <button
-                            type="button"
-                            class="rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-950 ring-1 ring-slate-300"
-                            (click)="cancelLockedAzimuth()"
-                    >
-                        Cancel Locked Azimuth
+                        Save Azimuth
                     </button>
                 }
 
@@ -94,9 +83,9 @@
                     </div>
                 }
 
-                @if (lockedBearingDeg !== null) {
+                @if (compassEnabled === true && headingDeg !== null) {
                     <div class="rounded-full bg-slate-950 px-5 py-2 text-sm font-semibold text-white">
-                        Locked: {{ lockedBearingDeg.toFixed(0) }}° — tap map for distance
+                        Preview active — press Save Azimuth
                     </div>
                 }
             </div>

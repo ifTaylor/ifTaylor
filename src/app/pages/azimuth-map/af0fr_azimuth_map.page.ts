@@ -37,7 +37,6 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     private drawnLayers: L.Layer[] = [];
 
     headingDeg: number | null = null;
-    lockedBearingDeg: number | null = null;
     compassEnabled = false;
 
     locationEnabled = false;
@@ -45,7 +44,6 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
 
     private locationWatchId: number | null = null;
     private locationMarker: L.Marker | null = null;
-    private lockedPreviewLayer: L.Layer | null = null;
     private liveCompassPreviewLayer: L.Layer | null = null;
 
     lines: AzimuthLine[] = [];
@@ -108,23 +106,13 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
 
     private handleWindowResize = (): void => {
         this.forceMapResize();
-
-        if (this.lockedBearingDeg !== null) {
-            this.drawLockedAzimuthPreviewToMapEdge();
-        } else if (this.compassEnabled && this.pendingStart && this.headingDeg !== null) {
-            this.drawLiveCompassPreviewToMapEdge();
-        }
+        this.refreshCompassPreview();
     };
 
     private handleVisibilityChange = (): void => {
         if (!document.hidden) {
             this.forceMapResize();
-
-            if (this.lockedBearingDeg !== null) {
-                this.drawLockedAzimuthPreviewToMapEdge();
-            } else if (this.compassEnabled && this.pendingStart && this.headingDeg !== null) {
-                this.drawLiveCompassPreviewToMapEdge();
-            }
+            this.refreshCompassPreview();
         }
     };
 
@@ -167,16 +155,14 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
 
                 this.updateLocationMarker();
 
-                if (this.compassEnabled && this.lockedBearingDeg === null) {
-                    this.pendingStart = this.currentPosition;
-                    this.setStartPoint(this.currentPosition, 'Location start point selected.');
-                    this.drawLiveCompassPreviewToMapEdge();
-                }
+                if (this.compassEnabled) {
+                    this.setStartPoint(
+                        this.currentPosition,
+                        'Location start selected. The orange dotted line follows your phone heading. Press Save Azimuth to save it.',
+                        false
+                    );
 
-                if (this.lockedBearingDeg !== null) {
-                    this.pendingStart = this.currentPosition;
-                    this.setStartPoint(this.currentPosition, 'Location start point selected.');
-                    this.drawLockedAzimuthPreviewToMapEdge();
+                    this.refreshCompassPreview();
                 }
             },
             (error) => {
@@ -205,6 +191,8 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             this.map.removeLayer(this.locationMarker);
             this.locationMarker = null;
         }
+
+        this.clearLiveCompassPreview();
     }
 
     private getLocationErrorMessage(error: GeolocationPositionError): string {
@@ -251,7 +239,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             icon,
         })
             .addTo(this.map)
-            .bindPopup('Your location');
+            .bindPopup('Your location. With location enabled, Save Azimuth uses this as the start point.');
 
         this.map.setView(this.currentPosition, Math.max(this.map.getZoom(), 14));
     }
@@ -292,9 +280,14 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         this.compassEnabled = true;
 
         if (this.locationEnabled && this.currentPosition) {
-            this.pendingStart = this.currentPosition;
-            this.setStartPoint(this.currentPosition, 'Location start point selected.');
+            this.setStartPoint(
+                this.currentPosition,
+                'Location start selected. The orange dotted line follows your phone heading. Press Save Azimuth to save it.',
+                false
+            );
         }
+
+        this.refreshCompassPreview();
     }
 
     private disableCompass(): void {
@@ -304,7 +297,6 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
 
         this.compassEnabled = false;
         this.headingDeg = null;
-        this.cancelLockedAzimuth();
         this.clearLiveCompassPreview();
     }
 
@@ -327,13 +319,11 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
 
         this.headingDeg = (heading + 360) % 360;
 
-        if (this.locationEnabled && this.currentPosition && this.lockedBearingDeg === null) {
+        if (this.locationEnabled && this.currentPosition) {
             this.pendingStart = this.currentPosition;
         }
 
-        if (this.compassEnabled && this.pendingStart && this.lockedBearingDeg === null) {
-            this.drawLiveCompassPreviewToMapEdge();
-        }
+        this.refreshCompassPreview();
     };
 
     lockCurrentAzimuth(): void {
@@ -347,38 +337,91 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             return;
         }
 
+        let start = this.pendingStart;
+
         if (this.locationEnabled) {
             if (!this.currentPosition) {
                 alert('Waiting for GPS location. Try again in a moment.');
                 return;
             }
 
-            this.setStartPoint(this.currentPosition, 'Location start point selected.');
-        } else if (!this.pendingStart) {
+            start = this.currentPosition;
+
+            this.setStartPoint(
+                start,
+                'Location start selected. Azimuth saved from this point.',
+                false
+            );
+        }
+
+        if (!start) {
             alert('Tap the map first to set a start point, or enable location.');
             return;
         }
 
-        this.lockedBearingDeg = this.headingDeg;
+        const bearingDeg = this.headingDeg;
+        const end = this.getMapEdgePointForBearing(start, bearingDeg);
+        const distanceMiles = this.calculateDistanceMiles(
+            start.lat,
+            start.lng,
+            end.lat,
+            end.lng
+        );
+
+        this.saveAzimuthLine(start, end, bearingDeg, distanceMiles);
+
+        if (!this.locationEnabled) {
+            this.pendingStart = null;
+
+            if (this.pendingStartMarker) {
+                this.map.removeLayer(this.pendingStartMarker);
+                this.pendingStartMarker = null;
+            }
+        }
+
         this.clearLiveCompassPreview();
-        this.drawLockedAzimuthPreviewToMapEdge();
-    }
 
-    cancelLockedAzimuth(): void {
-        this.lockedBearingDeg = null;
+        if (this.locationEnabled && this.currentPosition) {
+            this.setStartPoint(
+                this.currentPosition,
+                'Location start selected. The orange dotted line follows your phone heading. Press Save Azimuth to save it.',
+                false
+            );
 
-        if (this.lockedPreviewLayer) {
-            this.map.removeLayer(this.lockedPreviewLayer);
-            this.lockedPreviewLayer = null;
-        }
-
-        if (this.compassEnabled && this.pendingStart && this.headingDeg !== null) {
-            this.drawLiveCompassPreviewToMapEdge();
+            this.refreshCompassPreview();
         }
     }
 
-    private drawLiveCompassPreviewToMapEdge(): void {
-        if (!this.pendingStart || this.headingDeg === null) {
+    private refreshCompassPreview(): void {
+        if (!this.compassEnabled || this.headingDeg === null) {
+            this.clearLiveCompassPreview();
+            return;
+        }
+
+        const start = this.getCompassStartPoint();
+
+        if (!start) {
+            this.clearLiveCompassPreview();
+            return;
+        }
+
+        if (this.locationEnabled && this.currentPosition) {
+            this.pendingStart = this.currentPosition;
+        }
+
+        this.drawLiveCompassPreviewToMapEdge(start);
+    }
+
+    private getCompassStartPoint(): L.LatLng | null {
+        if (this.locationEnabled && this.currentPosition) {
+            return this.currentPosition;
+        }
+
+        return this.pendingStart;
+    }
+
+    private drawLiveCompassPreviewToMapEdge(start: L.LatLng): void {
+        if (this.headingDeg === null) {
             return;
         }
 
@@ -387,13 +430,13 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         }
 
         const previewEnd = this.getMapEdgePointForBearing(
-            this.pendingStart,
+            start,
             this.headingDeg
         );
 
         this.liveCompassPreviewLayer = L.polyline(
             [
-                [this.pendingStart.lat, this.pendingStart.lng],
+                [start.lat, start.lng],
                 [previewEnd.lat, previewEnd.lng],
             ],
             {
@@ -403,7 +446,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             }
         )
             .addTo(this.map)
-            .bindPopup(`Live compass: ${this.headingDeg.toFixed(0)}°`);
+            .bindPopup(`Live compass preview: ${this.headingDeg.toFixed(0)}°. Press Save Azimuth to save this line.`);
     }
 
     private clearLiveCompassPreview(): void {
@@ -411,37 +454,6 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             this.map.removeLayer(this.liveCompassPreviewLayer);
             this.liveCompassPreviewLayer = null;
         }
-    }
-
-    private drawLockedAzimuthPreviewToMapEdge(): void {
-        if (!this.pendingStart || this.lockedBearingDeg === null) {
-            return;
-        }
-
-        if (this.lockedPreviewLayer) {
-            this.map.removeLayer(this.lockedPreviewLayer);
-        }
-
-        this.clearLiveCompassPreview();
-
-        const previewEnd = this.getMapEdgePointForBearing(
-            this.pendingStart,
-            this.lockedBearingDeg
-        );
-
-        this.lockedPreviewLayer = L.polyline(
-            [
-                [this.pendingStart.lat, this.pendingStart.lng],
-                [previewEnd.lat, previewEnd.lng],
-            ],
-            {
-                color: '#0f172a',
-                weight: 4,
-                dashArray: '8, 8',
-            }
-        )
-            .addTo(this.map)
-            .bindPopup(`Locked azimuth: ${this.lockedBearingDeg.toFixed(0)}°`);
     }
 
     private getMapEdgePointForBearing(start: L.LatLng, bearingDeg: number): L.LatLng {
@@ -470,50 +482,26 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     }
 
     private handleMapClick(latlng: L.LatLng): void {
-        if (this.pendingStart && this.lockedBearingDeg !== null) {
-            const distanceMiles = this.calculateDistanceMiles(
-                this.pendingStart.lat,
-                this.pendingStart.lng,
-                latlng.lat,
-                latlng.lng
-            );
-
-            const projectedEnd = this.destinationPoint(
-                this.pendingStart.lat,
-                this.pendingStart.lng,
-                this.lockedBearingDeg,
-                distanceMiles
-            );
-
-            this.saveAzimuthLine(
-                this.pendingStart,
-                projectedEnd,
-                this.lockedBearingDeg,
-                distanceMiles
-            );
-
-            this.pendingStart = null;
-
-            if (this.pendingStartMarker) {
-                this.map.removeLayer(this.pendingStartMarker);
-                this.pendingStartMarker = null;
+        if (this.compassEnabled) {
+            if (this.locationEnabled) {
+                alert('Location is enabled, so Save Azimuth uses your GPS position as the start point. Disable Location to pick a start point manually.');
+                return;
             }
 
-            this.cancelLockedAzimuth();
-            this.clearLiveCompassPreview();
+            this.setStartPoint(
+                latlng,
+                'Start point selected. The orange dotted line follows your phone heading. Press Save Azimuth to save it.'
+            );
+
+            this.refreshCompassPreview();
             return;
         }
 
         if (!this.pendingStart) {
-            const popupText = this.compassEnabled
-                ? 'Start point selected. Point phone, then lock azimuth.'
-                : 'Start point selected. Tap endpoint to draw manual azimuth.';
-
-            this.setStartPoint(latlng, popupText);
-
-            if (this.compassEnabled && this.headingDeg !== null) {
-                this.drawLiveCompassPreviewToMapEdge();
-            }
+            this.setStartPoint(
+                latlng,
+                'Start point selected. Tap an endpoint to save a manual azimuth.'
+            );
 
             return;
         }
@@ -536,7 +524,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         this.clearLiveCompassPreview();
     }
 
-    private setStartPoint(latlng: L.LatLng, popupText: string): void {
+    private setStartPoint(latlng: L.LatLng, popupText: string, openPopup = true): void {
         this.pendingStart = latlng;
 
         if (this.pendingStartMarker) {
@@ -550,8 +538,11 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             fillOpacity: 1,
         })
             .addTo(this.map)
-            .bindPopup(popupText)
-            .openPopup();
+            .bindPopup(popupText);
+
+        if (openPopup) {
+            this.pendingStartMarker.openPopup();
+        }
     }
 
     private saveAzimuthLine(
