@@ -98,7 +98,7 @@
                 <div>
                     <h2 class="text-xl font-black">Azimuths by Call Sign</h2>
                     <p class="mt-1 text-sm text-slate-600">
-                        Each call sign gets its own color on the map and in the cards below. **DOUBLE click to remove.**
+                        Each call sign gets its own color on the map and in the cards below. **Tap TWICE to remove.**
                     </p>
                 </div>
 
@@ -145,10 +145,10 @@
                                         <button
                                                 type="button"
                                                 class="rounded-full px-3 py-1 text-xs font-semibold text-white"
-                                                [style.backgroundColor]="group.color"
+                                                [style.backgroundColor]="pendingDeleteLineId === line.id ? '#dc2626' : group.color"
                                                 (click)="deleteLine(line)"
                                         >
-                                            Remove
+                                            {{ pendingDeleteLineId === line.id ? 'Confirm' : 'Remove' }}
                                         </button>
                                     </div>
 
