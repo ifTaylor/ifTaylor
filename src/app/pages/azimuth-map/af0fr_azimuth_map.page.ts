@@ -57,9 +57,9 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     ngAfterViewInit(): void {
         this.map = L.map('azimuth-map').setView([38.4700, -90.3040], 10);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             maxZoom: 19,
-            attribution: '&copy; OpenStreetMap contributors',
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
         }).addTo(this.map);
 
         setTimeout(() => {
