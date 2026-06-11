@@ -105,23 +105,31 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     }
 
     get mapInstructionText(): string {
-        if (!this.pendingStart && !this.locationEnabled) {
-            return 'Select a start point on the map, or enable location.';
-        }
-
         if (this.locationEnabled && !this.currentPosition) {
             return 'Waiting for location...';
         }
 
         if (this.compassEnabled) {
-            return 'Point your phone toward the signal, then press Save Azimuth.';
+            if (this.locationEnabled && this.currentPosition) {
+                return 'Point your phone toward the signal, then press Save Azimuth.';
+            }
+
+            if (this.pendingStart) {
+                return 'Point your phone toward the signal, then press Save Azimuth.';
+            }
+
+            return 'Select a start point on the map, or enable location.';
+        }
+
+        if (this.locationEnabled && this.currentPosition) {
+            return 'Select an endpoint on the map. Your location will be used as the start point.';
         }
 
         if (this.pendingStart) {
             return 'Select an endpoint on the map.';
         }
 
-        return 'Select a start point on the map.';
+        return 'Select a start point on the map, or enable location.';
     }
 
     private handleWindowResize = (): void => {
@@ -515,6 +523,22 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             );
 
             this.refreshCompassPreview();
+            return;
+        }
+
+        if (this.locationEnabled) {
+            if (!this.currentPosition) {
+                alert('Waiting for GPS location. Try again in a moment.');
+                return;
+            }
+
+            const from = this.currentPosition;
+            const to = latlng;
+
+            const bearingDeg = this.calculateBearing(from.lat, from.lng, to.lat, to.lng);
+            const distanceMiles = this.calculateDistanceMiles(from.lat, from.lng, to.lat, to.lng);
+
+            this.saveAzimuthLine(from, to, bearingDeg, distanceMiles);
             return;
         }
 
