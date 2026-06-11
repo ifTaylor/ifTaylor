@@ -2,7 +2,7 @@
     <div class="mx-auto max-w-7xl space-y-6">
         <div class="rounded-3xl bg-white/90 p-6 shadow-xl">
             <div class="text-sm uppercase tracking-[0.32em] text-slate-600">
-                AF0FR Fox Hunt
+                Fox Hunt
             </div>
 
             <h1 class="mt-2 text-3xl font-black tracking-tight">
@@ -11,7 +11,8 @@
 
             <p class="mt-3 max-w-3xl text-sm text-slate-700">
                 Click once to set a start point, then click again to set the endpoint.
-                The map will draw the azimuth line and calculate bearing and distance.
+                Or enable compass mode: tap a start point, point your phone toward the signal,
+                lock azimuth, then tap the map to set distance along that bearing.
             </p>
 
             <div class="mt-4 flex flex-wrap gap-3">
@@ -22,28 +23,6 @@
                 >
                     Refresh Lines
                 </button>
-
-                <button
-                        type="button"
-                        class="rounded-full bg-slate-950 px-5 py-2 text-sm font-semibold text-white"
-                        (click)="enableMyLocation()"
-                >
-                    Show My Location
-                </button>
-
-                <button
-                        type="button"
-                        class="rounded-full bg-slate-950 px-5 py-2 text-sm font-semibold text-white"
-                        (click)="enableCompass()"
-                >
-                    Enable Compass
-                </button>
-
-                @if (headingDeg !== null) {
-                    <div class="rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-950 ring-1 ring-slate-300">
-                        Heading: {{ headingDeg.toFixed(0) }}°
-                    </div>
-                }
 
                 <a
                         href="/af0fr#toolbox"
@@ -60,6 +39,50 @@
                     class="w-full rounded-2xl"
                     style="height: 70vh; min-height: 500px;"
             ></div>
+
+            <div class="mt-4 flex flex-wrap justify-center gap-3">
+                <button
+                        type="button"
+                        class="rounded-full px-5 py-2 text-sm font-semibold text-white"
+                        [class.bg-slate-950]="!compassEnabled"
+                        [class.bg-red-700]="compassEnabled"
+                        (click)="toggleCompass()"
+                >
+                    {{ compassEnabled ? 'Disable Compass' : 'Enable Compass' }}
+                </button>
+
+                @if (compassEnabled === true) {
+                    <button
+                            type="button"
+                            class="rounded-full bg-orange-500 px-5 py-2 text-sm font-semibold text-white ring-1 ring-orange-700"
+                            (click)="lockCurrentAzimuth()"
+                    >
+                        Lock Azimuth
+                    </button>
+                }
+
+                @if (lockedBearingDeg !== null) {
+                    <button
+                            type="button"
+                            class="rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-950 ring-1 ring-slate-300"
+                            (click)="cancelLockedAzimuth()"
+                    >
+                        Cancel Locked Azimuth
+                    </button>
+                }
+
+                @if (headingDeg !== null) {
+                    <div class="rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-950 ring-1 ring-slate-300">
+                        Heading: {{ headingDeg.toFixed(0) }}°
+                    </div>
+                }
+
+                @if (lockedBearingDeg !== null) {
+                    <div class="rounded-full bg-slate-950 px-5 py-2 text-sm font-semibold text-white">
+                        Locked: {{ lockedBearingDeg.toFixed(0) }}° — tap map for distance
+                    </div>
+                }
+            </div>
         </div>
 
         <div class="rounded-3xl bg-white/90 p-6 shadow-xl">

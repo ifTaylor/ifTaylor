@@ -37,10 +37,10 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     private drawnLayers: L.Layer[] = [];
 
     headingDeg: number | null = null;
-    private headingMarker: L.Marker | null = null;
-    private currentPosition: L.LatLng | null = null;
-    private locationWatchId: number | null = null;
-    private compassEnabled = false;
+    lockedBearingDeg: number | null = null;
+    compassEnabled = false;
+
+    private lockedPreviewLayer: L.Layer | null = null;
 
     lines: AzimuthLine[] = [];
     callsignGroups: CallsignGroup[] = [];
@@ -93,13 +93,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             window.clearInterval(this.refreshIntervalId);
         }
 
-        if (this.locationWatchId !== null) {
-            navigator.geolocation.clearWatch(this.locationWatchId);
-        }
-
-        if (this.compassEnabled) {
-            window.removeEventListener('deviceorientation', this.handleDeviceOrientation, true);
-        }
+        this.disableCompass();
 
         window.removeEventListener('resize', this.handleWindowResize);
         document.removeEventListener('visibilitychange', this.handleVisibilityChange);
@@ -128,43 +122,16 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         window.setTimeout(resize, 750);
     }
 
-    enableMyLocation(): void {
-        if (!navigator.geolocation) {
-            alert('Geolocation is not available on this device.');
+    toggleCompass(): void {
+        if (this.compassEnabled) {
+            this.disableCompass();
             return;
         }
 
-        if (this.locationWatchId !== null) {
-            if (this.currentPosition) {
-                this.map.setView(this.currentPosition, Math.max(this.map.getZoom(), 14));
-            }
-
-            return;
-        }
-
-        this.locationWatchId = navigator.geolocation.watchPosition(
-            (position) => {
-                this.currentPosition = L.latLng(
-                    position.coords.latitude,
-                    position.coords.longitude
-                );
-
-                this.map.setView(this.currentPosition, Math.max(this.map.getZoom(), 14));
-                this.updateHeadingMarker();
-            },
-            (error) => {
-                console.error('Failed to get location', error);
-                alert('Could not get your location.');
-            },
-            {
-                enableHighAccuracy: true,
-                maximumAge: 1000,
-                timeout: 10000,
-            }
-        );
+        void this.enableCompass();
     }
 
-    async enableCompass(): Promise<void> {
+    private async enableCompass(): Promise<void> {
         if (this.compassEnabled) {
             return;
         }
@@ -191,6 +158,16 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         this.compassEnabled = true;
     }
 
+    private disableCompass(): void {
+        if (this.compassEnabled) {
+            window.removeEventListener('deviceorientation', this.handleDeviceOrientation, true);
+        }
+
+        this.compassEnabled = false;
+        this.headingDeg = null;
+        this.cancelLockedAzimuth();
+    }
+
     private handleDeviceOrientation = (event: DeviceOrientationEvent): void => {
         const safariHeading = (event as DeviceOrientationEvent & {
             webkitCompassHeading?: number;
@@ -209,52 +186,135 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         }
 
         this.headingDeg = (heading + 360) % 360;
-        this.updateHeadingMarker();
     };
 
-    private updateHeadingMarker(): void {
-        if (!this.currentPosition || this.headingDeg === null) {
+    lockCurrentAzimuth(): void {
+        if (!this.compassEnabled) {
+            alert('Enable compass first.');
             return;
         }
 
-        const icon = L.divIcon({
-            className: '',
-            html: `
-                <div style="
-                    width: 0;
-                    height: 0;
-                    border-left: 12px solid transparent;
-                    border-right: 12px solid transparent;
-                    border-bottom: 32px solid #0f172a;
-                    transform: rotate(${this.headingDeg}deg);
-                    transform-origin: center center;
-                    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.45));
-                "></div>
-            `,
-            iconSize: [32, 32],
-            iconAnchor: [16, 16],
-        });
-
-        if (this.headingMarker) {
-            this.headingMarker.setLatLng(this.currentPosition);
-            this.headingMarker.setIcon(icon);
+        if (!this.pendingStart) {
+            alert('Tap the map first to set a start point.');
             return;
         }
 
-        this.headingMarker = L.marker(this.currentPosition, {
-            icon,
-        })
+        if (this.headingDeg === null) {
+            alert('Point the phone toward the signal and wait for a compass heading.');
+            return;
+        }
+
+        this.lockedBearingDeg = this.headingDeg;
+        this.drawLockedAzimuthPreviewToMapEdge();
+    }
+
+    cancelLockedAzimuth(): void {
+        this.lockedBearingDeg = null;
+
+        if (this.lockedPreviewLayer) {
+            this.map.removeLayer(this.lockedPreviewLayer);
+            this.lockedPreviewLayer = null;
+        }
+    }
+
+    private drawLockedAzimuthPreviewToMapEdge(): void {
+        if (!this.pendingStart || this.lockedBearingDeg === null) {
+            return;
+        }
+
+        if (this.lockedPreviewLayer) {
+            this.map.removeLayer(this.lockedPreviewLayer);
+        }
+
+        const previewEnd = this.getMapEdgePointForBearing(
+            this.pendingStart,
+            this.lockedBearingDeg
+        );
+
+        this.lockedPreviewLayer = L.polyline(
+            [
+                [this.pendingStart.lat, this.pendingStart.lng],
+                [previewEnd.lat, previewEnd.lng],
+            ],
+            {
+                color: '#0f172a',
+                weight: 4,
+                dashArray: '8, 8',
+            }
+        )
             .addTo(this.map)
-            .bindPopup('Your current heading');
+            .bindPopup(`Locked azimuth: ${this.lockedBearingDeg.toFixed(0)}°`);
+    }
+
+    private getMapEdgePointForBearing(start: L.LatLng, bearingDeg: number): L.LatLng {
+        const bounds = this.map.getBounds();
+
+        let distanceMiles = 0.25;
+        let point = this.destinationPoint(
+            start.lat,
+            start.lng,
+            bearingDeg,
+            distanceMiles
+        );
+
+        while (bounds.contains(point) && distanceMiles < 500) {
+            distanceMiles *= 1.25;
+
+            point = this.destinationPoint(
+                start.lat,
+                start.lng,
+                bearingDeg,
+                distanceMiles
+            );
+        }
+
+        return point;
     }
 
     private handleMapClick(latlng: L.LatLng): void {
+        if (this.pendingStart && this.lockedBearingDeg !== null) {
+            const distanceMiles = this.calculateDistanceMiles(
+                this.pendingStart.lat,
+                this.pendingStart.lng,
+                latlng.lat,
+                latlng.lng
+            );
+
+            const projectedEnd = this.destinationPoint(
+                this.pendingStart.lat,
+                this.pendingStart.lng,
+                this.lockedBearingDeg,
+                distanceMiles
+            );
+
+            this.saveAzimuthLine(
+                this.pendingStart,
+                projectedEnd,
+                this.lockedBearingDeg,
+                distanceMiles
+            );
+
+            this.pendingStart = null;
+
+            if (this.pendingStartMarker) {
+                this.map.removeLayer(this.pendingStartMarker);
+                this.pendingStartMarker = null;
+            }
+
+            this.cancelLockedAzimuth();
+            return;
+        }
+
         if (!this.pendingStart) {
             this.pendingStart = latlng;
 
             if (this.pendingStartMarker) {
                 this.map.removeLayer(this.pendingStartMarker);
             }
+
+            const popupText = this.compassEnabled
+                ? 'Start point selected. Point phone, then lock azimuth.'
+                : 'Start point selected. Tap endpoint to draw manual azimuth.';
 
             this.pendingStartMarker = L.circleMarker(latlng, {
                 radius: 6,
@@ -263,7 +323,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
                 fillOpacity: 1,
             })
                 .addTo(this.map)
-                .bindPopup('Start point selected')
+                .bindPopup(popupText)
                 .openPopup();
 
             return;
@@ -275,6 +335,22 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         const bearingDeg = this.calculateBearing(from.lat, from.lng, to.lat, to.lng);
         const distanceMiles = this.calculateDistanceMiles(from.lat, from.lng, to.lat, to.lng);
 
+        this.saveAzimuthLine(from, to, bearingDeg, distanceMiles);
+
+        this.pendingStart = null;
+
+        if (this.pendingStartMarker) {
+            this.map.removeLayer(this.pendingStartMarker);
+            this.pendingStartMarker = null;
+        }
+    }
+
+    private saveAzimuthLine(
+        from: L.LatLng,
+        to: L.LatLng,
+        bearingDeg: number,
+        distanceMiles: number
+    ): void {
         const createdBy = this.getOrPromptForCallsign();
 
         const line: AzimuthLine = {
@@ -300,13 +376,35 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
                     console.error('Failed to save azimuth line', error);
                 },
             });
+    }
 
-        this.pendingStart = null;
+    private destinationPoint(
+        fromLat: number,
+        fromLng: number,
+        bearingDeg: number,
+        distanceMiles: number
+    ): L.LatLng {
+        const earthRadiusMiles = 3958.8;
 
-        if (this.pendingStartMarker) {
-            this.map.removeLayer(this.pendingStartMarker);
-            this.pendingStartMarker = null;
-        }
+        const angularDistance = distanceMiles / earthRadiusMiles;
+        const bearing = this.toRad(bearingDeg);
+
+        const lat1 = this.toRad(fromLat);
+        const lng1 = this.toRad(fromLng);
+
+        const lat2 = Math.asin(
+            Math.sin(lat1) * Math.cos(angularDistance) +
+            Math.cos(lat1) * Math.sin(angularDistance) * Math.cos(bearing)
+        );
+
+        const lng2 =
+            lng1 +
+            Math.atan2(
+                Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(lat1),
+                Math.cos(angularDistance) - Math.sin(lat1) * Math.sin(lat2)
+            );
+
+        return L.latLng(this.toDeg(lat2), this.toDeg(lng2));
     }
 
     private createLocalId(): string {
