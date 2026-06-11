@@ -2,7 +2,6 @@ import { AfterViewInit, Component, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as L from 'leaflet';
 
-
 import { environment } from '../../../environments/environment';
 
 type AzimuthLine = {
@@ -32,9 +31,16 @@ type CallsignGroup = {
 export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     private refreshIntervalId: number | null = null;
     private map!: L.Map;
+
     private pendingStart: L.LatLng | null = null;
     private pendingStartMarker: L.Layer | null = null;
     private drawnLayers: L.Layer[] = [];
+
+    headingDeg: number | null = null;
+    private headingMarker: L.Marker | null = null;
+    private currentPosition: L.LatLng | null = null;
+    private locationWatchId: number | null = null;
+    private compassEnabled = false;
 
     lines: AzimuthLine[] = [];
     callsignGroups: CallsignGroup[] = [];
@@ -55,16 +61,19 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     constructor(private http: HttpClient) {}
 
     ngAfterViewInit(): void {
-        this.map = L.map('azimuth-map').setView([38.4700, -90.3040], 10);
+        this.map = L.map('azimuth-map', {
+            preferCanvas: true,
+        }).setView([38.4700, -90.3040], 10);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
         }).addTo(this.map);
 
-        setTimeout(() => {
-            this.map.invalidateSize();
-        }, 250);
+        this.forceMapResize();
+
+        window.addEventListener('resize', this.handleWindowResize);
+        document.addEventListener('visibilitychange', this.handleVisibilityChange);
 
         this.loadLines();
 
@@ -83,6 +92,160 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         if (this.refreshIntervalId !== null) {
             window.clearInterval(this.refreshIntervalId);
         }
+
+        if (this.locationWatchId !== null) {
+            navigator.geolocation.clearWatch(this.locationWatchId);
+        }
+
+        if (this.compassEnabled) {
+            window.removeEventListener('deviceorientation', this.handleDeviceOrientation, true);
+        }
+
+        window.removeEventListener('resize', this.handleWindowResize);
+        document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+    }
+
+    private handleWindowResize = (): void => {
+        this.forceMapResize();
+    };
+
+    private handleVisibilityChange = (): void => {
+        if (!document.hidden) {
+            this.forceMapResize();
+        }
+    };
+
+    private forceMapResize(): void {
+        const resize = () => {
+            if (this.map) {
+                this.map.invalidateSize(false);
+            }
+        };
+
+        requestAnimationFrame(resize);
+        window.setTimeout(resize, 100);
+        window.setTimeout(resize, 300);
+        window.setTimeout(resize, 750);
+    }
+
+    enableMyLocation(): void {
+        if (!navigator.geolocation) {
+            alert('Geolocation is not available on this device.');
+            return;
+        }
+
+        if (this.locationWatchId !== null) {
+            if (this.currentPosition) {
+                this.map.setView(this.currentPosition, Math.max(this.map.getZoom(), 14));
+            }
+
+            return;
+        }
+
+        this.locationWatchId = navigator.geolocation.watchPosition(
+            (position) => {
+                this.currentPosition = L.latLng(
+                    position.coords.latitude,
+                    position.coords.longitude
+                );
+
+                this.map.setView(this.currentPosition, Math.max(this.map.getZoom(), 14));
+                this.updateHeadingMarker();
+            },
+            (error) => {
+                console.error('Failed to get location', error);
+                alert('Could not get your location.');
+            },
+            {
+                enableHighAccuracy: true,
+                maximumAge: 1000,
+                timeout: 10000,
+            }
+        );
+    }
+
+    async enableCompass(): Promise<void> {
+        if (this.compassEnabled) {
+            return;
+        }
+
+        if (typeof DeviceOrientationEvent === 'undefined') {
+            alert('Compass heading is not available on this device.');
+            return;
+        }
+
+        const deviceOrientationEvent = DeviceOrientationEvent as unknown as {
+            requestPermission?: () => Promise<'granted' | 'denied'>;
+        };
+
+        if (deviceOrientationEvent.requestPermission) {
+            const permission = await deviceOrientationEvent.requestPermission();
+
+            if (permission !== 'granted') {
+                alert('Compass permission was not granted.');
+                return;
+            }
+        }
+
+        window.addEventListener('deviceorientation', this.handleDeviceOrientation, true);
+        this.compassEnabled = true;
+    }
+
+    private handleDeviceOrientation = (event: DeviceOrientationEvent): void => {
+        const safariHeading = (event as DeviceOrientationEvent & {
+            webkitCompassHeading?: number;
+        }).webkitCompassHeading;
+
+        let heading: number | null = null;
+
+        if (typeof safariHeading === 'number') {
+            heading = safariHeading;
+        } else if (event.alpha !== null) {
+            heading = 360 - event.alpha;
+        }
+
+        if (heading === null) {
+            return;
+        }
+
+        this.headingDeg = (heading + 360) % 360;
+        this.updateHeadingMarker();
+    };
+
+    private updateHeadingMarker(): void {
+        if (!this.currentPosition || this.headingDeg === null) {
+            return;
+        }
+
+        const icon = L.divIcon({
+            className: '',
+            html: `
+                <div style="
+                    width: 0;
+                    height: 0;
+                    border-left: 12px solid transparent;
+                    border-right: 12px solid transparent;
+                    border-bottom: 32px solid #0f172a;
+                    transform: rotate(${this.headingDeg}deg);
+                    transform-origin: center center;
+                    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.45));
+                "></div>
+            `,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+        });
+
+        if (this.headingMarker) {
+            this.headingMarker.setLatLng(this.currentPosition);
+            this.headingMarker.setIcon(icon);
+            return;
+        }
+
+        this.headingMarker = L.marker(this.currentPosition, {
+            icon,
+        })
+            .addTo(this.map)
+            .bindPopup('Your current heading');
     }
 
     private handleMapClick(latlng: L.LatLng): void {
@@ -147,7 +310,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     }
 
     private createLocalId(): string {
-        if (crypto && 'randomUUID' in crypto) {
+        if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
             return crypto.randomUUID();
         }
 
@@ -336,7 +499,8 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     }
 
     refreshLines(): void {
-        window.location.reload();
+        this.loadLines();
+        this.forceMapResize();
     }
 
     copyShareLink(): void {
