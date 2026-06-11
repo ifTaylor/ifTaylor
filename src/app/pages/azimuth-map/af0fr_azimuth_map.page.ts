@@ -31,6 +31,8 @@ type CallsignGroup = {
 export class Af0frAzimuthMapPage implements AfterViewInit {
     private map!: L.Map;
     private pendingStart: L.LatLng | null = null;
+    private pendingStartMarker: L.Layer | null = null;
+    private drawnLayers: L.Layer[] = [];
 
     lines: AzimuthLine[] = [];
     callsignGroups: CallsignGroup[] = [];
@@ -69,12 +71,19 @@ export class Af0frAzimuthMapPage implements AfterViewInit {
         if (!this.pendingStart) {
             this.pendingStart = latlng;
 
-            L.circleMarker(latlng, {
+            if (this.pendingStartMarker) {
+                this.map.removeLayer(this.pendingStartMarker);
+            }
+
+            this.pendingStartMarker = L.circleMarker(latlng, {
                 radius: 6,
                 color: '#111827',
                 fillColor: '#f97316',
                 fillOpacity: 1,
-            }).addTo(this.map).bindPopup('Start point selected').openPopup();
+            })
+                .addTo(this.map)
+                .bindPopup('Start point selected')
+                .openPopup();
 
             return;
         }
@@ -112,6 +121,11 @@ export class Af0frAzimuthMapPage implements AfterViewInit {
             });
 
         this.pendingStart = null;
+
+        if (this.pendingStartMarker) {
+            this.map.removeLayer(this.pendingStartMarker);
+            this.pendingStartMarker = null;
+        }
     }
 
     private getOrPromptForCallsign(): string {
@@ -202,7 +216,9 @@ export class Af0frAzimuthMapPage implements AfterViewInit {
             Distance: ${line.distanceMiles.toFixed(2)} mi
         `);
 
-        L.circleMarker([line.fromLat, line.fromLng], {
+        this.drawnLayers.push(polyline);
+
+        const startMarker = L.circleMarker([line.fromLat, line.fromLng], {
             radius: 5,
             color,
             fillColor: color,
@@ -211,14 +227,69 @@ export class Af0frAzimuthMapPage implements AfterViewInit {
             .addTo(this.map)
             .bindPopup(`${callsign} start`);
 
-        L.circleMarker([line.toLat, line.toLng], {
-            radius: 5,
-            color,
-            fillColor: color,
-            fillOpacity: 1,
+        this.drawnLayers.push(startMarker);
+
+        const arrowMarker = this.drawArrowHead(line, color);
+        this.drawnLayers.push(arrowMarker);
+    }
+
+    private drawArrowHead(line: AzimuthLine, color: string): L.Marker {
+        const angle = line.bearingDeg;
+
+        const arrowIcon = L.divIcon({
+            className: '',
+            html: `
+                <div style="
+                    width: 0;
+                    height: 0;
+                    border-left: 8px solid transparent;
+                    border-right: 8px solid transparent;
+                    border-bottom: 18px solid ${color};
+                    transform: rotate(${angle}deg);
+                    transform-origin: center center;
+                    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
+                "></div>
+            `,
+            iconSize: [18, 18],
+            iconAnchor: [9, 9],
+        });
+
+        return L.marker([line.toLat, line.toLng], {
+            icon: arrowIcon,
         })
             .addTo(this.map)
-            .bindPopup(`${callsign} end`);
+            .bindPopup(`${this.getLineCallsign(line)} endpoint`);
+    }
+
+    private redrawMapLines(): void {
+        for (const layer of this.drawnLayers) {
+            this.map.removeLayer(layer);
+        }
+
+        this.drawnLayers = [];
+        this.drawAllLines();
+    }
+
+    deleteLine(line: AzimuthLine): void {
+        const confirmed = window.confirm(
+            `Remove ${line.label} from the shared azimuth map?`
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        this.http.delete(`${environment.apiUrl}/azimuth-lines/${line.id}`)
+            .subscribe({
+                next: () => {
+                    this.lines = this.lines.filter(existing => existing.id !== line.id);
+                    this.rebuildCallsignGroups();
+                    this.redrawMapLines();
+                },
+                error: (error) => {
+                    console.error('Failed to delete azimuth line', error);
+                },
+            });
     }
 
     private getLineCallsign(line: AzimuthLine): string {
