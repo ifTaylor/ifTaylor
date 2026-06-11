@@ -43,6 +43,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     currentPosition: L.LatLng | null = null;
 
     pendingDeleteLineId: string | null = null;
+    selectedLineId: string | null = null;
 
     private locationWatchId: number | null = null;
     private locationMarker: L.Marker | null = null;
@@ -600,6 +601,21 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         }
     }
 
+    get hasPendingStartPoint(): boolean {
+        return this.pendingStart !== null && !this.locationEnabled;
+    }
+
+    cancelStartPoint(): void {
+        this.pendingStart = null;
+
+        if (this.pendingStartMarker) {
+            this.map.removeLayer(this.pendingStartMarker);
+            this.pendingStartMarker = null;
+        }
+
+        this.clearLiveCompassPreview();
+    }
+
     private saveAzimuthLine(
         from: L.LatLng,
         to: L.LatLng,
@@ -712,6 +728,11 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
                 next: (lines) => {
                     this.lines = lines;
                     this.rebuildCallsignGroups();
+
+                    if (this.selectedLineId && !lines.some(line => line.id === this.selectedLineId)) {
+                        this.selectedLineId = null;
+                    }
+
                     this.redrawMapLines();
                 },
                 error: (error) => {
@@ -748,6 +769,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     private drawLine(line: AzimuthLine): void {
         const callsign = this.getLineCallsign(line);
         const color = this.getColorForCallsign(callsign);
+        const isSelected = this.selectedLineId === line.id;
 
         const polyline = L.polyline(
             [
@@ -755,8 +777,9 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
                 [line.toLat, line.toLng],
             ],
             {
-                color,
-                weight: 4,
+                color: isSelected ? '#f97316' : color,
+                weight: isSelected ? 7 : 4,
+                opacity: isSelected ? 1 : 0.75,
             }
         ).addTo(this.map);
 
@@ -767,46 +790,74 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             Distance: ${line.distanceMiles.toFixed(2)} mi
         `);
 
+        polyline.on('click', () => {
+            this.selectLine(line);
+        });
+
         this.drawnLayers.push(polyline);
 
         const startMarker = L.circleMarker([line.fromLat, line.fromLng], {
-            radius: 5,
-            color,
-            fillColor: color,
+            radius: isSelected ? 7 : 5,
+            color: isSelected ? '#0f172a' : color,
+            fillColor: isSelected ? '#f97316' : color,
             fillOpacity: 1,
+            weight: isSelected ? 3 : 1,
         })
             .addTo(this.map)
             .bindPopup(`${callsign} start`);
 
+        startMarker.on('click', () => {
+            this.selectLine(line);
+        });
+
         this.drawnLayers.push(startMarker);
 
-        const arrowMarker = this.drawArrowHead(line, color);
+        const arrowMarker = this.drawArrowHead(line, isSelected ? '#f97316' : color, isSelected);
+
+        arrowMarker.on('click', () => {
+            this.selectLine(line);
+        });
+
         this.drawnLayers.push(arrowMarker);
     }
 
-    private drawArrowHead(line: AzimuthLine, color: string): L.Marker {
+    private drawArrowHead(line: AzimuthLine, color: string, isSelected = false): L.Marker {
         const angle = line.bearingDeg;
+        const size = isSelected ? 26 : 18;
+        const halfWidth = isSelected ? 11 : 8;
+        const height = isSelected ? 24 : 18;
+        const anchor = size / 2;
 
         const arrowIcon = L.divIcon({
             className: '',
             html: `
                 <div style="
-                    width: 0;
-                    height: 0;
-                    border-left: 8px solid transparent;
-                    border-right: 8px solid transparent;
-                    border-bottom: 18px solid ${color};
-                    transform: rotate(${angle}deg);
-                    transform-origin: center center;
-                    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
-                "></div>
+                    position: relative;
+                    width: ${size}px;
+                    height: ${size}px;
+                ">
+                    <div style="
+                        position: absolute;
+                        left: 50%;
+                        top: 50%;
+                        width: 0;
+                        height: 0;
+                        border-left: ${halfWidth}px solid transparent;
+                        border-right: ${halfWidth}px solid transparent;
+                        border-bottom: ${height}px solid ${color};
+                        transform: translate(-50%, -50%) rotate(${angle}deg);
+                        transform-origin: center center;
+                        filter: ${isSelected ? 'drop-shadow(0 0 4px rgba(0,0,0,0.75))' : 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))'};
+                    "></div>
+                </div>
             `,
-            iconSize: [18, 18],
-            iconAnchor: [9, 9],
+            iconSize: [size, size],
+            iconAnchor: [anchor, anchor],
         });
 
         return L.marker([line.toLat, line.toLng], {
             icon: arrowIcon,
+            zIndexOffset: isSelected ? 1000 : 0,
         })
             .addTo(this.map)
             .bindPopup(`${this.getLineCallsign(line)} endpoint`);
@@ -821,6 +872,17 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         this.drawAllLines();
     }
 
+    selectLine(line: AzimuthLine): void {
+        if (this.selectedLineId === line.id) {
+            this.selectedLineId = null;
+        } else {
+            this.selectedLineId = line.id;
+        }
+
+        this.pendingDeleteLineId = null;
+        this.redrawMapLines();
+    }
+
     deleteLine(line: AzimuthLine): void {
         if (this.pendingDeleteLineId !== line.id) {
             this.pendingDeleteLineId = line.id;
@@ -832,6 +894,11 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
                 next: () => {
                     this.lines = this.lines.filter(existing => existing.id !== line.id);
                     this.rebuildCallsignGroups();
+
+                    if (this.selectedLineId === line.id) {
+                        this.selectedLineId = null;
+                    }
+
                     this.redrawMapLines();
                     this.pendingDeleteLineId = null;
                 },

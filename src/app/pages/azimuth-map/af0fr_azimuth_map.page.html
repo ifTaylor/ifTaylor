@@ -61,6 +61,7 @@
                     class="w-full rounded-2xl"
                     style="height: 70vh; min-height: 500px;"
             ></div>
+
             <div class="px-3 pt-3 text-center text-xs font-semibold text-slate-600">
                 {{ mapInstructionText }}
             </div>
@@ -101,6 +102,16 @@
                         Heading: {{ headingDeg.toFixed(0) }}°
                     </div>
                 }
+
+                @if (hasPendingStartPoint) {
+                    <button
+                            type="button"
+                            class="rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-950 ring-1 ring-slate-300"
+                            (click)="cancelStartPoint()"
+                    >
+                        Cancel Start Point
+                    </button>
+                }
             </div>
         </div>
 
@@ -109,7 +120,7 @@
                 <div>
                     <h2 class="text-xl font-black">Azimuths by Call Sign</h2>
                     <p class="mt-1 text-sm text-slate-600">
-                        Each call sign gets its own color on the map and in the cards below. **Tap TWICE to remove.**
+                        Each call sign gets its own color on the map and in the cards below. Tap once to select. Tap remove twice to delete.
                     </p>
                 </div>
             </div>
@@ -139,17 +150,32 @@
 
                         <div class="divide-y divide-slate-200">
                             @for (line of group.lines; track line.id) {
-                                <div class="p-4 text-sm">
+                                <div
+                                        class="cursor-pointer p-4 text-sm transition"
+                                        [class.bg-orange-50]="selectedLineId === line.id"
+                                        [class.ring-2]="selectedLineId === line.id"
+                                        [class.ring-orange-500]="selectedLineId === line.id"
+                                        [class.ring-inset]="selectedLineId === line.id"
+                                        (click)="selectLine(line)"
+                                >
                                     <div class="flex items-start justify-between gap-3">
-                                        <div class="font-bold text-slate-950">
-                                            {{ line.label }}
+                                        <div>
+                                            <div class="font-bold text-slate-950">
+                                                {{ line.label }}
+                                            </div>
+
+                                            @if (selectedLineId === line.id) {
+                                                <div class="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-orange-600">
+                                                    Selected
+                                                </div>
+                                            }
                                         </div>
 
                                         <button
                                                 type="button"
                                                 class="rounded-full px-3 py-1 text-xs font-semibold text-white"
                                                 [style.backgroundColor]="pendingDeleteLineId === line.id ? '#dc2626' : group.color"
-                                                (click)="deleteLine(line)"
+                                                (click)="$event.stopPropagation(); deleteLine(line)"
                                         >
                                             {{ pendingDeleteLineId === line.id ? 'Confirm' : 'Remove' }}
                                         </button>
@@ -178,12 +204,15 @@
                 }
             </div>
         </div>
+
         <div class="rounded-3xl bg-white/90 p-6 shadow-xl">
             <div class="text-sm uppercase tracking-[0.32em] text-slate-600">
                 Helper
             </div>
+
             <div class="mt-3 rounded-2xl bg-white/70 px-4 py-3 text-[11px] font-semibold leading-5 text-slate-700 ring-1 ring-slate-200">
                 <div class="font-black text-[12px] text-slate-600">Modes</div>
+
                 <div class="grid grid-cols-[4.8rem_1fr] gap-x-2">
                     <div class="font-black text-slate-950">Manual:</div>
                     <div>Tap startpoint → Tap endpoint</div>
