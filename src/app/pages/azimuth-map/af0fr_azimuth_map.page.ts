@@ -14,6 +14,7 @@ type AzimuthLine = {
     bearingDeg: number;
     distanceMiles: number;
     createdBy?: string | null;
+    reportId?: string | null;
     createdAt?: string;
 };
 
@@ -21,6 +22,24 @@ type CallsignGroup = {
     callsign: string;
     color: string;
     lines: AzimuthLine[];
+};
+
+type SightingReport = {
+    id: string;
+    callsign: string;
+    reportDate: string;
+    reportTime: string;
+    sourceLabel: string;
+    frequencyMhz: string;
+    notes?: string | null;
+    createdAt?: string;
+};
+
+type RepeaterOption = {
+    value: string;
+    label: string;
+    sourceLabel: string;
+    frequencyMhz: string;
 };
 
 @Component({
@@ -45,6 +64,10 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     pendingDeleteLineId: string | null = null;
     selectedLineId: string | null = null;
 
+    pendingDeleteReportId: string | null = null;
+
+    removalModeEnabled = false;
+
     private locationWatchId: number | null = null;
     private locationMarker: L.Marker | null = null;
     private liveCompassPreviewLayer: L.Layer | null = null;
@@ -52,27 +75,67 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     lines: AzimuthLine[] = [];
     callsignGroups: CallsignGroup[] = [];
 
+    reports: SightingReport[] = [];
+
+    reportDate = '';
+    reportTime = '';
+    reportSourceValue = 'KB0TLL_147075';
+    customFrequencyMhz = '';
+    reportNotes = '';
+    reportSaveMessage = '';
+
     editingCallsign = false;
     callsignDraft = '';
+
+    readonly repeaterOptions: RepeaterOption[] = [
+        {
+            value: 'K0EOR_147.030',
+            label: 'K0EOR — 147.030 MHz',
+            sourceLabel: 'K0EOR',
+            frequencyMhz: '147.030',
+        },
+        {
+            value: 'KB0TLL_147075',
+            label: 'KB0TLL — 147.075 MHz',
+            sourceLabel: 'KB0TLL',
+            frequencyMhz: '147.075',
+        },
+        {
+            value: 'OTHER',
+            label: 'Other frequency',
+            sourceLabel: 'Other',
+            frequencyMhz: '',
+        },
+    ];
 
     get currentCallsign(): string {
         return localStorage.getItem('map-callsign') || 'N0CALL';
     }
 
+    get selectedSourceIsOther(): boolean {
+        return this.reportSourceValue === 'OTHER';
+    }
+
+    get hasPendingStartPoint(): boolean {
+        return this.pendingStart !== null && !this.locationEnabled;
+    }
+
     private readonly colorPalette = [
-        '#dc2626', // red
-        '#2563eb', // blue
-        '#16a34a', // green
-        '#9333ea', // purple
-        '#ea580c', // orange
-        '#0891b2', // cyan
-        '#be123c', // rose
-        '#4f46e5', // indigo
-        '#65a30d', // lime
-        '#b45309', // amber
+        '#dc2626',
+        '#2563eb',
+        '#16a34a',
+        '#9333ea',
+        '#ea580c',
+        '#0891b2',
+        '#be123c',
+        '#4f46e5',
+        '#65a30d',
+        '#b45309',
     ];
 
-    constructor(private http: HttpClient) {}
+    constructor(private http: HttpClient) {
+        this.setReportTimeNow();
+    }
 
     ngAfterViewInit(): void {
         this.map = L.map('azimuth-map', {
@@ -89,10 +152,12 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         window.addEventListener('resize', this.handleWindowResize);
         document.addEventListener('visibilitychange', this.handleVisibilityChange);
 
+        this.loadReports();
         this.loadLines();
 
         this.refreshIntervalId = window.setInterval(() => {
             if (!document.hidden) {
+                this.loadReports();
                 this.loadLines();
             }
         }, 15000);
@@ -601,10 +666,6 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         }
     }
 
-    get hasPendingStartPoint(): boolean {
-        return this.pendingStart !== null && !this.locationEnabled;
-    }
-
     cancelStartPoint(): void {
         this.pendingStart = null;
 
@@ -634,6 +695,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             bearingDeg,
             distanceMiles,
             createdBy,
+            reportId: null,
         };
 
         this.http.post<AzimuthLine>(`${environment.apiUrl}/azimuth-lines`, line)
@@ -647,6 +709,149 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
                     console.error('Failed to save azimuth line', error);
                 },
             });
+    }
+
+    setReportTimeNow(): void {
+        const now = new Date();
+
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hour = String(now.getHours()).padStart(2, '0');
+        const minute = String(now.getMinutes()).padStart(2, '0');
+
+        this.reportDate = `${year}-${month}-${day}`;
+        this.reportTime = `${hour}:${minute}`;
+    }
+
+    setReportSource(value: string): void {
+        this.reportSourceValue = value;
+
+        if (!this.selectedSourceIsOther) {
+            this.customFrequencyMhz = '';
+        }
+    }
+
+    saveSignalReport(
+        reportDate: string,
+        reportTime: string,
+        sourceValue: string,
+        customFrequencyMhz: string,
+        notes: string
+    ): void {
+        this.reportDate = reportDate;
+        this.reportTime = reportTime;
+        this.reportSourceValue = sourceValue;
+        this.customFrequencyMhz = customFrequencyMhz;
+        this.reportNotes = notes;
+
+        const selectedOption = this.repeaterOptions.find(option => option.value === sourceValue);
+
+        if (!this.reportDate || !this.reportTime) {
+            alert('Enter a report date and time, or press Now.');
+            return;
+        }
+
+        let sourceLabel = selectedOption?.sourceLabel || 'Other';
+        let frequencyMhz = selectedOption?.frequencyMhz || '';
+
+        if (sourceValue === 'OTHER') {
+            sourceLabel = 'Other';
+            frequencyMhz = this.customFrequencyMhz.trim();
+
+            if (!frequencyMhz) {
+                alert('Enter the other frequency.');
+                return;
+            }
+        }
+
+        const reportPayload = {
+            callsign: this.currentCallsign,
+            reportDate: this.reportDate,
+            reportTime: this.reportTime,
+            sourceLabel,
+            frequencyMhz,
+            notes: this.reportNotes.trim() || null,
+        };
+
+        this.http.post<SightingReport>(`${environment.apiUrl}/sighting-reports`, reportPayload)
+            .subscribe({
+                next: (savedReport) => {
+                    this.reports.unshift(savedReport);
+                    this.reportSaveMessage = `Report #${this.getReportDisplayNumber(savedReport)} saved. You can link azimuths to it below.`;
+                },
+                error: (error) => {
+                    console.error('Failed to save sighting report', error);
+                    alert('Failed to save signal report.');
+                },
+            });
+    }
+
+    private loadReports(): void {
+        this.http.get<SightingReport[]>(`${environment.apiUrl}/sighting-reports`)
+            .subscribe({
+                next: (reports) => {
+                    this.reports = reports;
+                    this.redrawMapLines();
+                },
+                error: (error) => {
+                    console.error('Failed to load sighting reports', error);
+                },
+            });
+    }
+
+    updateLineReport(line: AzimuthLine, reportId: string): void {
+        const normalizedReportId = reportId || null;
+
+        this.http.patch<AzimuthLine>(
+            `${environment.apiUrl}/azimuth-lines/${line.id}/report`,
+            { reportId: normalizedReportId }
+        ).subscribe({
+            next: (updatedLine) => {
+                this.lines = this.lines.map(existing =>
+                    existing.id === updatedLine.id ? updatedLine : existing
+                );
+
+                this.rebuildCallsignGroups();
+                this.redrawMapLines();
+            },
+            error: (error) => {
+                console.error('Failed to update report link', error);
+                alert('Failed to update report link.');
+            },
+        });
+    }
+
+    getReportDisplayNumber(report: SightingReport): number {
+        const index = this.reports.findIndex(existing => existing.id === report.id);
+        return index >= 0 ? index + 1 : 0;
+    }
+
+    getLineDisplayNumber(line: AzimuthLine): number {
+        const index = this.lines.findIndex(existing => existing.id === line.id);
+        return index >= 0 ? index + 1 : 0;
+    }
+
+    getLinkedLinesForReport(report: SightingReport): AzimuthLine[] {
+        return this.lines.filter(line => line.reportId === report.id);
+    }
+
+    getReportSummary(reportId?: string | null): string {
+        if (!reportId) {
+            return 'No report linked';
+        }
+
+        const report = this.reports.find(existing => existing.id === reportId);
+
+        if (!report) {
+            return 'Report linked';
+        }
+
+        return `Report #${this.getReportDisplayNumber(report)} · ${report.sourceLabel} ${report.frequencyMhz} MHz · ${this.formatReportDateTime(report)}`;
+    }
+
+    formatReportDateTime(report: SightingReport): string {
+        return `${report.reportDate} ${report.reportTime}`;
     }
 
     private destinationPoint(
@@ -785,9 +990,11 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
 
         polyline.bindPopup(`
             <strong>${callsign}</strong><br>
+            Azimuth #${this.getLineDisplayNumber(line)}<br>
             ${line.label}<br>
             Bearing: ${line.bearingDeg.toFixed(1)}°<br>
-            Distance: ${line.distanceMiles.toFixed(2)} mi
+            Distance: ${line.distanceMiles.toFixed(2)} mi<br>
+            ${this.getReportSummary(line.reportId)}
         `);
 
         polyline.on('click', () => {
@@ -864,6 +1071,10 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     }
 
     private redrawMapLines(): void {
+        if (!this.map) {
+            return;
+        }
+
         for (const layer of this.drawnLayers) {
             this.map.removeLayer(layer);
         }
@@ -910,6 +1121,45 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             });
     }
 
+    deleteReport(report: SightingReport): void {
+        if (this.pendingDeleteReportId !== report.id) {
+            this.pendingDeleteReportId = report.id;
+            return;
+        }
+
+        this.http.delete(`${environment.apiUrl}/sighting-reports/${report.id}`)
+            .subscribe({
+                next: () => {
+                    this.reports = this.reports.filter(existing => existing.id !== report.id);
+
+                    this.lines = this.lines.map(line =>
+                        line.reportId === report.id
+                            ? { ...line, reportId: null }
+                            : line
+                    );
+
+                    this.rebuildCallsignGroups();
+                    this.redrawMapLines();
+
+                    this.pendingDeleteReportId = null;
+                },
+                error: (error) => {
+                    console.error('Failed to delete sighting report', error);
+                    alert('Failed to remove report.');
+                    this.pendingDeleteReportId = null;
+                },
+            });
+    }
+
+    toggleRemovalMode(): void {
+        this.removalModeEnabled = !this.removalModeEnabled;
+
+        if (!this.removalModeEnabled) {
+            this.pendingDeleteLineId = null;
+            this.pendingDeleteReportId = null;
+        }
+    }
+
     private getLineCallsign(line: AzimuthLine): string {
         return this.normalizeCallsign(line.createdBy || 'UNKNOWN');
     }
@@ -928,6 +1178,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     }
 
     refreshLines(): void {
+        this.loadReports();
         this.loadLines();
         this.forceMapResize();
     }
