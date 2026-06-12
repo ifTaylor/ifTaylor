@@ -41,6 +41,14 @@ class AzimuthLineCreate(BaseModel):
     reportId: Optional[UUID] = None
 
 
+class AzimuthLineUpdate(BaseModel):
+    label: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    toLat: Optional[float] = None
+    toLng: Optional[float] = None
+    bearingDeg: Optional[float] = None
+    distanceMiles: Optional[float] = None
+
+
 class SightingReportCreate(BaseModel):
     callsign: str = Field(min_length=1, max_length=80)
     reportDate: date
@@ -48,6 +56,7 @@ class SightingReportCreate(BaseModel):
     sourceLabel: str = Field(min_length=1, max_length=120)
     frequencyMhz: str = Field(min_length=1, max_length=40)
     notes: Optional[str] = Field(default=None, max_length=1000)
+
 
 class AzimuthReportUpdate(BaseModel):
     reportId: Optional[UUID] = None
@@ -288,24 +297,63 @@ def create_azimuth_line(line: AzimuthLineCreate):
         ) from exc
 
 
-@app.delete("/azimuth-lines/{line_id}", status_code=204)
-def delete_azimuth_line(line_id: UUID):
+@app.patch("/azimuth-lines/{line_id}")
+def update_azimuth_line(line_id: UUID, update: AzimuthLineUpdate):
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "delete from azimuth_lines where id = %s",
-                    (line_id,),
+                    """
+                    update azimuth_lines
+                    set
+                        label = coalesce(%s, label),
+                        to_lat = coalesce(%s, to_lat),
+                        to_lng = coalesce(%s, to_lng),
+                        bearing_deg = coalesce(%s, bearing_deg),
+                        distance_miles = coalesce(%s, distance_miles)
+                    where id = %s
+                    returning
+                        id,
+                        label,
+                        from_lat,
+                        from_lng,
+                        to_lat,
+                        to_lng,
+                        bearing_deg,
+                        distance_miles,
+                        created_by,
+                        created_at,
+                        report_id
+                    """,
+                    (
+                        update.label,
+                        update.toLat,
+                        update.toLng,
+                        update.bearingDeg,
+                        update.distanceMiles,
+                        line_id,
+                    ),
                 )
+                row = cur.fetchone()
 
-        return None
+        if row is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Azimuth line not found",
+            )
+
+        return row_to_dict(row)
+
+    except HTTPException:
+        raise
 
     except Exception as exc:
         print(exc)
         raise HTTPException(
             status_code=500,
-            detail="Failed to delete azimuth line",
+            detail="Failed to update azimuth line",
         ) from exc
+
 
 @app.patch("/azimuth-lines/{line_id}/report")
 def update_azimuth_line_report(line_id: UUID, update: AzimuthReportUpdate):
@@ -353,4 +401,24 @@ def update_azimuth_line_report(line_id: UUID, update: AzimuthReportUpdate):
         raise HTTPException(
             status_code=500,
             detail="Failed to update azimuth report link",
+        ) from exc
+
+
+@app.delete("/azimuth-lines/{line_id}", status_code=204)
+def delete_azimuth_line(line_id: UUID):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "delete from azimuth_lines where id = %s",
+                    (line_id,),
+                )
+
+        return None
+
+    except Exception as exc:
+        print(exc)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to delete azimuth line",
         ) from exc

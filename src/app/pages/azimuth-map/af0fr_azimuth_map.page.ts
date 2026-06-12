@@ -711,6 +711,80 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             });
     }
 
+    setLineBearing(line: AzimuthLine, value: string | number): void {
+        const parsed = Number(value);
+
+        if (!Number.isFinite(parsed)) {
+            alert('Enter a valid bearing.');
+            return;
+        }
+
+        const normalizedBearing = this.normalizeBearing(parsed);
+
+        this.updateLineBearing(line, normalizedBearing);
+    }
+
+    nudgeLineBearing(line: AzimuthLine, deltaDeg: number): void {
+        const nextBearing = this.normalizeBearing(line.bearingDeg + deltaDeg);
+
+        this.updateLineBearing(line, nextBearing);
+    }
+
+    private updateLineBearing(line: AzimuthLine, bearingDeg: number): void {
+        const from = L.latLng(line.fromLat, line.fromLng);
+
+        const to = this.destinationPoint(
+            line.fromLat,
+            line.fromLng,
+            bearingDeg,
+            line.distanceMiles
+        );
+
+        const updatedLine: AzimuthLine = {
+            ...line,
+            toLat: to.lat,
+            toLng: to.lng,
+            bearingDeg,
+            label: `${this.getLineCallsign(line)} ${Math.round(bearingDeg)}°`,
+        };
+
+        this.lines = this.lines.map(existing =>
+            existing.id === line.id ? updatedLine : existing
+        );
+
+        this.rebuildCallsignGroups();
+        this.redrawMapLines();
+
+        this.http.patch<AzimuthLine>(
+            `${environment.apiUrl}/azimuth-lines/${line.id}`,
+            {
+                toLat: updatedLine.toLat,
+                toLng: updatedLine.toLng,
+                bearingDeg: updatedLine.bearingDeg,
+                label: updatedLine.label,
+            }
+        ).subscribe({
+            next: (savedLine) => {
+                this.lines = this.lines.map(existing =>
+                    existing.id === savedLine.id ? savedLine : existing
+                );
+
+                this.rebuildCallsignGroups();
+                this.redrawMapLines();
+            },
+            error: (error) => {
+                console.error('Failed to update azimuth bearing', error);
+                alert('Failed to update azimuth bearing.');
+
+                this.loadLines();
+            },
+        });
+    }
+
+    private normalizeBearing(value: number): number {
+        return ((value % 360) + 360) % 360;
+    }
+
     setReportTimeNow(): void {
         const now = new Date();
 

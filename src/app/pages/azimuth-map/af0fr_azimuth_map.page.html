@@ -358,18 +358,34 @@
                                         }
                                     </div>
 
-                                    <div class="mt-2 grid grid-cols-2 gap-2 text-slate-700">
+                                    <div class="mt-2 grid grid-cols-2 gap-0 text-slate-700">
                                         <div>
-                                            <span class="font-semibold">Bearing:</span>
-                                            {{ line.bearingDeg.toFixed(1) }}°
-                                        </div>
+                                            <div
+                                                    class="mt-1 flex max-w-full items-center gap-1"
+                                                    (click)="$event.stopPropagation()"
+                                            >
+                                                <span class="font-semibold">Bearing:</span>
+                                                <input
+                                                        type="number"
+                                                        class="min-w-0 w-25 rounded-lg border border-slate-300 bg-white px-1 py-1 text-xs font-bold text-slate-950"
+                                                        [value]="line.bearingDeg.toFixed(1)"
+                                                        min="0"
+                                                        max="359.9"
+                                                        step="0.1"
+                                                        inputmode="decimal"
+                                                        (change)="setLineBearing(line, $any($event.target).value)"
+                                                        (keydown.enter)="setLineBearing(line, $any($event.target).value)"
+                                                />
 
-                                        <div>
-                                            <span class="font-semibold">Distance:</span>
-                                            {{ line.distanceMiles.toFixed(2) }} mi
+
+                                                <span class="text-xs font-bold text-slate-500">°</span>
+                                            </div>
                                         </div>
                                     </div>
-
+                                    <div>
+                                        <span class="font-semibold">Distance:</span>
+                                            {{ line.distanceMiles.toFixed(2) }} mi
+                                    </div>
                                     <div class="mt-3">
                                         <label class="block">
                                             <span class="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
