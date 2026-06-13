@@ -100,6 +100,8 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     private locationMarker: L.Marker | null = null;
     private liveCompassPreviewLayer: L.Layer | null = null;
 
+    private callsignColorMap = new Map<string, string>();
+
     lines: AzimuthLine[] = [];
     points: ReportPoint[] = [];
     callsignGroups: CallsignGroup[] = [];
@@ -1602,15 +1604,19 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
 
     getColorForCallsign(callsign: string): string {
         const normalized = this.normalizeCallsign(callsign);
-        let hash = 0;
 
-        for (let i = 0; i < normalized.length; i++) {
-            hash = normalized.charCodeAt(i) + ((hash << 5) - hash);
+        const existingColor = this.callsignColorMap.get(normalized);
+
+        if (existingColor) {
+            return existingColor;
         }
 
-        const index = Math.abs(hash) % this.colorPalette.length;
+        const index = this.callsignColorMap.size % this.colorPalette.length;
+        const color = this.colorPalette[index];
 
-        return this.colorPalette[index];
+        this.callsignColorMap.set(normalized, color);
+
+        return color;
     }
 
     refreshLines(): void {
