@@ -1,469 +1,203 @@
-<div>
-    <section class="relative overflow-hidden">
-        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.45),transparent_80%),radial-gradient(circle_at_right,rgba(251,146,60,0.35),transparent_35%),linear-gradient(180deg,#fb923c_0%,#f97316_20%,#ea580c_100%)]"></div>
-        <div class="absolute inset-0 opacity-[0.06] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:32px_32px]"></div>
-
-        <div class="relative mx-auto max-w-7xl px-6 py-10">
-            <div class="pb-4 text-sm uppercase tracking-[0.32em] text-slate-950">
-                CW QSO Guide
+<main class="min-h-screen bg-orange-500 px-4 py-8 text-slate-950">
+    <div class="mx-auto max-w-7xl space-y-6">
+        <header class="rounded-3xl bg-slate-950 p-6 text-white shadow-xl md:p-8">
+            <div class="text-xs font-semibold uppercase tracking-[0.32em] text-orange-400">AF0FR Toolbox</div>
+            <div class="mt-3 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div>
+                    <h1 class="text-3xl font-black tracking-tight md:text-5xl">CW Copy Trainer</h1>
+                    <p class="mt-2 max-w-3xl text-sm text-slate-300 md:text-base">
+                        Build clean copy, learn QSO protocol, then add the glorious messiness of an actual band.
+                    </p>
+                </div>
+                <a href="/af0fr#toolbox" class="text-sm font-semibold text-orange-300 hover:text-orange-200">← Toolbox</a>
             </div>
+        </header>
 
-            <div class="mb-6 rounded-2xl border border-slate-700 bg-slate-900/90 p-5 shadow">
-                <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                    <div>
-                        <h1 class="text-3xl font-bold tracking-tight text-white">
-                            AF0FR CW QSO Cheat Sheet
-                        </h1>
-                        <p class="mt-2 max-w-3xl text-sm text-slate-300">
-                            Compact on-air flow for checking frequency, calling CQ, answering CQ,
-                            exchanging RST / name / QTH, sending station info, and closing with proper prosigns.
-                        </p>
+        <section class="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+            <div class="space-y-6">
+                <div class="rounded-3xl bg-white p-5 shadow-xl md:p-7">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-slate-500">Practice set</h2>
+                    <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <button
+                            *ngFor="let option of modes"
+                            type="button"
+                            class="rounded-2xl border-2 p-4 text-left transition"
+                            [class.border-orange-500]="mode === option.value"
+                            [class.bg-orange-50]="mode === option.value"
+                            [class.border-slate-200]="mode !== option.value"
+                            (click)="selectMode(option.value)"
+                        >
+                            <span class="block font-black">{{ option.label }}</span>
+                            <span class="mt-1 block text-xs text-slate-500">{{ option.description }}</span>
+                        </button>
                     </div>
 
-                    <div class="rounded-xl border border-orange-400/40 bg-orange-500/10 px-4 py-3 text-sm text-orange-100">
-                        <div class="text-xs uppercase tracking-widest text-orange-300">My call</div>
-                        <div class="font-mono text-xl font-semibold text-white">{{ myCall }}</div>
+                    <div *ngIf="mode === 'qso'" class="mt-6 rounded-2xl bg-slate-100 p-4">
+                        <label class="text-sm font-black" for="qso-stage">QSO stage</label>
+                        <select id="qso-stage" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 font-semibold" [value]="qsoStage" (change)="selectQsoStage($any($event.target).value)">
+                            <option *ngFor="let stage of qsoStages" [value]="stage.value">{{ stage.label }}</option>
+                        </select>
+                        <p class="mt-2 text-xs text-slate-500">Choose one part of the exchange, mixed practice, or a continuous complete QSO.</p>
+                    </div>
 
-                        <div class="mt-3 overflow-hidden rounded-lg border border-slate-700 bg-slate-950">
-                            <table class="w-full text-left text-xs">
-                                <tbody>
-                                    <tr *ngFor="let row of morseRows(myCall)" class="border-t border-slate-800 first:border-t-0">
-                                        <td class="w-1/3 px-3 py-2 font-mono text-white">{{ row.text }}</td>
-                                        <td class="px-3 py-2 font-mono text-orange-200">{{ row.morse }}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                    <div *ngIf="mode === 'qsoWords'" class="mt-6 rounded-2xl bg-slate-100 p-4">
+                        <label class="text-sm font-black" for="word-category">Vocabulary</label>
+                        <select id="word-category" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 font-semibold" [value]="wordCategory" (change)="selectWordCategory($any($event.target).value)">
+                            <option *ngFor="let category of wordCategories" [value]="category.value">{{ category.label }}</option>
+                        </select>
+                        <p class="mt-2 text-xs text-slate-500">Missed words are automatically folded into later drills.</p>
+                    </div>
+
+                    <div class="mt-6 grid gap-5 sm:grid-cols-2">
+                        <label class="block">
+                            <span class="flex justify-between text-sm font-bold"><span>Character speed</span><span>{{ wpm }} WPM</span></span>
+                            <input aria-label="Character speed" class="mt-2 w-full accent-orange-500" type="range" min="5" max="40" [value]="wpm" (input)="updateNumber('wpm', $any($event.target).value)">
+                        </label>
+                        <label class="block">
+                            <span class="flex justify-between text-sm font-bold"><span>Farnsworth speed</span><span>{{ farnsworthWpm }} WPM</span></span>
+                            <input aria-label="Farnsworth speed" class="mt-2 w-full accent-orange-500" type="range" min="5" [max]="wpm" [value]="farnsworthWpm" (input)="updateNumber('farnsworthWpm', $any($event.target).value)">
+                            <span class="mt-1 block text-xs text-slate-500">Lower this to stretch character and word spacing.</span>
+                        </label>
+                        <label class="block">
+                            <span class="flex justify-between text-sm font-bold"><span>Tone</span><span>{{ tone }} Hz</span></span>
+                            <input aria-label="Tone frequency" class="mt-2 w-full accent-orange-500" type="range" min="350" max="900" step="25" [value]="tone" (input)="updateNumber('tone', $any($event.target).value)">
+                        </label>
+                        <label *ngIf="mode === 'letters' || mode === 'numbers' || mode === 'mixed'" class="block">
+                            <span class="flex justify-between text-sm font-bold"><span>Group size</span><span>{{ groupSize }}</span></span>
+                            <input aria-label="Group size" class="mt-2 w-full accent-orange-500" type="range" min="1" max="8" [value]="groupSize" (input)="updateNumber('groupSize', $any($event.target).value)">
+                        </label>
+                        <label *ngIf="mode !== 'qso'" class="block">
+                            <span class="flex justify-between text-sm font-bold"><span>{{ mode === 'qsoWords' ? 'Words' : 'Groups' }}</span><span>{{ groupCount }}</span></span>
+                            <input aria-label="Exercise length" class="mt-2 w-full accent-orange-500" type="range" min="1" max="10" [value]="groupCount" (input)="updateNumber('groupCount', $any($event.target).value)">
+                        </label>
+                        <label class="block">
+                            <span class="text-sm font-bold">On-air sound</span>
+                            <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 font-semibold" [value]="audioEffect" (change)="selectAudioEffect($any($event.target).value)">
+                                <option value="clean">Clean practice tone</option>
+                                <option value="light">Light noise and QSB</option>
+                                <option value="challenging">Weak and unstable</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                <div *ngIf="mode === 'qso'" class="rounded-3xl bg-white p-5 shadow-xl md:p-7">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-sm font-black uppercase tracking-widest text-slate-500">My station</h2>
+                            <p class="mt-1 text-xs text-slate-500">Used to personalize calls and exchanges.</p>
+                        </div>
+                        <span *ngIf="profileSaved" class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">Saved</span>
+                    </div>
+                    <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <label class="text-xs font-bold text-slate-500">Callsign<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.call" (input)="updateProfile('call', $any($event.target).value)"></label>
+                        <label class="text-xs font-bold text-slate-500">Name<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.name" (input)="updateProfile('name', $any($event.target).value)"></label>
+                        <label class="text-xs font-bold text-slate-500">QTH<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.qth" (input)="updateProfile('qth', $any($event.target).value)"></label>
+                        <label class="text-xs font-bold text-slate-500">Rig<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.rig" (input)="updateProfile('rig', $any($event.target).value)"></label>
+                        <label class="text-xs font-bold text-slate-500">Antenna<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.antenna" (input)="updateProfile('antenna', $any($event.target).value)"></label>
+                        <label class="text-xs font-bold text-slate-500">Power<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.power" (input)="updateProfile('power', $any($event.target).value)"></label>
+                    </div>
+                    <button type="button" class="mt-4 rounded-full bg-slate-950 px-5 py-2 text-sm font-black text-white" (click)="saveProfile()">Save station</button>
+                </div>
+
+                <div class="rounded-3xl bg-slate-950 p-5 text-white shadow-xl md:p-7">
+                    <div *ngIf="exerciseContext" class="mb-5 rounded-2xl border border-orange-400/30 bg-orange-400/10 p-4">
+                        <div class="text-xs font-black uppercase tracking-widest text-orange-300">Situation</div>
+                        <div class="mt-1 text-sm text-orange-50">{{ exerciseContext }}</div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-3">
+                        <button type="button" class="rounded-full bg-orange-500 px-6 py-3 font-black text-white transition hover:bg-orange-400" (click)="newExercise()">
+                            {{ exercise ? 'New exercise' : 'Start copying' }}
+                        </button>
+                        <button *ngIf="exercise" type="button" class="rounded-full bg-slate-700 px-6 py-3 font-bold hover:bg-slate-600" (click)="isPlaying ? pause() : play()">
+                            {{ isPlaying ? 'Pause' : (isPaused ? 'Resume' : 'Replay') }}
+                        </button>
+                        <button *ngIf="exercise && (isPlaying || isPaused)" type="button" class="rounded-full border border-slate-600 px-5 py-3 text-sm font-bold text-slate-300" (click)="stop()">Stop</button>
+                    </div>
+
+                    <div *ngIf="exercise" class="mt-5" aria-live="polite">
+                        <div class="flex justify-between text-xs font-bold text-slate-400"><span>{{ isPlaying ? 'Sending…' : (isPaused ? 'Paused' : 'Ready') }}</span><span>{{ secondsRemaining }}s remaining</span></div>
+                        <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-800"><div class="h-full rounded-full bg-orange-500 transition-[width] duration-75" [style.width.%]="progressPercent"></div></div>
+                    </div>
+
+                    <label class="mt-6 block">
+                        <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Your copy</span>
+                        <textarea
+                            #copyInput
+                            class="mt-2 w-full resize-y rounded-2xl border-2 border-slate-700 bg-slate-900 px-5 py-4 font-mono text-xl font-bold uppercase tracking-wider text-white outline-none focus:border-orange-500"
+                            [value]="copy"
+                            [disabled]="!exercise"
+                            [rows]="mode === 'qso' ? 5 : 2"
+                            autocomplete="off"
+                            autocapitalize="characters"
+                            spellcheck="false"
+                            placeholder="Type what you hear…"
+                            (input)="onCopyInput($any($event.target).value)"
+                        ></textarea>
+                    </label>
+
+                    <div class="mt-3 flex flex-wrap items-center gap-4">
+                        <button type="button" class="rounded-full bg-white px-6 py-3 font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-40" [disabled]="!copy.trim() || hasChecked" (click)="checkCopy()">Check copy</button>
+                        <span class="text-xs text-slate-500">Ctrl/⌘ + Enter to check · Space to play/pause · N for new</span>
+                    </div>
+
+                    <div *ngIf="hasChecked" class="mt-6 space-y-4 rounded-2xl border border-slate-700 bg-slate-900 p-5">
+                        <div>
+                            <div class="text-xs font-bold uppercase tracking-widest text-slate-400">Sent</div>
+                            <div class="mt-2 break-words font-mono text-sm text-slate-400">{{ exercise }}</div>
+                            <div class="mt-3 text-xs font-bold uppercase tracking-widest text-slate-500">Character check (spaces ignored)</div>
+                            <div class="mt-2 break-words font-mono text-xl font-black tracking-wider">
+                                <span *ngFor="let mark of expectedMarks" class="rounded-sm" [ngClass]="{'text-emerald-300': mark.status === 'correct', 'bg-red-500/30 text-red-200': mark.status === 'incorrect', 'bg-amber-400/30 text-amber-200': mark.status === 'missing'}">{{ mark.character }}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold uppercase tracking-widest text-slate-400">Copied</div>
+                            <div class="mt-2 break-words font-mono text-lg tracking-wider">
+                                <span *ngFor="let mark of copyMarks" [class.text-emerald-300]="mark.status === 'correct'" [class.text-red-300]="mark.status === 'incorrect' || mark.status === 'extra'" [class.underline]="mark.status === 'extra'">{{ mark.character }}</span>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-4 text-xs text-slate-300"><span><span class="text-emerald-300">Green</span> correct</span><span><span class="text-red-300">Red</span> incorrect/extra</span><span><span class="text-amber-300">Amber</span> missed</span></div>
+                        <div *ngIf="activeProsigns.length" class="border-t border-slate-700 pt-4">
+                            <div class="text-xs font-bold uppercase tracking-widest text-orange-300">Run-together prosigns heard</div>
+                            <div class="mt-2 flex flex-wrap gap-2"><span *ngFor="let item of activeProsigns" class="rounded-full bg-slate-800 px-3 py-1 text-xs"><strong>&lt;{{ item.token }}&gt;</strong> — {{ item.meaning }}</span></div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="mb-6 grid gap-4 lg:grid-cols-3">
-                <div
-                    *ngFor="let variable of variables"
-                    class="rounded-xl border border-slate-700 bg-slate-900/90 p-3 shadow"
-                >
-                    <div class="text-xs uppercase tracking-widest text-orange-400">
-                        {{ variable.label }}
+            <aside class="space-y-6">
+                <div class="rounded-3xl bg-white p-6 shadow-xl">
+                    <div class="text-sm font-black uppercase tracking-widest text-slate-500">Session</div>
+                    <div class="mt-5 grid grid-cols-2 gap-3">
+                        <div class="rounded-2xl bg-orange-50 p-4"><div class="text-3xl font-black">{{ accuracy }}%</div><div class="text-xs font-bold text-slate-500">Accuracy</div></div>
+                        <div class="rounded-2xl bg-slate-100 p-4"><div class="text-3xl font-black">{{ attempts }}</div><div class="text-xs font-bold text-slate-500">Attempts</div></div>
                     </div>
-
-                    <div class="mt-1 font-mono text-lg font-semibold text-white">
-                        {{ variable.text }}
-                    </div>
-
-                    <div class="mt-3 overflow-hidden rounded-lg border border-slate-700 bg-slate-950">
-                        <table class="w-full text-left text-xs">
-                            <tbody>
-                                <tr
-                                    *ngFor="let row of morseRows(variable.text, variable.morseParts)"
-                                    class="border-t border-slate-800 first:border-t-0"
-                                >
-                                    <td class="w-1/3 px-3 py-2 font-mono text-white">
-                                        {{ row.text }}
-                                    </td>
-                                    <td class="px-3 py-2 font-mono text-orange-200">
-                                        {{ row.morse }}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="mt-2 text-xs text-slate-400" *ngIf="variable.note">
-                        {{ variable.note }}
-                    </div>
+                    <button type="button" class="mt-4 text-sm font-bold text-slate-500 hover:text-slate-950" (click)="resetSession()">Reset session</button>
                 </div>
-            </div>
 
-            <div class="mb-6 grid gap-6 xl:grid-cols-2">
-                <section class="rounded-2xl border border-slate-700 bg-slate-900/90 p-4 shadow">
-                    <h2 class="mb-4 text-xl font-semibold text-white">Path 1: You Call CQ</h2>
+                <div *ngIf="weakWords.length" class="rounded-3xl bg-white p-6 shadow-xl">
+                    <div class="flex items-center justify-between gap-3"><h2 class="text-sm font-black uppercase tracking-widest text-slate-500">Needs review</h2><button type="button" class="text-xs font-bold text-slate-400" (click)="clearWeakWords()">Clear</button></div>
+                    <p class="mt-2 text-xs text-slate-500">These receive extra weight in QSO Words.</p>
+                    <div class="mt-4 flex flex-wrap gap-2"><span *ngFor="let item of weakWords" class="rounded-full bg-orange-100 px-3 py-1 font-mono text-sm font-black">{{ item.word }} <span class="text-orange-700">×{{ item.misses }}</span></span></div>
+                </div>
 
-                    <div class="space-y-3">
-                        <div
-                            *ngFor="let step of callingCqSteps; let i = index"
-                            class="rounded-xl border border-slate-700 bg-slate-800 p-3"
-                        >
-                            <div class="mb-2 flex items-center gap-2">
-                                <div class="flex h-7 w-7 items-center justify-center rounded-full bg-orange-500 text-sm font-bold text-white">
-                                    {{ i + 1 }}
-                                </div>
-                                <h3 class="font-semibold text-white">{{ step.title }}</h3>
-                            </div>
-
-                            <div *ngIf="step.send" class="mt-2">
-                                <div class="mb-1 text-xs uppercase tracking-widest text-emerald-400">
-                                    Send
-                                </div>
-
-                                <div class="rounded-lg bg-slate-950 p-3">
-                                    <div class="font-mono text-sm text-emerald-200">
-                                        {{ step.send }}
-                                    </div>
-
-                                    <div class="mt-3 overflow-hidden rounded-lg border border-slate-800">
-                                        <table class="w-full text-left text-xs">
-                                            <thead class="bg-slate-900 text-slate-400">
-                                                <tr>
-                                                    <th class="px-3 py-2 font-semibold">Part</th>
-                                                    <th class="px-3 py-2 font-semibold">CW</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr
-                                                    *ngFor="let row of morseRows(step.send, step.morseParts)"
-                                                    class="border-t border-slate-800"
-                                                >
-                                                    <td class="w-1/3 px-3 py-2 font-mono text-emerald-200">
-                                                        {{ row.text }}
-                                                    </td>
-                                                    <td class="px-3 py-2 font-mono text-orange-200">
-                                                        {{ row.morse }}
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div *ngIf="step.expect" class="mt-2">
-                                <div class="mb-1 text-xs uppercase tracking-widest text-blue-400">
-                                    Expect / copy
-                                </div>
-
-                                <div class="rounded-lg bg-slate-950 p-3">
-                                    <div class="font-mono text-sm text-blue-200">
-                                        {{ step.expect }}
-                                    </div>
-
-                                    <div class="mt-3 overflow-hidden rounded-lg border border-slate-800">
-                                        <table class="w-full text-left text-xs">
-                                            <thead class="bg-slate-900 text-slate-400">
-                                                <tr>
-                                                    <th class="px-3 py-2 font-semibold">Part</th>
-                                                    <th class="px-3 py-2 font-semibold">CW</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr
-                                                    *ngFor="let row of morseRows(step.expect, step.morseParts)"
-                                                    class="border-t border-slate-800"
-                                                >
-                                                    <td class="w-1/3 px-3 py-2 font-mono text-blue-200">
-                                                        {{ row.text }}
-                                                    </td>
-                                                    <td class="px-3 py-2 font-mono text-orange-200">
-                                                        {{ row.morse }}
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <p *ngIf="step.note" class="mt-2 text-sm text-slate-300">
-                                {{ step.note }}
-                            </p>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="rounded-2xl border border-slate-700 bg-slate-900/90 p-4 shadow">
-                    <h2 class="mb-4 text-xl font-semibold text-white">Path 2: You Answer CQ</h2>
-
-                    <div class="space-y-3">
-                        <div
-                            *ngFor="let step of answeringCqSteps; let i = index"
-                            class="rounded-xl border border-slate-700 bg-slate-800 p-3"
-                        >
-                            <div class="mb-2 flex items-center gap-2">
-                                <div class="flex h-7 w-7 items-center justify-center rounded-full bg-orange-500 text-sm font-bold text-white">
-                                    {{ i + 1 }}
-                                </div>
-                                <h3 class="font-semibold text-white">{{ step.title }}</h3>
-                            </div>
-
-                            <div *ngIf="step.send" class="mt-2">
-                                <div class="mb-1 text-xs uppercase tracking-widest text-emerald-400">
-                                    Send
-                                </div>
-
-                                <div class="rounded-lg bg-slate-950 p-3">
-                                    <div class="font-mono text-sm text-emerald-200">
-                                        {{ step.send }}
-                                    </div>
-
-                                    <div class="mt-3 overflow-hidden rounded-lg border border-slate-800">
-                                        <table class="w-full text-left text-xs">
-                                            <thead class="bg-slate-900 text-slate-400">
-                                                <tr>
-                                                    <th class="px-3 py-2 font-semibold">Part</th>
-                                                    <th class="px-3 py-2 font-semibold">CW</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr
-                                                    *ngFor="let row of morseRows(step.send, step.morseParts)"
-                                                    class="border-t border-slate-800"
-                                                >
-                                                    <td class="w-1/3 px-3 py-2 font-mono text-emerald-200">
-                                                        {{ row.text }}
-                                                    </td>
-                                                    <td class="px-3 py-2 font-mono text-orange-200">
-                                                        {{ row.morse }}
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div *ngIf="step.expect" class="mt-2">
-                                <div class="mb-1 text-xs uppercase tracking-widest text-blue-400">
-                                    Expect / copy
-                                </div>
-
-                                <div class="rounded-lg bg-slate-950 p-3">
-                                    <div class="font-mono text-sm text-blue-200">
-                                        {{ step.expect }}
-                                    </div>
-
-                                    <div class="mt-3 overflow-hidden rounded-lg border border-slate-800">
-                                        <table class="w-full text-left text-xs">
-                                            <thead class="bg-slate-900 text-slate-400">
-                                                <tr>
-                                                    <th class="px-3 py-2 font-semibold">Part</th>
-                                                    <th class="px-3 py-2 font-semibold">CW</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr
-                                                    *ngFor="let row of morseRows(step.expect, step.morseParts)"
-                                                    class="border-t border-slate-800"
-                                                >
-                                                    <td class="w-1/3 px-3 py-2 font-mono text-blue-200">
-                                                        {{ row.text }}
-                                                    </td>
-                                                    <td class="px-3 py-2 font-mono text-orange-200">
-                                                        {{ row.morse }}
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <p *ngIf="step.note" class="mt-2 text-sm text-slate-300">
-                                {{ step.note }}
-                            </p>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <div class="mb-6 rounded-2xl border border-slate-700 bg-slate-900/90 p-4 shadow">
-                <h2 class="mb-4 text-xl font-semibold text-white">At-a-glance Flow</h2>
-
-                <div class="grid gap-4 lg:grid-cols-2">
-                    <div class="rounded-xl border border-slate-700 bg-slate-800 p-4">
-                        <h3 class="mb-3 font-semibold text-orange-400">Calling CQ</h3>
-                        <div class="flex flex-wrap gap-2 text-sm">
-                            <span class="rounded-full bg-slate-700 px-3 py-1 text-white">QRL?</span>
-                            <span class="text-slate-400">→</span>
-                            <span class="rounded-full bg-slate-700 px-3 py-1 text-white">CQ CQ CQ</span>
-                            <span class="text-slate-400">→</span>
-                            <span class="rounded-full bg-slate-700 px-3 py-1 text-white">They answer</span>
-                            <span class="text-slate-400">→</span>
-                            <span class="rounded-full bg-slate-700 px-3 py-1 text-white">RST / NAME / QTH</span>
-                            <span class="text-slate-400">→</span>
-                            <span class="rounded-full bg-slate-700 px-3 py-1 text-white">RIG / ANT / PWR / WX</span>
-                            <span class="text-slate-400">→</span>
-                            <span class="rounded-full bg-slate-700 px-3 py-1 text-white">73 SK</span>
-                        </div>
-                    </div>
-
-                    <div class="rounded-xl border border-slate-700 bg-slate-800 p-4">
-                        <h3 class="mb-3 font-semibold text-orange-400">Answering CQ</h3>
-                        <div class="flex flex-wrap gap-2 text-sm">
-                            <span class="rounded-full bg-slate-700 px-3 py-1 text-white">Hear CQ</span>
-                            <span class="text-slate-400">→</span>
-                            <span class="rounded-full bg-slate-700 px-3 py-1 text-white">Send my call</span>
-                            <span class="text-slate-400">→</span>
-                            <span class="rounded-full bg-slate-700 px-3 py-1 text-white">Copy exchange</span>
-                            <span class="text-slate-400">→</span>
-                            <span class="rounded-full bg-slate-700 px-3 py-1 text-white">Send exchange</span>
-                            <span class="text-slate-400">→</span>
-                            <span class="rounded-full bg-slate-700 px-3 py-1 text-white">Station info</span>
-                            <span class="text-slate-400">→</span>
-                            <span class="rounded-full bg-slate-700 px-3 py-1 text-white">73 SK</span>
+                <div *ngIf="history.length" class="rounded-3xl bg-white p-6 shadow-xl">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-slate-500">Recent copy</h2>
+                    <div class="mt-4 space-y-3">
+                        <div *ngFor="let result of history" class="rounded-2xl border p-3" [class.border-emerald-300]="result.correct" [class.bg-emerald-50]="result.correct" [class.border-slate-200]="!result.correct">
+                            <div class="flex items-center justify-between gap-2"><span class="font-black">{{ result.accuracy }}%</span><span class="text-xs text-slate-500">{{ result.wpm }}/{{ result.farnsworthWpm }} WPM</span></div>
+                            <div class="mt-1 text-xs font-bold text-slate-500">{{ result.mode }}<span *ngIf="result.detail"> · {{ result.detail }}</span></div>
+                            <div class="mt-2 line-clamp-2 font-mono text-xs">{{ result.expected }}</div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="grid gap-6 xl:grid-cols-2">
-                <section class="rounded-2xl border border-slate-700 bg-slate-900/90 p-4 shadow">
-                    <h2 class="mb-4 text-xl font-semibold text-white">Common QSO Chunks</h2>
-
-                    <div class="grid gap-4 md:grid-cols-2">
-                        <div>
-                            <h3 class="mb-2 font-semibold text-orange-400">Opening</h3>
-                            <div class="space-y-2">
-                                <div *ngFor="let chunk of openingChunks" class="rounded-lg bg-slate-800 p-3">
-                                    <div class="text-xs uppercase tracking-widest text-slate-400">{{ chunk.label }}</div>
-                                    <div class="font-mono text-sm text-white">{{ chunk.text }}</div>
-
-                                    <div class="mt-3 overflow-hidden rounded-lg border border-slate-700 bg-slate-950">
-                                        <table class="w-full text-left text-xs">
-                                            <tbody>
-                                                <tr
-                                                    *ngFor="let row of morseRows(chunk.text, chunk.morseParts)"
-                                                    class="border-t border-slate-800 first:border-t-0"
-                                                >
-                                                    <td class="w-1/3 px-3 py-2 font-mono text-white">{{ row.text }}</td>
-                                                    <td class="px-3 py-2 font-mono text-orange-200">{{ row.morse }}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3 class="mb-2 font-semibold text-orange-400">First Exchange</h3>
-                            <div class="space-y-2">
-                                <div *ngFor="let chunk of exchangeChunks" class="rounded-lg bg-slate-800 p-3">
-                                    <div class="text-xs uppercase tracking-widest text-slate-400">{{ chunk.label }}</div>
-                                    <div class="font-mono text-sm text-white">{{ chunk.text }}</div>
-
-                                    <div class="mt-3 overflow-hidden rounded-lg border border-slate-700 bg-slate-950">
-                                        <table class="w-full text-left text-xs">
-                                            <tbody>
-                                                <tr
-                                                    *ngFor="let row of morseRows(chunk.text, chunk.morseParts)"
-                                                    class="border-t border-slate-800 first:border-t-0"
-                                                >
-                                                    <td class="w-1/3 px-3 py-2 font-mono text-white">{{ row.text }}</td>
-                                                    <td class="px-3 py-2 font-mono text-orange-200">{{ row.morse }}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3 class="mb-2 font-semibold text-orange-400">Station Info</h3>
-                            <div class="space-y-2">
-                                <div *ngFor="let chunk of stationChunks" class="rounded-lg bg-slate-800 p-3">
-                                    <div class="text-xs uppercase tracking-widest text-slate-400">{{ chunk.label }}</div>
-                                    <div class="font-mono text-sm text-white">{{ chunk.text }}</div>
-
-                                    <div class="mt-3 overflow-hidden rounded-lg border border-slate-700 bg-slate-950">
-                                        <table class="w-full text-left text-xs">
-                                            <tbody>
-                                                <tr
-                                                    *ngFor="let row of morseRows(chunk.text, chunk.morseParts)"
-                                                    class="border-t border-slate-800 first:border-t-0"
-                                                >
-                                                    <td class="w-1/3 px-3 py-2 font-mono text-white">{{ row.text }}</td>
-                                                    <td class="px-3 py-2 font-mono text-orange-200">{{ row.morse }}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3 class="mb-2 font-semibold text-orange-400">Closing</h3>
-                            <div class="space-y-2">
-                                <div *ngFor="let chunk of closingChunks" class="rounded-lg bg-slate-800 p-3">
-                                    <div class="text-xs uppercase tracking-widest text-slate-400">{{ chunk.label }}</div>
-                                    <div class="font-mono text-sm text-white">{{ chunk.text }}</div>
-
-                                    <div class="mt-3 overflow-hidden rounded-lg border border-slate-700 bg-slate-950">
-                                        <table class="w-full text-left text-xs">
-                                            <tbody>
-                                                <tr
-                                                    *ngFor="let row of morseRows(chunk.text, chunk.morseParts)"
-                                                    class="border-t border-slate-800 first:border-t-0"
-                                                >
-                                                    <td class="w-1/3 px-3 py-2 font-mono text-white">{{ row.text }}</td>
-                                                    <td class="px-3 py-2 font-mono text-orange-200">{{ row.morse }}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="rounded-2xl border border-slate-700 bg-slate-900/90 p-4 shadow">
-                    <h2 class="mb-4 text-xl font-semibold text-white">Prosigns and Operating Signals</h2>
-
-                    <div class="space-y-2">
-                        <div
-                            *ngFor="let prosign of prosigns"
-                            class="rounded-xl border border-slate-700 bg-slate-800 p-3"
-                        >
-                            <div class="flex flex-wrap items-start justify-between gap-3">
-                                <div>
-                                    <div class="font-mono text-lg font-bold text-orange-400">
-                                        {{ prosign.label }}
-                                    </div>
-                                    <div class="font-mono text-xs text-orange-200">
-                                        {{ toMorse(prosign.label) }}
-                                    </div>
-                                </div>
-
-                                <div class="flex-1 text-sm text-white">
-                                    {{ prosign.text }}
-                                    <div *ngIf="prosign.note" class="mt-1 text-xs text-slate-400">
-                                        {{ prosign.note }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 rounded-xl border border-orange-400/30 bg-orange-500/10 p-4 text-sm text-orange-100">
-                        <div class="mb-1 font-semibold text-white">Quick rule</div>
-                        Use <span class="font-mono text-white">K</span> when calling CQ.
-                        Use <span class="font-mono text-white">KN</span> once you are talking to one station.
-                        Use <span class="font-mono text-white">SK</span> for the final goodbye.
-                    </div>
-
-                    <div class="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-4">
-                        <div class="mb-1 text-xs uppercase tracking-widest text-orange-400">
-                            Example
-                        </div>
-                        <div class="font-mono text-sm text-white">
-                            AF0FR
-                        </div>
-
-                        <div class="mt-3 overflow-hidden rounded-lg border border-slate-800">
-                            <table class="w-full text-left text-xs">
-                                <tbody>
-                                    <tr *ngFor="let row of morseRows('AF0FR')" class="border-t border-slate-800 first:border-t-0">
-                                        <td class="w-1/3 px-3 py-2 font-mono text-white">{{ row.text }}</td>
-                                        <td class="px-3 py-2 font-mono text-orange-200">{{ row.morse }}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
-            </div>
-        </div>
-    </section>
-</div>
+                <div class="rounded-3xl bg-orange-100 p-6 text-sm shadow-xl">
+                    <h2 class="font-black">Copying tip</h2>
+                    <p class="mt-2 text-slate-700">Write the character you hear and move on. A blank costs one character; chasing it can cost the next five.</p>
+                </div>
+            </aside>
+        </section>
+    </div>
+</main>
