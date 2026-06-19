@@ -130,8 +130,12 @@
                             [disabled]="!exercise"
                             [rows]="mode === 'qso' ? 5 : 2"
                             autocomplete="off"
+                            autocorrect="off"
                             autocapitalize="characters"
                             spellcheck="false"
+                            writingsuggestions="false"
+                            data-gramm="false"
+                            data-ms-editor="false"
                             placeholder="Type what you hear…"
                             (input)="onCopyInput($any($event.target).value)"
                         ></textarea>
