@@ -1,13 +1,14 @@
 import os
 from datetime import date, time
 from typing import Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import psycopg
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from psycopg.types.json import Jsonb
 
 
 load_dotenv()
@@ -18,7 +19,7 @@ ALLOWED_ORIGINS = os.getenv(
     "http://localhost:4200",
 ).split(",")
 
-app = FastAPI(title="AF0FR Azimuth Map API")
+app = FastAPI(title="AF0FR API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -82,8 +83,63 @@ class SightingReportCreate(BaseModel):
     notes: Optional[str] = Field(default=None, max_length=1000)
 
 
+class CwPracticeAttemptCreate(BaseModel):
+    operator: str = Field(min_length=1, max_length=80)
+    mode: str = Field(min_length=1, max_length=40)
+    drill: str = Field(default="", max_length=80)
+    accuracy: int = Field(ge=0, le=100)
+    correctCharacters: int = Field(ge=0)
+    totalCharacters: int = Field(ge=1)
+    wpm: int = Field(ge=5, le=100)
+    farnsworthWpm: int = Field(ge=5, le=100)
+    durationSeconds: float = Field(default=0, ge=0, le=7200)
+    missedCharacters: dict[str, int] = Field(default_factory=dict)
+    characterScores: dict[str, int] = Field(default_factory=dict)
+
+
 def get_connection():
     return psycopg.connect(DATABASE_URL)
+
+
+def ensure_cw_metrics_table():
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                create table if not exists cw_practice_attempts (
+                    id uuid primary key,
+                    operator varchar(80) not null,
+                    mode varchar(40) not null,
+                    drill varchar(80) not null default '',
+                    accuracy smallint not null check (accuracy between 0 and 100),
+                    correct_characters integer not null check (correct_characters >= 0),
+                    total_characters integer not null check (total_characters > 0),
+                    wpm smallint not null,
+                    farnsworth_wpm smallint not null,
+                    duration_seconds double precision not null default 0,
+                    missed_characters jsonb not null default '{}'::jsonb,
+                    character_scores jsonb not null default '{}'::jsonb,
+                    created_at timestamptz not null default now()
+                )
+                """
+            )
+            cur.execute(
+                """
+                alter table cw_practice_attempts
+                add column if not exists character_scores jsonb not null default '{}'::jsonb
+                """
+            )
+            cur.execute(
+                """
+                create index if not exists cw_practice_attempts_operator_created_idx
+                on cw_practice_attempts (operator, created_at desc)
+                """
+            )
+
+
+@app.on_event("startup")
+def initialize_cw_metrics():
+    ensure_cw_metrics_table()
 
 
 def uuid_list_to_strings(value) -> list[str]:
@@ -146,6 +202,24 @@ def report_row_to_dict(row):
         "frequencyMhz": row[5],
         "notes": row[6],
         "createdAt": row[7].isoformat(),
+    }
+
+
+def cw_attempt_row_to_dict(row):
+    return {
+        "id": str(row[0]),
+        "operator": row[1],
+        "mode": row[2],
+        "drill": row[3],
+        "accuracy": row[4],
+        "correctCharacters": row[5],
+        "totalCharacters": row[6],
+        "wpm": row[7],
+        "farnsworthWpm": row[8],
+        "durationSeconds": row[9],
+        "missedCharacters": row[10] or {},
+        "characterScores": row[11] or {},
+        "createdAt": row[12].isoformat(),
     }
 
 
@@ -235,6 +309,112 @@ def debug_cors():
     return {
         "allowedOrigins": [origin.strip() for origin in ALLOWED_ORIGINS],
     }
+
+
+@app.get("/cw-practice-attempts")
+def list_cw_practice_attempts(operator: str, limit: int = 300):
+    safe_limit = min(max(limit, 1), 1000)
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    select
+                        id,
+                        operator,
+                        mode,
+                        drill,
+                        accuracy,
+                        correct_characters,
+                        total_characters,
+                        wpm,
+                        farnsworth_wpm,
+                        duration_seconds,
+                        missed_characters,
+                        character_scores,
+                        created_at
+                    from cw_practice_attempts
+                    where upper(operator) = upper(%s)
+                    order by created_at desc
+                    limit %s
+                    """,
+                    (operator.strip(), safe_limit),
+                )
+                rows = cur.fetchall()
+
+        return [cw_attempt_row_to_dict(row) for row in rows]
+
+    except Exception as exc:
+        print(exc)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to load CW practice attempts",
+        ) from exc
+
+
+@app.post("/cw-practice-attempts", status_code=201)
+def create_cw_practice_attempt(attempt: CwPracticeAttemptCreate):
+    try:
+        attempt_id = uuid4()
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    insert into cw_practice_attempts (
+                        id,
+                        operator,
+                        mode,
+                        drill,
+                        accuracy,
+                        correct_characters,
+                        total_characters,
+                        wpm,
+                        farnsworth_wpm,
+                        duration_seconds,
+                        missed_characters,
+                        character_scores
+                    )
+                    values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    returning
+                        id,
+                        operator,
+                        mode,
+                        drill,
+                        accuracy,
+                        correct_characters,
+                        total_characters,
+                        wpm,
+                        farnsworth_wpm,
+                        duration_seconds,
+                        missed_characters,
+                        character_scores,
+                        created_at
+                    """,
+                    (
+                        attempt_id,
+                        attempt.operator.strip().upper(),
+                        attempt.mode,
+                        attempt.drill,
+                        attempt.accuracy,
+                        attempt.correctCharacters,
+                        attempt.totalCharacters,
+                        attempt.wpm,
+                        attempt.farnsworthWpm,
+                        attempt.durationSeconds,
+                        Jsonb(attempt.missedCharacters),
+                        Jsonb(attempt.characterScores),
+                    ),
+                )
+                row = cur.fetchone()
+
+        return cw_attempt_row_to_dict(row)
+
+    except Exception as exc:
+        print(exc)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save CW practice attempt",
+        ) from exc
 
 
 @app.get("/sighting-reports")

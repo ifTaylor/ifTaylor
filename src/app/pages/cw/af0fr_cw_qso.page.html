@@ -1,203 +1,311 @@
-<main class="min-h-screen bg-orange-500 px-4 py-8 text-slate-950">
-    <div class="mx-auto max-w-7xl space-y-6">
-        <header class="rounded-3xl bg-slate-950 p-6 text-white shadow-xl md:p-8">
-            <div class="text-xs font-semibold uppercase tracking-[0.32em] text-orange-400">AF0FR Toolbox</div>
-            <div class="mt-3 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+<main class="min-h-screen bg-orange-500 px-3 py-4 text-slate-950 sm:px-4 sm:py-8">
+    <div class="mx-auto max-w-7xl space-y-4 sm:space-y-6">
+        <header class="rounded-2xl bg-slate-950 p-5 text-white shadow-xl sm:rounded-3xl sm:p-8">
+            <div class="flex items-start justify-between gap-4">
                 <div>
-                    <h1 class="text-3xl font-black tracking-tight md:text-5xl">CW Copy Trainer</h1>
-                    <p class="mt-2 max-w-3xl text-sm text-slate-300 md:text-base">
-                        Build clean copy, learn QSO protocol, then add the glorious messiness of an actual band.
-                    </p>
+                    <div class="text-[10px] font-semibold uppercase tracking-[0.28em] text-orange-400 sm:text-xs">AF0FR Toolbox</div>
+                    <h1 class="mt-2 text-3xl font-black tracking-tight sm:text-5xl">CW Copy Trainer</h1>
+                    <p class="mt-2 max-w-3xl text-sm text-slate-300">Clean practice, QSO protocol, and realistic on-air copy.</p>
                 </div>
-                <a href="/af0fr#toolbox" class="text-sm font-semibold text-orange-300 hover:text-orange-200">← Toolbox</a>
+                <a href="/af0fr#toolbox" class="shrink-0 text-sm font-semibold text-orange-300 hover:text-orange-200">← Back</a>
             </div>
         </header>
 
-        <section class="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
-            <div class="space-y-6">
-                <div class="rounded-3xl bg-white p-5 shadow-xl md:p-7">
-                    <h2 class="text-sm font-black uppercase tracking-widest text-slate-500">Practice set</h2>
-                    <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        <button
-                            *ngFor="let option of modes"
-                            type="button"
-                            class="rounded-2xl border-2 p-4 text-left transition"
-                            [class.border-orange-500]="mode === option.value"
-                            [class.bg-orange-50]="mode === option.value"
-                            [class.border-slate-200]="mode !== option.value"
-                            (click)="selectMode(option.value)"
-                        >
-                            <span class="block font-black">{{ option.label }}</span>
-                            <span class="mt-1 block text-xs text-slate-500">{{ option.description }}</span>
-                        </button>
-                    </div>
+        <section class="rounded-2xl bg-white p-3 shadow-xl sm:rounded-3xl sm:p-5">
+            <div class="flex gap-2 overflow-x-auto pb-1" style="scrollbar-width: none" aria-label="Practice mode">
+                <button
+                    *ngFor="let option of modes"
+                    type="button"
+                    class="min-w-max rounded-full border-2 px-4 py-2 text-sm font-black transition"
+                    [class.border-orange-500]="mode === option.value"
+                    [class.bg-orange-500]="mode === option.value"
+                    [class.text-white]="mode === option.value"
+                    [class.border-slate-200]="mode !== option.value"
+                    [class.bg-white]="mode !== option.value"
+                    (click)="selectMode(option.value)"
+                >
+                    {{ option.label }}
+                </button>
+            </div>
 
-                    <div *ngIf="mode === 'qso'" class="mt-6 rounded-2xl bg-slate-100 p-4">
-                        <label class="text-sm font-black" for="qso-stage">QSO stage</label>
-                        <select id="qso-stage" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 font-semibold" [value]="qsoStage" (change)="selectQsoStage($any($event.target).value)">
-                            <option *ngFor="let stage of qsoStages" [value]="stage.value">{{ stage.label }}</option>
-                        </select>
-                        <p class="mt-2 text-xs text-slate-500">Choose one part of the exchange, mixed practice, or a continuous complete QSO.</p>
-                    </div>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                <label *ngIf="mode === 'qso'" class="block">
+                    <span class="text-xs font-black uppercase tracking-wider text-slate-500">QSO stage</span>
+                    <select class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 font-semibold" [value]="qsoStage" (change)="selectQsoStage($any($event.target).value)">
+                        <option *ngFor="let stage of qsoStages" [value]="stage.value">{{ stage.label }}</option>
+                    </select>
+                </label>
+                <label *ngIf="mode === 'qsoWords'" class="block">
+                    <span class="text-xs font-black uppercase tracking-wider text-slate-500">Vocabulary</span>
+                    <select class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 font-semibold" [value]="wordCategory" (change)="selectWordCategory($any($event.target).value)">
+                        <option *ngFor="let category of wordCategories" [value]="category.value">{{ category.label }}</option>
+                    </select>
+                </label>
+            </div>
 
-                    <div *ngIf="mode === 'qsoWords'" class="mt-6 rounded-2xl bg-slate-100 p-4">
-                        <label class="text-sm font-black" for="word-category">Vocabulary</label>
-                        <select id="word-category" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 font-semibold" [value]="wordCategory" (change)="selectWordCategory($any($event.target).value)">
-                            <option *ngFor="let category of wordCategories" [value]="category.value">{{ category.label }}</option>
-                        </select>
-                        <p class="mt-2 text-xs text-slate-500">Missed words are automatically folded into later drills.</p>
-                    </div>
-
-                    <div class="mt-6 grid gap-5 sm:grid-cols-2">
-                        <label class="block">
-                            <span class="flex justify-between text-sm font-bold"><span>Character speed</span><span>{{ wpm }} WPM</span></span>
-                            <input aria-label="Character speed" class="mt-2 w-full accent-orange-500" type="range" min="5" max="40" [value]="wpm" (input)="updateNumber('wpm', $any($event.target).value)">
-                        </label>
-                        <label class="block">
-                            <span class="flex justify-between text-sm font-bold"><span>Farnsworth speed</span><span>{{ farnsworthWpm }} WPM</span></span>
-                            <input aria-label="Farnsworth speed" class="mt-2 w-full accent-orange-500" type="range" min="5" [max]="wpm" [value]="farnsworthWpm" (input)="updateNumber('farnsworthWpm', $any($event.target).value)">
-                            <span class="mt-1 block text-xs text-slate-500">Lower this to stretch character and word spacing.</span>
-                        </label>
-                        <label class="block">
-                            <span class="flex justify-between text-sm font-bold"><span>Tone</span><span>{{ tone }} Hz</span></span>
-                            <input aria-label="Tone frequency" class="mt-2 w-full accent-orange-500" type="range" min="350" max="900" step="25" [value]="tone" (input)="updateNumber('tone', $any($event.target).value)">
-                        </label>
-                        <label *ngIf="mode === 'letters' || mode === 'numbers' || mode === 'mixed'" class="block">
-                            <span class="flex justify-between text-sm font-bold"><span>Group size</span><span>{{ groupSize }}</span></span>
-                            <input aria-label="Group size" class="mt-2 w-full accent-orange-500" type="range" min="1" max="8" [value]="groupSize" (input)="updateNumber('groupSize', $any($event.target).value)">
-                        </label>
-                        <label *ngIf="mode !== 'qso'" class="block">
-                            <span class="flex justify-between text-sm font-bold"><span>{{ mode === 'qsoWords' ? 'Words' : 'Groups' }}</span><span>{{ groupCount }}</span></span>
-                            <input aria-label="Exercise length" class="mt-2 w-full accent-orange-500" type="range" min="1" max="10" [value]="groupCount" (input)="updateNumber('groupCount', $any($event.target).value)">
-                        </label>
-                        <label class="block">
-                            <span class="text-sm font-bold">On-air sound</span>
-                            <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 font-semibold" [value]="audioEffect" (change)="selectAudioEffect($any($event.target).value)">
-                                <option value="clean">Clean practice tone</option>
-                                <option value="light">Light noise and QSB</option>
-                                <option value="challenging">Weak and unstable</option>
-                            </select>
-                        </label>
-                    </div>
-                </div>
-
-                <div *ngIf="mode === 'qso'" class="rounded-3xl bg-white p-5 shadow-xl md:p-7">
-                    <div class="flex items-center justify-between gap-4">
-                        <div>
-                            <h2 class="text-sm font-black uppercase tracking-widest text-slate-500">My station</h2>
-                            <p class="mt-1 text-xs text-slate-500">Used to personalize calls and exchanges.</p>
-                        </div>
-                        <span *ngIf="profileSaved" class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">Saved</span>
-                    </div>
-                    <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        <label class="text-xs font-bold text-slate-500">Callsign<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.call" (input)="updateProfile('call', $any($event.target).value)"></label>
-                        <label class="text-xs font-bold text-slate-500">Name<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.name" (input)="updateProfile('name', $any($event.target).value)"></label>
-                        <label class="text-xs font-bold text-slate-500">QTH<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.qth" (input)="updateProfile('qth', $any($event.target).value)"></label>
-                        <label class="text-xs font-bold text-slate-500">Rig<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.rig" (input)="updateProfile('rig', $any($event.target).value)"></label>
-                        <label class="text-xs font-bold text-slate-500">Antenna<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.antenna" (input)="updateProfile('antenna', $any($event.target).value)"></label>
-                        <label class="text-xs font-bold text-slate-500">Power<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.power" (input)="updateProfile('power', $any($event.target).value)"></label>
-                    </div>
-                    <button type="button" class="mt-4 rounded-full bg-slate-950 px-5 py-2 text-sm font-black text-white" (click)="saveProfile()">Save station</button>
-                </div>
-
-                <div class="rounded-3xl bg-slate-950 p-5 text-white shadow-xl md:p-7">
-                    <div *ngIf="exerciseContext" class="mb-5 rounded-2xl border border-orange-400/30 bg-orange-400/10 p-4">
-                        <div class="text-xs font-black uppercase tracking-widest text-orange-300">Situation</div>
-                        <div class="mt-1 text-sm text-orange-50">{{ exerciseContext }}</div>
-                    </div>
-
-                    <div class="flex flex-wrap gap-3">
-                        <button type="button" class="rounded-full bg-orange-500 px-6 py-3 font-black text-white transition hover:bg-orange-400" (click)="newExercise()">
-                            {{ exercise ? 'New exercise' : 'Start copying' }}
-                        </button>
-                        <button *ngIf="exercise" type="button" class="rounded-full bg-slate-700 px-6 py-3 font-bold hover:bg-slate-600" (click)="isPlaying ? pause() : play()">
-                            {{ isPlaying ? 'Pause' : (isPaused ? 'Resume' : 'Replay') }}
-                        </button>
-                        <button *ngIf="exercise && (isPlaying || isPaused)" type="button" class="rounded-full border border-slate-600 px-5 py-3 text-sm font-bold text-slate-300" (click)="stop()">Stop</button>
-                    </div>
-
-                    <div *ngIf="exercise" class="mt-5" aria-live="polite">
-                        <div class="flex justify-between text-xs font-bold text-slate-400"><span>{{ isPlaying ? 'Sending…' : (isPaused ? 'Paused' : 'Ready') }}</span><span>{{ secondsRemaining }}s remaining</span></div>
-                        <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-800"><div class="h-full rounded-full bg-orange-500 transition-[width] duration-75" [style.width.%]="progressPercent"></div></div>
-                    </div>
-
-                    <label class="mt-6 block">
-                        <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Your copy</span>
-                        <textarea
-                            #copyInput
-                            class="mt-2 w-full resize-y rounded-2xl border-2 border-slate-700 bg-slate-900 px-5 py-4 font-mono text-xl font-bold uppercase tracking-wider text-white outline-none focus:border-orange-500"
-                            [value]="copy"
-                            [disabled]="!exercise"
-                            [rows]="mode === 'qso' ? 5 : 2"
-                            autocomplete="off"
-                            autocorrect="off"
-                            autocapitalize="characters"
-                            spellcheck="false"
-                            writingsuggestions="false"
-                            data-gramm="false"
-                            data-ms-editor="false"
-                            placeholder="Type what you hear…"
-                            (input)="onCopyInput($any($event.target).value)"
-                        ></textarea>
+            <details class="mt-3 rounded-xl bg-slate-100">
+                <summary class="cursor-pointer list-none px-4 py-3 text-sm font-black">
+                    <span class="flex items-center justify-between gap-3">
+                        <span>Practice settings</span>
+                        <span class="text-xs font-semibold text-slate-500">{{ wpm }}/{{ farnsworthWpm }} WPM · {{ tone }} Hz · {{ audioEffect }}</span>
+                    </span>
+                </summary>
+                <div class="grid gap-5 border-t border-slate-200 px-4 pt-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <label *ngIf="mode === 'letters'" class="block">
+                        <span class="text-sm font-bold">Letter drill</span>
+                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="letterDrill" (change)="selectDrill('letter', $any($event.target).value)"><option *ngFor="let drill of letterDrills" [value]="drill.value">{{ drill.label }}</option></select>
                     </label>
+                    <label *ngIf="mode === 'numbers'" class="block">
+                        <span class="text-sm font-bold">Number drill</span>
+                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="numberDrill" (change)="selectDrill('number', $any($event.target).value)"><option *ngFor="let drill of numberDrills" [value]="drill.value">{{ drill.label }}</option></select>
+                    </label>
+                    <label *ngIf="mode === 'mixed'" class="block">
+                        <span class="text-sm font-bold">Mixed drill</span>
+                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="mixedDrill" (change)="selectDrill('mixed', $any($event.target).value)"><option *ngFor="let drill of mixedDrills" [value]="drill.value">{{ drill.label }}</option></select>
+                    </label>
+                    <label *ngIf="mode === 'letters' && letterDrill === 'koch'" class="block">
+                        <span class="flex justify-between text-sm font-bold"><span>Koch characters</span><span>{{ kochLevel }}</span></span>
+                        <input class="mt-2 w-full accent-orange-500" type="range" min="2" max="26" [value]="kochLevel" (input)="updateNumber('kochLevel', $any($event.target).value)">
+                        <span class="mt-1 block break-all font-mono text-xs text-slate-500">{{ kochSequence.slice(0, kochLevel) }}</span>
+                    </label>
+                    <label *ngIf="mode === 'letters' && letterDrill === 'trouble'" class="block">
+                        <span class="text-sm font-bold">Trouble pair</span>
+                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="troublePair" (change)="selectOption('troublePair', $any($event.target).value)"><option *ngFor="let pair of troublePairs" [value]="pair">{{ pair.split('').join(' / ') }}</option></select>
+                    </label>
+                    <label *ngIf="(mode === 'letters' && letterDrill === 'custom') || (mode === 'mixed' && mixedDrill === 'custom')" class="block">
+                        <span class="text-sm font-bold">Custom characters</span>
+                        <input class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-mono font-bold uppercase" [value]="customCharacters" maxlength="40" autocorrect="off" spellcheck="false" (input)="updateCustomCharacters($any($event.target).value)">
+                    </label>
+                    <label *ngIf="mode === 'mixed' && mixedDrill === 'random'" class="block">
+                        <span class="flex justify-between text-sm font-bold"><span>Letters vs. numbers</span><span>{{ mixedLetterPercent }}%</span></span>
+                        <input class="mt-2 w-full accent-orange-500" type="range" min="0" max="100" step="10" [value]="mixedLetterPercent" (input)="updateNumber('mixedLetterPercent', $any($event.target).value)">
+                        <span class="mt-1 block text-xs text-slate-500">{{ mixedLetterPercent }}% letters; the remainder is numbers and punctuation.</span>
+                    </label>
+                    <label class="block">
+                        <span class="flex justify-between text-sm font-bold"><span>Character speed</span><span>{{ wpm }} WPM</span></span>
+                        <input aria-label="Character speed" class="mt-2 w-full accent-orange-500" type="range" min="5" max="40" [value]="wpm" (input)="updateNumber('wpm', $any($event.target).value)">
+                    </label>
+                    <label class="block">
+                        <span class="flex justify-between text-sm font-bold"><span>Farnsworth</span><span>{{ farnsworthWpm }} WPM</span></span>
+                        <input aria-label="Farnsworth speed" class="mt-2 w-full accent-orange-500" type="range" min="5" [max]="wpm" [value]="farnsworthWpm" (input)="updateNumber('farnsworthWpm', $any($event.target).value)">
+                    </label>
+                    <label class="block">
+                        <span class="flex justify-between text-sm font-bold"><span>Tone</span><span>{{ tone }} Hz</span></span>
+                        <input aria-label="Tone frequency" class="mt-2 w-full accent-orange-500" type="range" min="350" max="900" step="25" [value]="tone" (input)="updateNumber('tone', $any($event.target).value)">
+                    </label>
+                    <label *ngIf="isBasicMode && !instantCharacters" class="block">
+                        <span class="flex justify-between text-sm font-bold"><span>Group size</span><span>{{ groupSize }}</span></span>
+                        <input aria-label="Group size" class="mt-2 w-full accent-orange-500" type="range" min="1" max="8" [value]="groupSize" (input)="updateNumber('groupSize', $any($event.target).value)">
+                    </label>
+                    <label *ngIf="mode !== 'qso' && (!isBasicMode || timedMinutes === 0) && (!isBasicMode || !instantCharacters)" class="block">
+                        <span class="flex justify-between text-sm font-bold"><span>{{ mode === 'qsoWords' ? 'Words' : 'Groups' }}</span><span>{{ groupCount }}</span></span>
+                        <input aria-label="Exercise length" class="mt-2 w-full accent-orange-500" type="range" min="1" max="10" [value]="groupCount" (input)="updateNumber('groupCount', $any($event.target).value)">
+                    </label>
+                    <label class="block">
+                        <span class="text-sm font-bold">On-air sound</span>
+                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="audioEffect" (change)="selectAudioEffect($any($event.target).value)">
+                            <option value="clean">Clean practice tone</option>
+                            <option value="light">Light noise and QSB</option>
+                            <option value="challenging">Weak and unstable</option>
+                        </select>
+                    </label>
+                    <label *ngIf="!isBasicMode || !instantCharacters" class="block">
+                        <span class="text-sm font-bold">Repeat audio</span>
+                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="repeatCount" (change)="updateNumber('repeatCount', $any($event.target).value)"><option value="1">Once</option><option value="2">Twice</option><option value="3">Three times</option></select>
+                    </label>
+                    <label class="block">
+                        <span class="text-sm font-bold">Start countdown</span>
+                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="countdownSeconds" (change)="updateNumber('countdownSeconds', $any($event.target).value)"><option value="0">None</option><option value="1">1 second</option><option value="3">3 seconds</option><option value="5">5 seconds</option></select>
+                    </label>
+                    <label *ngIf="isBasicMode" class="block">
+                        <span class="text-sm font-bold">Exercise length</span>
+                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="timedMinutes" (change)="updateNumber('timedMinutes', $any($event.target).value)"><option value="0">Use group count</option><option value="1">1-minute stream</option><option value="3">3-minute stream</option><option value="5">5-minute stream</option></select>
+                    </label>
+                    <label class="block">
+                        <span class="text-sm font-bold">Answer reveal</span>
+                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="revealMode" (change)="selectOption('revealMode', $any($event.target).value)"><option value="check">Only after checking</option><option value="afterPlayback">After playback</option><option value="groups">One group at a time</option></select>
+                    </label>
+                </div>
+                <div class="mx-4 mt-5 grid gap-2 border-t border-slate-200 pb-4 pt-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <label *ngIf="isBasicMode" class="flex min-h-11 items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm font-bold"><input class="h-5 w-5 accent-orange-500" type="checkbox" [checked]="adaptiveCharacters" (change)="toggleSetting('adaptiveCharacters', $any($event.target).checked)">Practice missed characters</label>
+                    <label *ngIf="isBasicMode" class="flex min-h-11 items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm font-bold"><input class="h-5 w-5 accent-orange-500" type="checkbox" [checked]="adaptiveSpeed" (change)="toggleSetting('adaptiveSpeed', $any($event.target).checked)">Adaptive speed</label>
+                    <label *ngIf="isBasicMode" class="flex min-h-11 items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm font-bold"><input class="h-5 w-5 accent-orange-500" type="checkbox" [checked]="instantCharacters" (change)="toggleSetting('instantCharacters', $any($event.target).checked)">Instant character mode</label>
+                    <label class="flex min-h-11 items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm font-bold"><input class="h-5 w-5 accent-orange-500" type="checkbox" [checked]="strictSpacing" (change)="toggleSetting('strictSpacing', $any($event.target).checked)">Score spaces</label>
+                </div>
+            </details>
 
-                    <div class="mt-3 flex flex-wrap items-center gap-4">
-                        <button type="button" class="rounded-full bg-white px-6 py-3 font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-40" [disabled]="!copy.trim() || hasChecked" (click)="checkCopy()">Check copy</button>
-                        <span class="text-xs text-slate-500">Ctrl/⌘ + Enter to check · Space to play/pause · N for new</span>
-                    </div>
+            <details *ngIf="mode === 'qso'" class="mt-3 rounded-xl bg-orange-50">
+                <summary class="cursor-pointer list-none px-4 py-3 text-sm font-black">
+                    <span class="flex items-center justify-between"><span>My station</span><span class="font-mono text-xs text-slate-500">{{ profile.call }} · {{ profile.name }}</span></span>
+                </summary>
+                <div class="grid gap-3 border-t border-orange-100 px-4 pt-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <label class="text-xs font-bold text-slate-500">Callsign<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.call" (input)="updateProfile('call', $any($event.target).value)"></label>
+                    <label class="text-xs font-bold text-slate-500">Name<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.name" (input)="updateProfile('name', $any($event.target).value)"></label>
+                    <label class="text-xs font-bold text-slate-500">QTH<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.qth" (input)="updateProfile('qth', $any($event.target).value)"></label>
+                    <label class="text-xs font-bold text-slate-500">Rig<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.rig" (input)="updateProfile('rig', $any($event.target).value)"></label>
+                    <label class="text-xs font-bold text-slate-500">Antenna<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.antenna" (input)="updateProfile('antenna', $any($event.target).value)"></label>
+                    <label class="text-xs font-bold text-slate-500">Power<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.power" (input)="updateProfile('power', $any($event.target).value)"></label>
+                </div>
+                <button type="button" class="mx-4 mt-4 rounded-full bg-slate-950 px-5 py-2 text-sm font-black text-white" (click)="saveProfile()">{{ profileSaved ? 'Saved' : 'Save station' }}</button>
+            </details>
+        </section>
 
-                    <div *ngIf="hasChecked" class="mt-6 space-y-4 rounded-2xl border border-slate-700 bg-slate-900 p-5">
-                        <div>
-                            <div class="text-xs font-bold uppercase tracking-widest text-slate-400">Sent</div>
-                            <div class="mt-2 break-words font-mono text-sm text-slate-400">{{ exercise }}</div>
-                            <div class="mt-3 text-xs font-bold uppercase tracking-widest text-slate-500">Character check (spaces ignored)</div>
-                            <div class="mt-2 break-words font-mono text-xl font-black tracking-wider">
-                                <span *ngFor="let mark of expectedMarks" class="rounded-sm" [ngClass]="{'text-emerald-300': mark.status === 'correct', 'bg-red-500/30 text-red-200': mark.status === 'incorrect', 'bg-amber-400/30 text-amber-200': mark.status === 'missing'}">{{ mark.character }}</span>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="text-xs font-bold uppercase tracking-widest text-slate-400">Copied</div>
-                            <div class="mt-2 break-words font-mono text-lg tracking-wider">
-                                <span *ngFor="let mark of copyMarks" [class.text-emerald-300]="mark.status === 'correct'" [class.text-red-300]="mark.status === 'incorrect' || mark.status === 'extra'" [class.underline]="mark.status === 'extra'">{{ mark.character }}</span>
-                            </div>
-                        </div>
-                        <div class="flex flex-wrap gap-4 text-xs text-slate-300"><span><span class="text-emerald-300">Green</span> correct</span><span><span class="text-red-300">Red</span> incorrect/extra</span><span><span class="text-amber-300">Amber</span> missed</span></div>
-                        <div *ngIf="activeProsigns.length" class="border-t border-slate-700 pt-4">
-                            <div class="text-xs font-bold uppercase tracking-widest text-orange-300">Run-together prosigns heard</div>
-                            <div class="mt-2 flex flex-wrap gap-2"><span *ngFor="let item of activeProsigns" class="rounded-full bg-slate-800 px-3 py-1 text-xs"><strong>&lt;{{ item.token }}&gt;</strong> — {{ item.meaning }}</span></div>
+        <section class="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] lg:gap-6">
+            <div class="rounded-2xl bg-slate-950 p-4 text-white shadow-xl sm:rounded-3xl sm:p-7">
+                <div *ngIf="exerciseContext" class="mb-4 rounded-xl border border-orange-400/30 bg-orange-400/10 px-4 py-3">
+                    <div class="text-[10px] font-black uppercase tracking-widest text-orange-300">Situation</div>
+                    <div class="mt-1 text-sm text-orange-50">{{ exerciseContext }}</div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button type="button" class="min-h-12 flex-1 rounded-xl bg-orange-500 px-5 py-3 font-black text-white hover:bg-orange-400" (click)="newExercise()">
+                        {{ exercise ? 'New' : 'Start copying' }}
+                    </button>
+                    <button *ngIf="exercise" type="button" class="min-h-12 flex-1 rounded-xl bg-slate-700 px-5 py-3 font-bold hover:bg-slate-600" (click)="isPlaying ? pause() : play()">
+                        {{ isPlaying ? 'Pause' : (isPaused ? 'Resume' : 'Replay') }}
+                    </button>
+                    <button *ngIf="exercise && (isPlaying || isPaused)" type="button" aria-label="Stop playback" class="min-h-12 rounded-xl border border-slate-600 px-4 text-sm font-bold text-slate-300" (click)="stop()">Stop</button>
+                </div>
+
+                <div *ngIf="exercise" class="mt-4" aria-live="polite">
+                    <div class="flex justify-between text-xs font-bold text-slate-400"><span>{{ playbackStatus }}</span><span>{{ secondsRemaining }}s</span></div>
+                    <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-800"><div class="h-full rounded-full bg-orange-500 transition-[width] duration-100" [style.width.%]="progressPercent"></div></div>
+                </div>
+
+                <label class="mt-5 block">
+                    <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Your copy</span>
+                    <textarea
+                        #copyInput
+                        class="mt-2 min-h-36 w-full resize-y rounded-xl border-2 border-slate-700 bg-slate-900 px-4 py-4 font-mono text-lg font-bold uppercase tracking-wider text-white outline-none focus:border-orange-500 sm:text-xl"
+                        [value]="copy"
+                        [disabled]="!exercise"
+                        [rows]="mode === 'qso' ? 6 : 4"
+                        autocomplete="off"
+                        autocorrect="off"
+                        autocapitalize="characters"
+                        spellcheck="false"
+                        writingsuggestions="false"
+                        data-gramm="false"
+                        data-ms-editor="false"
+                        placeholder="Type what you hear…"
+                        (input)="onCopyInput($any($event.target).value)"
+                    ></textarea>
+                </label>
+
+                <div class="sticky bottom-2 z-10 mt-3 rounded-2xl bg-slate-950/95 p-2 shadow-2xl backdrop-blur">
+                    <button type="button" class="min-h-12 w-full rounded-xl bg-white px-6 py-3 font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-40" [disabled]="!copy.trim() || hasChecked" (click)="checkCopy()">Check copy</button>
+                    <button *ngIf="exercise && revealMode === 'groups' && !hasChecked" type="button" class="mt-2 min-h-11 w-full rounded-xl border border-slate-600 px-5 py-2 text-sm font-bold text-slate-200" (click)="revealNextGroup()">Reveal next group</button>
+                </div>
+
+                <div *ngIf="hasChecked || answerRevealed" class="mt-5 space-y-5 border-t border-slate-700 pt-5">
+                    <div>
+                        <div class="text-xs font-bold uppercase tracking-widest text-slate-400">Sent</div>
+                        <div class="mt-2 break-words rounded-xl bg-slate-900 p-4 font-mono text-base font-bold leading-relaxed text-orange-200">{{ revealedExercise }}</div>
+                    </div>
+                    <div *ngIf="hasChecked">
+                        <div class="text-xs font-bold uppercase tracking-widest text-slate-400">Character check <span class="normal-case tracking-normal text-slate-500">· {{ strictSpacing ? 'spaces scored as ·' : 'spaces ignored' }}</span></div>
+                        <div class="mt-2 break-words font-mono text-xl font-black tracking-wider">
+                            <span *ngFor="let mark of expectedMarks" class="rounded-sm" [ngClass]="{'text-emerald-300': mark.status === 'correct', 'bg-red-500/30 text-red-200': mark.status === 'incorrect', 'bg-amber-400/30 text-amber-200': mark.status === 'missing'}">{{ mark.character === ' ' ? '·' : mark.character }}</span>
                         </div>
                     </div>
+                    <div *ngIf="hasChecked">
+                        <div class="text-xs font-bold uppercase tracking-widest text-slate-400">Copied</div>
+                        <div class="mt-2 break-words font-mono text-lg tracking-wider">
+                            <span *ngFor="let mark of copyMarks" [class.text-emerald-300]="mark.status === 'correct'" [class.text-red-300]="mark.status === 'incorrect' || mark.status === 'extra'" [class.underline]="mark.status === 'extra'">{{ mark.character === ' ' ? '·' : mark.character }}</span>
+                        </div>
+                    </div>
+                    <div *ngIf="hasChecked" class="flex flex-wrap gap-4 text-xs text-slate-400"><span><span class="text-emerald-300">Green</span> correct</span><span><span class="text-red-300">Red</span> incorrect/extra</span><span><span class="text-amber-300">Amber</span> missed</span></div>
                 </div>
             </div>
 
-            <aside class="space-y-6">
-                <div class="rounded-3xl bg-white p-6 shadow-xl">
-                    <div class="text-sm font-black uppercase tracking-widest text-slate-500">Session</div>
-                    <div class="mt-5 grid grid-cols-2 gap-3">
-                        <div class="rounded-2xl bg-orange-50 p-4"><div class="text-3xl font-black">{{ accuracy }}%</div><div class="text-xs font-bold text-slate-500">Accuracy</div></div>
-                        <div class="rounded-2xl bg-slate-100 p-4"><div class="text-3xl font-black">{{ attempts }}</div><div class="text-xs font-bold text-slate-500">Attempts</div></div>
+            <aside class="space-y-4 sm:space-y-6">
+                <details *ngIf="(hasChecked || answerRevealed) && (mode === 'qso' || mode === 'qsoWords')" open class="rounded-2xl bg-white shadow-xl sm:rounded-3xl">
+                    <summary class="cursor-pointer list-none p-5 sm:p-6">
+                        <span class="flex items-center justify-between gap-3">
+                            <span><span class="block text-sm font-black uppercase tracking-widest text-slate-500">Term reference</span><span class="mt-1 block text-xs text-slate-400">{{ activeQsoDefinitions.length }} definitions from this exercise</span></span>
+                            <span class="rounded-full bg-orange-100 px-3 py-1 text-xs font-black text-orange-800">View</span>
+                        </span>
+                    </summary>
+                    <div class="max-h-[28rem] space-y-2 overflow-y-auto border-t border-slate-200 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
+                        <div *ngFor="let item of activeQsoDefinitions" class="rounded-xl bg-slate-100 p-3 text-sm">
+                            <div class="flex items-start justify-between gap-3">
+                                <strong class="font-mono text-slate-950">
+                                    <ng-container *ngIf="item.kind === 'Prosign'">&lt;{{ item.token }}&gt;</ng-container>
+                                    <ng-container *ngIf="item.kind !== 'Prosign'">{{ item.token }}</ng-container>
+                                </strong>
+                                <span class="text-[9px] font-black uppercase tracking-wider text-orange-700">{{ item.kind }}</span>
+                            </div>
+                            <div class="mt-1 text-xs leading-relaxed text-slate-600">{{ item.meaning }}</div>
+                        </div>
+                        <p *ngIf="!activeQsoDefinitions.length" class="text-sm text-slate-500">No abbreviated QSO terms were sent.</p>
                     </div>
-                    <button type="button" class="mt-4 text-sm font-bold text-slate-500 hover:text-slate-950" (click)="resetSession()">Reset session</button>
+                </details>
+
+                <div class="rounded-2xl bg-white p-5 shadow-xl sm:rounded-3xl sm:p-6">
+                    <div class="text-sm font-black uppercase tracking-widest text-slate-500">Session</div>
+                    <div class="mt-4 grid grid-cols-2 gap-3">
+                        <div class="rounded-xl bg-orange-50 p-3"><div class="text-3xl font-black">{{ accuracy }}%</div><div class="text-xs font-bold text-slate-500">Accuracy</div></div>
+                        <div class="rounded-xl bg-slate-100 p-3"><div class="text-3xl font-black">{{ attempts }}</div><div class="text-xs font-bold text-slate-500">Attempts</div></div>
+                    </div>
+                    <button type="button" class="mt-3 text-sm font-bold text-slate-500 hover:text-slate-950" (click)="resetSession()">Reset session</button>
                 </div>
 
-                <div *ngIf="weakWords.length" class="rounded-3xl bg-white p-6 shadow-xl">
-                    <div class="flex items-center justify-between gap-3"><h2 class="text-sm font-black uppercase tracking-widest text-slate-500">Needs review</h2><button type="button" class="text-xs font-bold text-slate-400" (click)="clearWeakWords()">Clear</button></div>
-                    <p class="mt-2 text-xs text-slate-500">These receive extra weight in QSO Words.</p>
-                    <div class="mt-4 flex flex-wrap gap-2"><span *ngFor="let item of weakWords" class="rounded-full bg-orange-100 px-3 py-1 font-mono text-sm font-black">{{ item.word }} <span class="text-orange-700">×{{ item.misses }}</span></span></div>
-                </div>
+                <details open class="rounded-2xl bg-white shadow-xl sm:rounded-3xl">
+                    <summary class="cursor-pointer list-none p-5 sm:p-6">
+                        <span class="flex items-center justify-between gap-3">
+                            <span><span class="block text-sm font-black uppercase tracking-widest text-slate-500">Progress trends</span><span class="mt-1 block text-xs text-slate-400">Last 24 attempts in each mode</span></span>
+                            <span class="h-2.5 w-2.5 rounded-full" [class.bg-emerald-500]="metricsOnline" [class.bg-slate-300]="!metricsOnline"></span>
+                        </span>
+                    </summary>
+                    <div class="space-y-5 border-t border-slate-200 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
+                        <div *ngIf="metricsLoading" class="text-sm text-slate-500">Loading practice history…</div>
+                        <div *ngFor="let trend of metricTrends">
+                            <div class="mb-2 flex items-end justify-between gap-3">
+                                <div><div class="font-black">{{ trend.label }}</div><div class="text-xs text-slate-500">{{ trend.attempts }} attempts</div></div>
+                                <div class="text-right"><div class="text-lg font-black">{{ trend.latest }}%</div><div class="text-xs text-orange-700">Avg {{ trend.average }}%</div></div>
+                            </div>
+                            <div class="rounded-xl bg-slate-100 p-2">
+                                <svg class="h-24 w-full overflow-visible" viewBox="0 0 300 100" role="img" [attr.aria-label]="trend.label + ' accuracy trend, average ' + trend.average + ' percent'" preserveAspectRatio="none">
+                                    <line x1="0" x2="300" y1="25" y2="25" stroke="#cbd5e1" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+                                    <line x1="0" x2="300" y1="50" y2="50" stroke="#cbd5e1" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+                                    <line x1="0" x2="300" y1="75" y2="75" stroke="#cbd5e1" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+                                    <line x1="0" x2="300" [attr.y1]="trend.averageY" [attr.y2]="trend.averageY" stroke="#f97316" stroke-width="2" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"></line>
+                                    <polyline [attr.points]="trend.points" fill="none" stroke="#0f172a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                        <div *ngIf="!metricsLoading && !metricTrends.length" class="rounded-xl bg-slate-100 p-4 text-sm text-slate-500">
+                            Complete a checked exercise to start a trend.
+                        </div>
+                        <div class="flex items-center justify-between gap-3 text-xs text-slate-500">
+                            <span *ngIf="pendingMetricCount">{{ pendingMetricCount }} attempt{{ pendingMetricCount === 1 ? '' : 's' }} queued for sync</span>
+                            <span *ngIf="!pendingMetricCount">{{ metricsOnline ? 'Synced with backend' : 'Backend unavailable' }}</span>
+                            <button type="button" class="font-black text-orange-700" (click)="loadPracticeMetrics()">Refresh</button>
+                        </div>
+                        <div class="flex gap-4 text-[10px] font-bold uppercase tracking-wider text-slate-400"><span><span class="mr-1 inline-block h-0.5 w-4 bg-slate-900 align-middle"></span>Attempts</span><span><span class="mr-1 inline-block w-4 border-t-2 border-dashed border-orange-500 align-middle"></span>Average</span></div>
+                    </div>
+                </details>
 
-                <div *ngIf="history.length" class="rounded-3xl bg-white p-6 shadow-xl">
-                    <h2 class="text-sm font-black uppercase tracking-widest text-slate-500">Recent copy</h2>
-                    <div class="mt-4 space-y-3">
-                        <div *ngFor="let result of history" class="rounded-2xl border p-3" [class.border-emerald-300]="result.correct" [class.bg-emerald-50]="result.correct" [class.border-slate-200]="!result.correct">
-                            <div class="flex items-center justify-between gap-2"><span class="font-black">{{ result.accuracy }}%</span><span class="text-xs text-slate-500">{{ result.wpm }}/{{ result.farnsworthWpm }} WPM</span></div>
+                <details *ngIf="weakWords.length || weakCharacters.length" class="rounded-2xl bg-white shadow-xl sm:rounded-3xl">
+                    <summary class="cursor-pointer list-none p-5 sm:p-6"><span class="flex justify-between"><span class="text-sm font-black uppercase tracking-widest text-slate-500">Needs review</span><span class="text-xs font-bold text-orange-700">{{ weakWords.length + weakCharacters.length }}</span></span></summary>
+                    <div class="border-t border-slate-200 px-5 pb-5 pt-4">
+                        <div *ngIf="weakCharacters.length" class="mb-4"><div class="mb-2 text-xs font-black uppercase tracking-wider text-slate-400">Characters</div><div class="flex flex-wrap gap-2"><span *ngFor="let item of weakCharacters" class="rounded-full bg-slate-100 px-3 py-1 font-mono text-sm font-black">{{ item.character }} ×{{ item.misses }}</span></div></div>
+                        <div *ngIf="weakWords.length"><div class="mb-2 text-xs font-black uppercase tracking-wider text-slate-400">Words</div><div class="flex flex-wrap gap-2"><span *ngFor="let item of weakWords" class="rounded-full bg-orange-100 px-3 py-1 font-mono text-sm font-black">{{ item.word }} ×{{ item.misses }}</span></div></div>
+                        <button type="button" class="mt-4 text-xs font-bold text-slate-400" (click)="clearWeakWords()">Clear review list</button>
+                    </div>
+                </details>
+
+                <details *ngIf="history.length" class="rounded-2xl bg-white shadow-xl sm:rounded-3xl">
+                    <summary class="cursor-pointer list-none p-5 sm:p-6"><span class="text-sm font-black uppercase tracking-widest text-slate-500">Recent copy</span></summary>
+                    <div class="space-y-3 border-t border-slate-200 px-5 pb-5 pt-4">
+                        <div *ngFor="let result of history" class="rounded-xl border p-3" [class.border-emerald-300]="result.correct" [class.bg-emerald-50]="result.correct" [class.border-slate-200]="!result.correct">
+                            <div class="flex items-center justify-between"><strong>{{ result.accuracy }}%</strong><span class="text-xs text-slate-500">{{ result.wpm }}/{{ result.farnsworthWpm }} WPM</span></div>
                             <div class="mt-1 text-xs font-bold text-slate-500">{{ result.mode }}<span *ngIf="result.detail"> · {{ result.detail }}</span></div>
-                            <div class="mt-2 line-clamp-2 font-mono text-xs">{{ result.expected }}</div>
                         </div>
                     </div>
-                </div>
+                </details>
 
-                <div class="rounded-3xl bg-orange-100 p-6 text-sm shadow-xl">
+                <div class="rounded-2xl bg-orange-100 p-5 text-sm shadow-xl sm:rounded-3xl sm:p-6">
                     <h2 class="font-black">Copying tip</h2>
                     <p class="mt-2 text-slate-700">Write the character you hear and move on. A blank costs one character; chasing it can cost the next five.</p>
                 </div>

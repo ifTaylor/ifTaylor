@@ -1,11 +1,17 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, HostListener, OnDestroy, ViewChild } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { environment } from '../../../environments/environment';
 
 type PracticeMode = 'letters' | 'numbers' | 'mixed' | 'callsigns' | 'qsoWords' | 'qso';
 type QsoStage = 'mixed' | 'frequency' | 'cq' | 'answer' | 'p1' | 'p2' | 'p3' | 'recovery' | 'closing' | 'complete';
 type WordCategory = 'all' | 'core' | 'prosigns' | 'qsignals' | 'abbreviations' | 'recovery' | 'ragchew';
 type AudioEffect = 'clean' | 'light' | 'challenging';
 type MarkStatus = 'correct' | 'incorrect' | 'missing' | 'extra';
+type LetterDrill = 'random' | 'koch' | 'trouble' | 'combinations' | 'vowels' | 'consonants' | 'custom';
+type NumberDrill = 'random' | 'dates' | 'times' | 'frequencies' | 'rst' | 'serials' | 'coordinates';
+type MixedDrill = 'random' | 'radio' | 'custom';
+type RevealMode = 'check' | 'afterPlayback' | 'groups';
 
 interface CharacterMark {
     character: string;
@@ -42,12 +48,44 @@ interface GeneratedExercise {
     context: string;
 }
 
+interface QsoDefinition {
+    token: string;
+    meaning: string;
+    kind: 'Prosign' | 'Q signal' | 'Abbreviation' | 'Operating term';
+}
+
+interface CwPracticeAttempt {
+    id?: string;
+    operator: string;
+    mode: PracticeMode;
+    drill: string;
+    accuracy: number;
+    correctCharacters: number;
+    totalCharacters: number;
+    wpm: number;
+    farnsworthWpm: number;
+    durationSeconds: number;
+    missedCharacters: Record<string, number>;
+    characterScores: Record<string, number>;
+    createdAt?: string;
+}
+
+interface CwTrendSeries {
+    mode: PracticeMode;
+    label: string;
+    attempts: number;
+    average: number;
+    points: string;
+    averageY: number;
+    latest: number;
+}
+
 @Component({
     standalone: true,
     imports: [CommonModule],
     templateUrl: './af0fr_cw_qso.page.html',
 })
-export class Af0frCwQsoPage implements OnDestroy {
+export class Af0frCwQsoPage implements OnInit, OnDestroy {
     @ViewChild('copyInput') copyInput?: ElementRef<HTMLTextAreaElement>;
 
     mode: PracticeMode = 'letters';
@@ -59,6 +97,21 @@ export class Af0frCwQsoPage implements OnDestroy {
     tone = 600;
     groupSize = 5;
     groupCount = 5;
+    letterDrill: LetterDrill = 'random';
+    numberDrill: NumberDrill = 'random';
+    mixedDrill: MixedDrill = 'random';
+    mixedLetterPercent = 60;
+    kochLevel = 6;
+    troublePair = 'SH';
+    customCharacters = 'ABCDE12345';
+    adaptiveCharacters = false;
+    adaptiveSpeed = false;
+    instantCharacters = false;
+    strictSpacing = false;
+    repeatCount = 1;
+    countdownSeconds = 0;
+    timedMinutes = 0;
+    revealMode: RevealMode = 'check';
 
     exercise = '';
     exerciseContext = '';
@@ -76,6 +129,13 @@ export class Af0frCwQsoPage implements OnDestroy {
     copyMarks: CharacterMark[] = [];
     weakWordCounts: Record<string, number> = {};
     profileSaved = false;
+    answerRevealed = false;
+    revealedGroupCount = 0;
+    weakCharacterCounts: Record<string, number> = {};
+    metricTrends: CwTrendSeries[] = [];
+    metricsLoading = false;
+    metricsOnline = false;
+    pendingMetricCount = 0;
 
     profile: StationProfile = {
         call: 'AF0FR',
@@ -94,6 +154,36 @@ export class Af0frCwQsoPage implements OnDestroy {
         { value: 'qsoWords', label: 'QSO Words', description: 'Prosigns, Q signals, and abbreviations' },
         { value: 'qso', label: 'QSO', description: 'Guided LICW-style on-air traffic' },
     ];
+
+    readonly letterDrills: { value: LetterDrill; label: string }[] = [
+        { value: 'random', label: 'Random groups' },
+        { value: 'koch', label: 'Koch progression' },
+        { value: 'trouble', label: 'Trouble pairs' },
+        { value: 'combinations', label: 'Common combinations' },
+        { value: 'vowels', label: 'Vowels only' },
+        { value: 'consonants', label: 'Consonants only' },
+        { value: 'custom', label: 'Custom characters' },
+    ];
+
+    readonly numberDrills: { value: NumberDrill; label: string }[] = [
+        { value: 'random', label: 'Random groups' },
+        { value: 'dates', label: 'Dates' },
+        { value: 'times', label: 'Times' },
+        { value: 'frequencies', label: 'Frequencies' },
+        { value: 'rst', label: 'RST reports' },
+        { value: 'serials', label: 'Serial numbers' },
+        { value: 'coordinates', label: 'Coordinates' },
+    ];
+
+    readonly mixedDrills: { value: MixedDrill; label: string }[] = [
+        { value: 'random', label: 'Random groups' },
+        { value: 'radio', label: 'Realistic radio data' },
+        { value: 'custom', label: 'Custom characters' },
+    ];
+
+    readonly troublePairs = ['SH', 'UV', 'MN', 'GD', 'QY', 'XZ', 'RL', 'FP'];
+    readonly kochSequence = 'KMURESNAPTLWIJZFOYVGQHBCDX';
+    readonly commonCombinations = ['TH', 'HE', 'IN', 'ER', 'AN', 'RE', 'ON', 'AT', 'EN', 'ND', 'ING', 'TION'];
 
     readonly qsoStages: { value: QsoStage; label: string }[] = [
         { value: 'mixed', label: 'Mixed stages' },
@@ -135,6 +225,84 @@ export class Af0frCwQsoPage implements OnDestroy {
         { token: 'SK', meaning: 'End of contact' },
     ];
 
+    readonly qsoGlossary: Record<string, Omit<QsoDefinition, 'token'>> = {
+        '73': { meaning: 'Best regards', kind: 'Operating term' },
+        AGE: { meaning: 'The operator’s age', kind: 'Operating term' },
+        AGN: { meaning: 'Again', kind: 'Abbreviation' },
+        'AGN?': { meaning: 'Please send that again', kind: 'Abbreviation' },
+        ANT: { meaning: 'Antenna', kind: 'Abbreviation' },
+        AR: { meaning: 'End of message; sent as one run-together character', kind: 'Prosign' },
+        AS: { meaning: 'Wait or stand by; sent as one run-together character', kind: 'Prosign' },
+        BK: { meaning: 'Break; LICW sends B and K as two separate letters', kind: 'Operating term' },
+        BEEN: { meaning: 'Used when saying how long someone has been an amateur operator', kind: 'Operating term' },
+        BT: { meaning: 'Break or separator between thoughts; sent as one run-together character', kind: 'Prosign' },
+        'CALL?': { meaning: 'Please repeat your callsign', kind: 'Operating term' },
+        CALL: { meaning: 'A call or callsign; in “TNX FER CALL,” thanks for answering', kind: 'Operating term' },
+        CLUB: { meaning: 'An amateur radio club or membership', kind: 'Operating term' },
+        CPI: { meaning: 'Copy or understand', kind: 'Abbreviation' },
+        CPY: { meaning: 'Copy or understand', kind: 'Abbreviation' },
+        CQ: { meaning: 'Calling any station', kind: 'Operating term' },
+        CUAGN: { meaning: 'See you again', kind: 'Abbreviation' },
+        CUL: { meaning: 'See you later', kind: 'Abbreviation' },
+        DE: { meaning: 'From; identifies the transmitting station', kind: 'Operating term' },
+        ES: { meaning: 'And', kind: 'Abbreviation' },
+        FB: { meaning: 'Fine business; good or excellent', kind: 'Abbreviation' },
+        FER: { meaning: 'For', kind: 'Abbreviation' },
+        FT: { meaning: 'Feet', kind: 'Abbreviation' },
+        GA: { meaning: 'Good afternoon', kind: 'Abbreviation' },
+        GE: { meaning: 'Good evening', kind: 'Abbreviation' },
+        GM: { meaning: 'Good morning', kind: 'Abbreviation' },
+        HAM: { meaning: 'Amateur radio operator', kind: 'Operating term' },
+        HPE: { meaning: 'Hope', kind: 'Abbreviation' },
+        HP: { meaning: 'Hope', kind: 'Abbreviation' },
+        HR: { meaning: 'Here', kind: 'Abbreviation' },
+        'HW?': { meaning: 'How do you copy me?', kind: 'Abbreviation' },
+        K: { meaning: 'Over; invitation for any station to transmit', kind: 'Operating term' },
+        INFO: { meaning: 'Information', kind: 'Abbreviation' },
+        KEY: { meaning: 'The device used to send Morse code', kind: 'Operating term' },
+        KN: { meaning: 'Over only to the named station; sent as one run-together character', kind: 'Prosign' },
+        'NAME?': { meaning: 'Please repeat your name', kind: 'Operating term' },
+        NAME: { meaning: 'The operator’s name', kind: 'Operating term' },
+        NIL: { meaning: 'Nothing heard or nothing received', kind: 'Abbreviation' },
+        NR: { meaning: 'Number', kind: 'Abbreviation' },
+        OM: { meaning: 'Old man; friendly term for a male operator', kind: 'Abbreviation' },
+        OP: { meaning: 'Operator or operator name', kind: 'Abbreviation' },
+        POTA: { meaning: 'Parks On The Air', kind: 'Operating term' },
+        PADDLE: { meaning: 'A keying device used with an electronic keyer', kind: 'Operating term' },
+        PSE: { meaning: 'Please', kind: 'Abbreviation' },
+        PWR: { meaning: 'Transmitter power', kind: 'Abbreviation' },
+        QRL: { meaning: 'The frequency is in use', kind: 'Q signal' },
+        'QRL?': { meaning: 'Is this frequency in use?', kind: 'Q signal' },
+        QRP: { meaning: 'Low-power operation, commonly five watts or less on CW', kind: 'Q signal' },
+        QRQ: { meaning: 'Send faster', kind: 'Q signal' },
+        QRS: { meaning: 'Send more slowly', kind: 'Q signal' },
+        QRZ: { meaning: 'Who is calling me?', kind: 'Q signal' },
+        'QRZ?': { meaning: 'Who is calling me?', kind: 'Q signal' },
+        QSL: { meaning: 'I acknowledge or confirm receipt', kind: 'Q signal' },
+        QSO: { meaning: 'A radio contact or conversation', kind: 'Q signal' },
+        QTH: { meaning: 'Station location', kind: 'Q signal' },
+        'QTH?': { meaning: 'What is your location, or please repeat your location?', kind: 'Q signal' },
+        R: { meaning: 'Received correctly', kind: 'Operating term' },
+        RIG: { meaning: 'Radio equipment', kind: 'Operating term' },
+        RPRT: { meaning: 'Report', kind: 'Abbreviation' },
+        RR: { meaning: 'Roger roger; fully received and understood', kind: 'Abbreviation' },
+        RST: { meaning: 'Readability, signal strength, and tone report', kind: 'Operating term' },
+        'RST?': { meaning: 'Please repeat the signal report', kind: 'Operating term' },
+        SK: { meaning: 'End of contact; sent as one run-together character', kind: 'Prosign' },
+        SKCC: { meaning: 'Straight Key Century Club', kind: 'Operating term' },
+        SOTA: { meaning: 'Summits On The Air', kind: 'Operating term' },
+        SRI: { meaning: 'Sorry', kind: 'Abbreviation' },
+        TEMP: { meaning: 'Temperature', kind: 'Abbreviation' },
+        TKS: { meaning: 'Thanks', kind: 'Abbreviation' },
+        TNX: { meaning: 'Thanks', kind: 'Abbreviation' },
+        TU: { meaning: 'Thank you', kind: 'Abbreviation' },
+        UR: { meaning: 'Your or you are, depending on context', kind: 'Abbreviation' },
+        W: { meaning: 'Watts of transmitter power', kind: 'Abbreviation' },
+        WX: { meaning: 'Weather', kind: 'Abbreviation' },
+        YL: { meaning: 'Young lady; traditional term for a female operator', kind: 'Abbreviation' },
+        YRS: { meaning: 'Years', kind: 'Abbreviation' },
+    };
+
     private audioContext: AudioContext | null = null;
     private activeSources: AudioScheduledSourceNode[] = [];
     private playbackTimer: number | null = null;
@@ -150,20 +318,30 @@ export class Af0frCwQsoPage implements OnDestroy {
         V: '...-', W: '.--', X: '-..-', Y: '-.--', Z: '--..',
         '0': '-----', '1': '.----', '2': '..---', '3': '...--', '4': '....-',
         '5': '.....', '6': '-....', '7': '--...', '8': '---..', '9': '----.',
-        '/': '-..-.', '?': '..--..',
+        '/': '-..-.', '?': '..--..', '.': '.-.-.-', ',': '--..--', ':': '---...', '-': '-....-',
     };
 
     private readonly joinedProsigns = new Set(['AR', 'AS', 'BT', 'KN', 'SK']);
 
-    constructor() {
+    constructor(private http: HttpClient) {
         const savedProfile = localStorage.getItem('cw-copy-profile');
         const savedWeakWords = localStorage.getItem('cw-copy-weak-words');
+        const savedWeakCharacters = localStorage.getItem('cw-copy-weak-characters');
         if (savedProfile) {
             try { this.profile = { ...this.profile, ...JSON.parse(savedProfile) }; } catch { /* keep defaults */ }
         }
         if (savedWeakWords) {
             try { this.weakWordCounts = JSON.parse(savedWeakWords); } catch { /* start fresh */ }
         }
+        if (savedWeakCharacters) {
+            try { this.weakCharacterCounts = JSON.parse(savedWeakCharacters); } catch { /* start fresh */ }
+        }
+        this.pendingMetricCount = this.readPendingMetrics().length;
+    }
+
+    ngOnInit(): void {
+        this.flushPendingMetrics();
+        this.loadPracticeMetrics();
     }
 
     get accuracy(): number {
@@ -182,6 +360,22 @@ export class Af0frCwQsoPage implements OnDestroy {
         return Math.max(0, Math.ceil(this.playbackDuration - this.playbackPosition));
     }
 
+    get isBasicMode(): boolean {
+        return this.mode === 'letters' || this.mode === 'numbers' || this.mode === 'mixed';
+    }
+
+    get playbackStatus(): string {
+        if (this.isPlaying && this.playbackPosition < this.countdownSeconds) {
+            return `Starts in ${Math.ceil(this.countdownSeconds - this.playbackPosition)}`;
+        }
+        return this.isPlaying ? 'Sending…' : this.isPaused ? 'Paused' : 'Ready';
+    }
+
+    get revealedExercise(): string {
+        if (this.hasChecked || this.revealMode !== 'groups') return this.exercise;
+        return this.exercise.split(/\s+/).slice(0, this.revealedGroupCount).join(' ');
+    }
+
     get weakWords(): { word: string; misses: number }[] {
         return Object.entries(this.weakWordCounts)
             .filter(([, misses]) => misses > 0)
@@ -190,9 +384,26 @@ export class Af0frCwQsoPage implements OnDestroy {
             .map(([word, misses]) => ({ word, misses }));
     }
 
+    get weakCharacters(): { character: string; misses: number }[] {
+        return Object.entries(this.weakCharacterCounts)
+            .filter(([, misses]) => misses > 0)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10)
+            .map(([character, misses]) => ({ character, misses }));
+    }
+
     get activeProsigns(): { token: string; meaning: string }[] {
         const tokens = new Set(this.exercise.split(/\s+/));
         return this.prosignGlossary.filter((item) => tokens.has(item.token));
+    }
+
+    get activeQsoDefinitions(): QsoDefinition[] {
+        if (this.mode !== 'qso' && this.mode !== 'qsoWords') return [];
+        const exerciseTokens = this.exercise.split(/\s+/).filter(Boolean);
+        const tokens = this.mode === 'qsoWords' ? exerciseTokens : [...new Set(exerciseTokens)];
+        return tokens
+            .filter((token) => Boolean(this.qsoGlossary[token]))
+            .map((token) => ({ token, ...this.qsoGlossary[token] }));
     }
 
     selectMode(mode: PracticeMode): void {
@@ -207,6 +418,34 @@ export class Af0frCwQsoPage implements OnDestroy {
 
     selectWordCategory(category: string): void {
         this.wordCategory = category as WordCategory;
+        this.resetExercise();
+    }
+
+    selectDrill(kind: 'letter' | 'number' | 'mixed', value: string): void {
+        if (kind === 'letter') this.letterDrill = value as LetterDrill;
+        if (kind === 'number') this.numberDrill = value as NumberDrill;
+        if (kind === 'mixed') this.mixedDrill = value as MixedDrill;
+        this.resetExercise();
+    }
+
+    selectOption(setting: 'troublePair' | 'revealMode', value: string): void {
+        if (setting === 'troublePair') this.troublePair = value;
+        else this.revealMode = value as RevealMode;
+        this.resetExercise();
+    }
+
+    updateCustomCharacters(value: string): void {
+        const supported = value.toUpperCase().split('').filter((character) => Boolean(this.morse[character]));
+        this.customCharacters = [...new Set(supported)].join('');
+        this.resetExercise();
+    }
+
+    toggleSetting(setting: 'adaptiveCharacters' | 'adaptiveSpeed' | 'instantCharacters' | 'strictSpacing', checked: boolean): void {
+        this[setting] = checked;
+        if (setting === 'instantCharacters' && checked) {
+            this.timedMinutes = 0;
+            this.repeatCount = 1;
+        }
         this.resetExercise();
     }
 
@@ -225,19 +464,23 @@ export class Af0frCwQsoPage implements OnDestroy {
         localStorage.setItem('cw-copy-profile', JSON.stringify(this.profile));
         this.profileSaved = true;
         this.resetExercise();
+        this.loadPracticeMetrics();
     }
 
-    updateNumber(setting: 'wpm' | 'farnsworthWpm' | 'tone' | 'groupSize' | 'groupCount', value: string): void {
+    updateNumber(setting: 'wpm' | 'farnsworthWpm' | 'tone' | 'groupSize' | 'groupCount' | 'kochLevel' | 'repeatCount' | 'countdownSeconds' | 'timedMinutes' | 'mixedLetterPercent', value: string): void {
         const ranges = {
             wpm: [5, 40], farnsworthWpm: [5, this.wpm], tone: [350, 900],
-            groupSize: [1, 8], groupCount: [1, 10],
+            groupSize: [1, 8], groupCount: [1, 10], kochLevel: [2, 26],
+            repeatCount: [1, 3], countdownSeconds: [0, 5], timedMinutes: [0, 5],
+            mixedLetterPercent: [0, 100],
         } as const;
         const parsed = Number(value);
         if (!Number.isFinite(parsed)) return;
+        if (setting === 'repeatCount' && this.isBasicMode && this.instantCharacters) return;
         const [minimum, maximum] = ranges[setting];
         this[setting] = Math.min(maximum, Math.max(minimum, parsed));
         if (setting === 'wpm' && this.farnsworthWpm > this.wpm) this.farnsworthWpm = this.wpm;
-        if (setting === 'groupSize' || setting === 'groupCount') this.resetExercise();
+        if (['groupSize', 'groupCount', 'kochLevel', 'repeatCount', 'countdownSeconds', 'timedMinutes', 'mixedLetterPercent'].includes(setting)) this.resetExercise();
         else {
             this.stop();
             if (this.exercise && (setting === 'wpm' || setting === 'farnsworthWpm')) this.prepareTimeline();
@@ -251,6 +494,8 @@ export class Af0frCwQsoPage implements OnDestroy {
         this.exerciseContext = generated.context;
         this.copy = '';
         this.hasChecked = false;
+        this.answerRevealed = false;
+        this.revealedGroupCount = 0;
         this.expectedMarks = [];
         this.copyMarks = [];
         this.prepareTimeline();
@@ -307,7 +552,7 @@ export class Af0frCwQsoPage implements OnDestroy {
         this.playbackOffset = offset;
         this.isPlaying = true;
         this.isPaused = false;
-        this.progressTimer = window.setInterval(() => this.updatePlaybackPosition(), 50);
+        this.progressTimer = window.setInterval(() => this.updatePlaybackPosition(), 100);
         this.playbackTimer = window.setTimeout(() => this.finishPlayback(), Math.max(0, (this.playbackDuration - offset + 0.1) * 1000));
     }
 
@@ -325,13 +570,23 @@ export class Af0frCwQsoPage implements OnDestroy {
     onCopyInput(value: string): void {
         this.copy = value.toUpperCase();
         this.hasChecked = false;
+        if (this.isBasicMode && this.instantCharacters && this.copy.trim().length === 1) {
+            window.setTimeout(() => this.checkCopy(), 0);
+        }
+    }
+
+    revealNextGroup(): void {
+        const groupTotal = this.exercise.split(/\s+/).filter(Boolean).length;
+        this.answerRevealed = true;
+        this.revealedGroupCount = Math.min(groupTotal, this.revealedGroupCount + 1);
     }
 
     checkCopy(): void {
         if (!this.exercise || !this.copy.trim()) return;
-        this.stop();
-        const expected = this.exercise.replace(/\s+/g, '');
-        const copied = this.normalize(this.copy).replaceAll(' ', '');
+        this.clearPlayback(false);
+        this.playbackPosition = this.playbackDuration;
+        const expected = this.strictSpacing ? this.normalize(this.exercise) : this.exercise.replace(/\s+/g, '');
+        const copied = this.strictSpacing ? this.normalize(this.copy) : this.normalize(this.copy).replaceAll(' ', '');
         const comparison = this.alignCharacters(expected, copied);
         const denominator = Math.max(expected.length, copied.length, 1);
         const exerciseAccuracy = Math.round((comparison.correct / denominator) * 100);
@@ -342,7 +597,9 @@ export class Af0frCwQsoPage implements OnDestroy {
         this.totalCharacters += denominator;
         this.attempts += 1;
         this.hasChecked = true;
+        this.answerRevealed = true;
         this.trackWeakWords();
+        this.trackWeakCharacters();
         this.results = [{
             expected: this.exercise,
             copied: this.normalize(this.copy),
@@ -353,6 +610,9 @@ export class Af0frCwQsoPage implements OnDestroy {
             wpm: this.wpm,
             farnsworthWpm: this.farnsworthWpm,
         }, ...this.results];
+        this.savePracticeMetric(exerciseAccuracy, comparison.correct, denominator);
+        if (this.adaptiveSpeed && this.isBasicMode) this.adjustAdaptiveSpeed(exerciseAccuracy);
+        if (this.instantCharacters && this.isBasicMode) window.setTimeout(() => this.newExercise(), 700);
     }
 
     resetSession(): void {
@@ -361,6 +621,8 @@ export class Af0frCwQsoPage implements OnDestroy {
         this.exerciseContext = '';
         this.copy = '';
         this.hasChecked = false;
+        this.answerRevealed = false;
+        this.revealedGroupCount = 0;
         this.expectedMarks = [];
         this.copyMarks = [];
         this.correctCharacters = 0;
@@ -371,7 +633,27 @@ export class Af0frCwQsoPage implements OnDestroy {
 
     clearWeakWords(): void {
         this.weakWordCounts = {};
+        this.weakCharacterCounts = {};
         localStorage.removeItem('cw-copy-weak-words');
+        localStorage.removeItem('cw-copy-weak-characters');
+    }
+
+    loadPracticeMetrics(): void {
+        const operator = this.profile.call.trim() || 'AF0FR';
+        this.metricsLoading = true;
+        const params = new HttpParams().set('operator', operator).set('limit', 300);
+        this.http.get<CwPracticeAttempt[]>(`${environment.apiUrl}/cw-practice-attempts`, { params }).subscribe({
+            next: (attempts) => {
+                this.metricsOnline = true;
+                this.metricsLoading = false;
+                this.metricTrends = this.buildMetricTrends(attempts);
+                this.applyServerCharacterScores(attempts);
+            },
+            error: () => {
+                this.metricsOnline = false;
+                this.metricsLoading = false;
+            },
+        });
     }
 
     @HostListener('document:keydown', ['$event'])
@@ -401,6 +683,8 @@ export class Af0frCwQsoPage implements OnDestroy {
         this.exerciseContext = '';
         this.copy = '';
         this.hasChecked = false;
+        this.answerRevealed = false;
+        this.revealedGroupCount = 0;
         this.expectedMarks = [];
         this.copyMarks = [];
     }
@@ -410,14 +694,77 @@ export class Af0frCwQsoPage implements OnDestroy {
         if (this.mode === 'qsoWords') return { text: this.generateQsoWords(), context: `${this.wordCategories.find((item) => item.value === this.wordCategory)?.label} drill` };
         if (this.mode === 'qso') return this.randomQsoOver();
 
-        const pools: Record<'letters' | 'numbers' | 'mixed', string> = {
-            letters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', numbers: '0123456789', mixed: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/?',
+        if (this.mode === 'letters') return this.generateLetterExercise();
+        if (this.mode === 'numbers') return this.generateNumberExercise();
+        return this.generateMixedExercise();
+    }
+
+    private generateLetterExercise(): GeneratedExercise {
+        const count = this.effectiveGroupCount();
+        let pool = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        let context = 'Random letter groups';
+        if (this.letterDrill === 'koch') {
+            pool = this.kochSequence.slice(0, this.kochLevel);
+            context = `Koch progression: first ${this.kochLevel} characters`;
+        } else if (this.letterDrill === 'trouble') {
+            pool = this.troublePair;
+            context = `Trouble-pair drill: ${this.troublePair.split('').join(' and ')}`;
+        } else if (this.letterDrill === 'custom') {
+            pool = this.customCharacters.replace(/[^A-Z]/g, '') || 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            context = `Custom letter set: ${pool}`;
+        } else if (this.letterDrill === 'vowels') {
+            pool = 'AEIOU';
+            context = 'Vowel recognition drill';
+        } else if (this.letterDrill === 'consonants') {
+            pool = 'BCDFGHJKLMNPQRSTVWXYZ';
+            context = 'Consonant recognition drill';
+        }
+
+        if (this.instantCharacters) {
+            return { text: this.weightedPick(pool), context: 'Instant character: type one answer to continue' };
+        }
+        if (this.letterDrill === 'combinations') {
+            return { text: Array.from({ length: count }, () => this.pickItem(this.commonCombinations)).join(' '), context: 'Common English letter combinations' };
+        }
+        return { text: this.randomGroups(pool, count), context };
+    }
+
+    private generateNumberExercise(): GeneratedExercise {
+        const count = this.effectiveGroupCount();
+        if (this.instantCharacters) return { text: this.weightedPick('0123456789'), context: 'Instant number: type one answer to continue' };
+        const generators: Record<NumberDrill, () => string> = {
+            random: () => Array.from({ length: this.groupSize }, () => this.weightedPick('0123456789')).join(''),
+            dates: () => `${this.randomInteger(1, 12).toString().padStart(2, '0')}/${this.randomInteger(1, 28).toString().padStart(2, '0')}/${this.randomInteger(2020, 2030)}`,
+            times: () => `${this.randomInteger(0, 23).toString().padStart(2, '0')}:${this.randomInteger(0, 59).toString().padStart(2, '0')}`,
+            frequencies: () => `${this.pickItem(['3', '7', '10', '14', '18', '21', '24', '28'])}.${this.randomInteger(0, 999).toString().padStart(3, '0')}`,
+            rst: () => `5${this.randomInteger(1, 9)}${this.randomInteger(1, 9)}`,
+            serials: () => this.randomInteger(1, 9999).toString().padStart(4, '0'),
+            coordinates: () => `${this.randomInteger(25, 49)}.${this.randomInteger(0, 999).toString().padStart(3, '0')}N ${this.randomInteger(67, 124)}.${this.randomInteger(0, 999).toString().padStart(3, '0')}W`,
         };
-        const pool = pools[this.mode];
-        return {
-            text: Array.from({ length: this.groupCount }, () => Array.from({ length: this.groupSize }, () => this.pick(pool)).join('')).join(' '),
-            context: `Copy ${this.groupCount} groups`,
+        const labels: Record<NumberDrill, string> = {
+            random: 'Random number groups', dates: 'Copy dates', times: 'Copy 24-hour times', frequencies: 'Copy amateur-band frequencies',
+            rst: 'Copy RST reports', serials: 'Copy serial numbers', coordinates: 'Copy geographic coordinates',
         };
+        return { text: Array.from({ length: count }, generators[this.numberDrill]).join(' '), context: labels[this.numberDrill] };
+    }
+
+    private generateMixedExercise(): GeneratedExercise {
+        const count = this.effectiveGroupCount();
+        const customPool = this.customCharacters || 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/?';
+        const pool = this.mixedDrill === 'custom' ? customPool : 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/?';
+        if (this.instantCharacters) return { text: this.weightedPick(pool), context: 'Instant mixed character: type one answer to continue' };
+        if (this.mixedDrill === 'radio') {
+            const data = Array.from({ length: count }, () => this.pickItem([
+                this.randomCallsign(), `RST ${this.pickItem(['599', '579', '559'])}`, `PWR ${this.pickItem(['5W', '20W', '50W', '100W'])}`,
+                `${this.pickItem(['7', '14', '21', '28'])}.${this.randomInteger(0, 999).toString().padStart(3, '0')} MHZ`,
+                `TEMP ${this.randomInteger(35, 95)}F`, `NR ${this.randomInteger(1, 999).toString().padStart(3, '0')}`,
+            ]));
+            return { text: data.join(' '), context: 'Realistic callsigns, reports, frequencies, and station data' };
+        }
+        const text = this.mixedDrill === 'random'
+            ? Array.from({ length: count }, () => Array.from({ length: this.groupSize }, () => this.randomMixedCharacter()).join('')).join(' ')
+            : this.randomGroups(pool, count);
+        return { text, context: this.mixedDrill === 'custom' ? `Custom set: ${pool}` : `Random mixed groups: ${this.mixedLetterPercent}% letters` };
     }
 
     private generateQsoWords(): string {
@@ -487,7 +834,13 @@ export class Af0frCwQsoPage implements OnDestroy {
     }
 
     private prepareTimeline(): void {
-        this.timeline = this.buildTimeline();
+        const baseTimeline = this.buildTimeline();
+        const baseDuration = baseTimeline.length ? baseTimeline[baseTimeline.length - 1].start + baseTimeline[baseTimeline.length - 1].duration : 0;
+        this.timeline = [];
+        for (let repetition = 0; repetition < this.repeatCount; repetition += 1) {
+            const offset = this.countdownSeconds + repetition * (baseDuration + 1);
+            this.timeline.push(...baseTimeline.map((event) => ({ start: event.start + offset, duration: event.duration })));
+        }
         this.playbackDuration = this.timeline.length ? this.timeline[this.timeline.length - 1].start + this.timeline[this.timeline.length - 1].duration : 0;
         this.playbackPosition = 0;
     }
@@ -545,6 +898,7 @@ export class Af0frCwQsoPage implements OnDestroy {
         this.playbackPosition = this.playbackDuration;
         this.clearPlayback(false);
         this.isPaused = false;
+        if (this.revealMode === 'afterPlayback') this.answerRevealed = true;
     }
 
     private clearPlayback(resetPosition: boolean): void {
@@ -613,6 +967,171 @@ export class Af0frCwQsoPage implements OnDestroy {
             else if (this.weakWordCounts[word]) this.weakWordCounts[word] = Math.max(0, this.weakWordCounts[word] - 1);
         });
         localStorage.setItem('cw-copy-weak-words', JSON.stringify(this.weakWordCounts));
+    }
+
+    private trackWeakCharacters(): void {
+        if (!this.isBasicMode) return;
+        this.expectedMarks.forEach((mark) => {
+            if (mark.character === ' ') return;
+            if (mark.status === 'incorrect' || mark.status === 'missing') {
+                this.weakCharacterCounts[mark.character] = (this.weakCharacterCounts[mark.character] ?? 0) + 1;
+            } else if (mark.status === 'correct' && this.weakCharacterCounts[mark.character]) {
+                this.weakCharacterCounts[mark.character] = Math.max(0, this.weakCharacterCounts[mark.character] - 1);
+            }
+        });
+        localStorage.setItem('cw-copy-weak-characters', JSON.stringify(this.weakCharacterCounts));
+    }
+
+    private savePracticeMetric(accuracy: number, correctCharacters: number, totalCharacters: number): void {
+        const missedCharacters: Record<string, number> = {};
+        const characterScores: Record<string, number> = {};
+        this.expectedMarks.forEach((mark) => {
+            if (mark.character === ' ') return;
+            if (mark.status === 'missing' || mark.status === 'incorrect') {
+                missedCharacters[mark.character] = (missedCharacters[mark.character] ?? 0) + 1;
+                characterScores[mark.character] = (characterScores[mark.character] ?? 0) + 2;
+            } else if (mark.status === 'correct') {
+                characterScores[mark.character] = (characterScores[mark.character] ?? 0) - 1;
+            }
+        });
+
+        const attempt: CwPracticeAttempt = {
+            operator: this.profile.call.trim() || 'AF0FR',
+            mode: this.mode,
+            drill: this.currentDrillName(),
+            accuracy,
+            correctCharacters,
+            totalCharacters,
+            wpm: this.wpm,
+            farnsworthWpm: this.farnsworthWpm,
+            durationSeconds: Math.round(this.playbackDuration * 10) / 10,
+            missedCharacters,
+            characterScores,
+        };
+
+        this.http.post<CwPracticeAttempt>(`${environment.apiUrl}/cw-practice-attempts`, attempt).subscribe({
+            next: () => {
+                this.metricsOnline = true;
+                this.loadPracticeMetrics();
+            },
+            error: () => {
+                this.metricsOnline = false;
+                const pending = this.readPendingMetrics();
+                pending.push(attempt);
+                localStorage.setItem('cw-pending-metrics', JSON.stringify(pending.slice(-100)));
+                this.pendingMetricCount = Math.min(100, pending.length);
+            },
+        });
+    }
+
+    private flushPendingMetrics(): void {
+        const pending = this.readPendingMetrics();
+        this.pendingMetricCount = pending.length;
+        if (!pending.length) return;
+        this.http.post<CwPracticeAttempt>(`${environment.apiUrl}/cw-practice-attempts`, pending[0]).subscribe({
+            next: () => {
+                pending.shift();
+                localStorage.setItem('cw-pending-metrics', JSON.stringify(pending));
+                this.pendingMetricCount = pending.length;
+                if (pending.length) this.flushPendingMetrics();
+                else this.loadPracticeMetrics();
+            },
+            error: () => {
+                this.metricsOnline = false;
+            },
+        });
+    }
+
+    private readPendingMetrics(): CwPracticeAttempt[] {
+        const saved = localStorage.getItem('cw-pending-metrics');
+        if (!saved) return [];
+        try { return JSON.parse(saved) as CwPracticeAttempt[]; } catch { return []; }
+    }
+
+    private buildMetricTrends(attempts: CwPracticeAttempt[]): CwTrendSeries[] {
+        return this.modes.flatMap((modeOption) => {
+            const values = attempts
+                .filter((attempt) => attempt.mode === modeOption.value)
+                .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''))
+                .slice(-24);
+            if (!values.length) return [];
+            const average = Math.round(values.reduce((sum, attempt) => sum + attempt.accuracy, 0) / values.length);
+            const points = values.map((attempt, index) => {
+                const x = values.length === 1 ? 150 : index * 300 / (values.length - 1);
+                return `${x.toFixed(1)},${100 - attempt.accuracy}`;
+            }).join(' ');
+            return [{
+                mode: modeOption.value,
+                label: modeOption.label,
+                attempts: values.length,
+                average,
+                averageY: 100 - average,
+                latest: values[values.length - 1].accuracy,
+                points,
+            }];
+        });
+    }
+
+    private applyServerCharacterScores(attempts: CwPracticeAttempt[]): void {
+        const scores: Record<string, number> = {};
+        attempts
+            .slice()
+            .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''))
+            .forEach((attempt) => {
+                Object.entries(attempt.characterScores ?? {}).forEach(([character, delta]) => {
+                    scores[character] = Math.max(0, (scores[character] ?? 0) + delta);
+                });
+            });
+        this.weakCharacterCounts = scores;
+        localStorage.setItem('cw-copy-weak-characters', JSON.stringify(scores));
+    }
+
+    private currentDrillName(): string {
+        if (this.mode === 'letters') return this.letterDrill;
+        if (this.mode === 'numbers') return this.numberDrill;
+        if (this.mode === 'mixed') return this.mixedDrill;
+        if (this.mode === 'qsoWords') return this.wordCategory;
+        if (this.mode === 'qso') return this.qsoStage;
+        return 'callsigns';
+    }
+
+    private adjustAdaptiveSpeed(score: number): void {
+        if (score >= 90 && this.wpm < 40) {
+            this.wpm += 1;
+            if (this.farnsworthWpm < this.wpm) this.farnsworthWpm += 1;
+        } else if (score < 70) {
+            if (this.farnsworthWpm > 5) this.farnsworthWpm -= 1;
+            else if (this.wpm > 5) this.wpm -= 1;
+        }
+    }
+
+    private effectiveGroupCount(): number {
+        if (this.instantCharacters) return 1;
+        return this.timedMinutes > 0
+            ? Math.max(1, Math.round(this.farnsworthWpm * this.timedMinutes * 5 / this.groupSize))
+            : this.groupCount;
+    }
+
+    private randomGroups(pool: string, count: number): string {
+        return Array.from({ length: count }, () => Array.from({ length: this.groupSize }, () => this.weightedPick(pool)).join('')).join(' ');
+    }
+
+    private weightedPick(pool: string): string {
+        if (this.adaptiveCharacters) {
+            const weakPool = pool.split('').flatMap((character) => Array(Math.min(5, this.weakCharacterCounts[character] ?? 0)).fill(character));
+            if (weakPool.length && Math.random() < 0.55) return this.pickItem(weakPool);
+        }
+        return this.pick(pool);
+    }
+
+    private randomInteger(minimum: number, maximum: number): number {
+        return minimum + Math.floor(Math.random() * (maximum - minimum + 1));
+    }
+
+    private randomMixedCharacter(): string {
+        return Math.random() * 100 < this.mixedLetterPercent
+            ? this.weightedPick('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+            : this.weightedPick('0123456789/?');
     }
 
     private randomCallsign(): string {
