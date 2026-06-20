@@ -8,9 +8,9 @@ type QsoStage = 'mixed' | 'frequency' | 'cq' | 'answer' | 'p1' | 'p2' | 'p3' | '
 type WordCategory = 'all' | 'core' | 'prosigns' | 'qsignals' | 'abbreviations' | 'recovery' | 'ragchew';
 type AudioEffect = 'clean' | 'light' | 'challenging';
 type MarkStatus = 'correct' | 'incorrect' | 'missing' | 'extra';
-type LetterDrill = 'random' | 'koch' | 'trouble' | 'combinations' | 'vowels' | 'consonants' | 'custom';
+type LetterDrill = 'random' | 'koch' | 'trouble' | 'confusions' | 'combinations' | 'vowels' | 'consonants' | 'custom';
 type NumberDrill = 'random' | 'dates' | 'times' | 'frequencies' | 'rst' | 'serials' | 'coordinates';
-type MixedDrill = 'random' | 'radio' | 'custom';
+type MixedDrill = 'random' | 'radio' | 'confusions' | 'custom';
 type RevealMode = 'check' | 'afterPlayback' | 'groups';
 
 interface CharacterMark {
@@ -67,6 +67,7 @@ interface CwPracticeAttempt {
     durationSeconds: number;
     missedCharacters: Record<string, number>;
     characterScores: Record<string, number>;
+    confusions: Record<string, number>;
     createdAt?: string;
 }
 
@@ -78,6 +79,14 @@ interface CwTrendSeries {
     points: string;
     averageY: number;
     latest: number;
+}
+
+interface CwSpeedSeries {
+    mode: PracticeMode;
+    label: string;
+    attempts: number;
+    points: { x: number; y: number; accuracy: number; wpm: number }[];
+    averagePoints: string;
 }
 
 @Component({
@@ -132,7 +141,9 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     answerRevealed = false;
     revealedGroupCount = 0;
     weakCharacterCounts: Record<string, number> = {};
+    confusionCounts: Record<string, number> = {};
     metricTrends: CwTrendSeries[] = [];
+    speedAccuracySeries: CwSpeedSeries[] = [];
     metricsLoading = false;
     metricsOnline = false;
     pendingMetricCount = 0;
@@ -159,6 +170,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         { value: 'random', label: 'Random groups' },
         { value: 'koch', label: 'Koch progression' },
         { value: 'trouble', label: 'Trouble pairs' },
+        { value: 'confusions', label: 'My confusion pairs' },
         { value: 'combinations', label: 'Common combinations' },
         { value: 'vowels', label: 'Vowels only' },
         { value: 'consonants', label: 'Consonants only' },
@@ -178,6 +190,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     readonly mixedDrills: { value: MixedDrill; label: string }[] = [
         { value: 'random', label: 'Random groups' },
         { value: 'radio', label: 'Realistic radio data' },
+        { value: 'confusions', label: 'My confusion pairs' },
         { value: 'custom', label: 'Custom characters' },
     ];
 
@@ -327,6 +340,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         const savedProfile = localStorage.getItem('cw-copy-profile');
         const savedWeakWords = localStorage.getItem('cw-copy-weak-words');
         const savedWeakCharacters = localStorage.getItem('cw-copy-weak-characters');
+        const savedConfusions = localStorage.getItem('cw-copy-confusions');
         if (savedProfile) {
             try { this.profile = { ...this.profile, ...JSON.parse(savedProfile) }; } catch { /* keep defaults */ }
         }
@@ -335,6 +349,9 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         }
         if (savedWeakCharacters) {
             try { this.weakCharacterCounts = JSON.parse(savedWeakCharacters); } catch { /* start fresh */ }
+        }
+        if (savedConfusions) {
+            try { this.confusionCounts = JSON.parse(savedConfusions); } catch { /* start fresh */ }
         }
         this.pendingMetricCount = this.readPendingMetrics().length;
     }
@@ -390,6 +407,17 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
             .sort((a, b) => b[1] - a[1])
             .slice(0, 10)
             .map(([character, misses]) => ({ character, misses }));
+    }
+
+    get topConfusions(): { expected: string; copied: string; count: number }[] {
+        return Object.entries(this.confusionCounts)
+            .filter(([, count]) => count > 0)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 8)
+            .map(([pair, count]) => {
+                const [expected, copied] = pair.split('>');
+                return { expected, copied, count };
+            });
     }
 
     get activeProsigns(): { token: string; meaning: string }[] {
@@ -600,6 +628,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         this.answerRevealed = true;
         this.trackWeakWords();
         this.trackWeakCharacters();
+        this.trackConfusions(comparison.confusions);
         this.results = [{
             expected: this.exercise,
             copied: this.normalize(this.copy),
@@ -610,7 +639,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
             wpm: this.wpm,
             farnsworthWpm: this.farnsworthWpm,
         }, ...this.results];
-        this.savePracticeMetric(exerciseAccuracy, comparison.correct, denominator);
+        this.savePracticeMetric(exerciseAccuracy, comparison.correct, denominator, comparison.confusions);
         if (this.adaptiveSpeed && this.isBasicMode) this.adjustAdaptiveSpeed(exerciseAccuracy);
         if (this.instantCharacters && this.isBasicMode) window.setTimeout(() => this.newExercise(), 700);
     }
@@ -634,8 +663,10 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     clearWeakWords(): void {
         this.weakWordCounts = {};
         this.weakCharacterCounts = {};
+        this.confusionCounts = {};
         localStorage.removeItem('cw-copy-weak-words');
         localStorage.removeItem('cw-copy-weak-characters');
+        localStorage.removeItem('cw-copy-confusions');
     }
 
     loadPracticeMetrics(): void {
@@ -647,7 +678,9 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
                 this.metricsOnline = true;
                 this.metricsLoading = false;
                 this.metricTrends = this.buildMetricTrends(attempts);
+                this.speedAccuracySeries = this.buildSpeedAccuracySeries(attempts);
                 this.applyServerCharacterScores(attempts);
+                this.applyServerConfusions(attempts);
             },
             error: () => {
                 this.metricsOnline = false;
@@ -709,6 +742,9 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         } else if (this.letterDrill === 'trouble') {
             pool = this.troublePair;
             context = `Trouble-pair drill: ${this.troublePair.split('').join(' and ')}`;
+        } else if (this.letterDrill === 'confusions') {
+            pool = this.confusionPool(true);
+            context = this.topConfusions.length ? `Targeted from your confusion history: ${this.confusionLabel(true)}` : 'No letter confusions yet; using a starter pair';
         } else if (this.letterDrill === 'custom') {
             pool = this.customCharacters.replace(/[^A-Z]/g, '') || 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
             context = `Custom letter set: ${pool}`;
@@ -753,6 +789,10 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         const customPool = this.customCharacters || 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/?';
         const pool = this.mixedDrill === 'custom' ? customPool : 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/?';
         if (this.instantCharacters) return { text: this.weightedPick(pool), context: 'Instant mixed character: type one answer to continue' };
+        if (this.mixedDrill === 'confusions') {
+            const confusionPool = this.confusionPool(false);
+            return { text: this.randomGroups(confusionPool, count), context: this.topConfusions.length ? `Targeted confusion drill: ${this.confusionLabel(false)}` : 'No confusion history yet; using B / 6 and S / H' };
+        }
         if (this.mixedDrill === 'radio') {
             const data = Array.from({ length: count }, () => this.pickItem([
                 this.randomCallsign(), `RST ${this.pickItem(['599', '579', '559'])}`, `PWR ${this.pickItem(['5W', '20W', '50W', '100W'])}`,
@@ -917,7 +957,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         }
     }
 
-    private alignCharacters(expected: string, copied: string): { expected: CharacterMark[]; copied: CharacterMark[]; correct: number } {
+    private alignCharacters(expected: string, copied: string): { expected: CharacterMark[]; copied: CharacterMark[]; correct: number; confusions: Record<string, number> } {
         const rows = expected.length + 1;
         const columns = copied.length + 1;
         const matrix = Array.from({ length: rows }, () => Array<number>(columns).fill(0));
@@ -938,6 +978,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         let row = expected.length;
         let column = copied.length;
         let correct = 0;
+        const confusions: Record<string, number> = {};
         while (row > 0 || column > 0) {
             if (row > 0 && column > 0 && expected[row - 1] === copied[column - 1] && matrix[row][column] === matrix[row - 1][column - 1]) {
                 expectedMarks.unshift({ character: expected[row - 1], status: 'correct' });
@@ -946,6 +987,8 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
             } else if (row > 0 && column > 0 && matrix[row][column] === matrix[row - 1][column - 1] + 1) {
                 expectedMarks.unshift({ character: expected[row - 1], status: 'incorrect' });
                 copiedMarks.unshift({ character: copied[column - 1], status: 'incorrect' });
+                const pair = `${expected[row - 1]}>${copied[column - 1]}`;
+                confusions[pair] = (confusions[pair] ?? 0) + 1;
                 row -= 1; column -= 1;
             } else if (row > 0 && matrix[row][column] === matrix[row - 1][column] + 1) {
                 expectedMarks.unshift({ character: expected[row - 1], status: 'missing' });
@@ -955,7 +998,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
                 column -= 1;
             }
         }
-        return { expected: expectedMarks, copied: copiedMarks, correct };
+        return { expected: expectedMarks, copied: copiedMarks, correct, confusions };
     }
 
     private trackWeakWords(): void {
@@ -982,7 +1025,14 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         localStorage.setItem('cw-copy-weak-characters', JSON.stringify(this.weakCharacterCounts));
     }
 
-    private savePracticeMetric(accuracy: number, correctCharacters: number, totalCharacters: number): void {
+    private trackConfusions(confusions: Record<string, number>): void {
+        Object.entries(confusions).forEach(([pair, count]) => {
+            this.confusionCounts[pair] = (this.confusionCounts[pair] ?? 0) + count;
+        });
+        localStorage.setItem('cw-copy-confusions', JSON.stringify(this.confusionCounts));
+    }
+
+    private savePracticeMetric(accuracy: number, correctCharacters: number, totalCharacters: number, confusions: Record<string, number>): void {
         const missedCharacters: Record<string, number> = {};
         const characterScores: Record<string, number> = {};
         this.expectedMarks.forEach((mark) => {
@@ -1007,6 +1057,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
             durationSeconds: Math.round(this.playbackDuration * 10) / 10,
             missedCharacters,
             characterScores,
+            confusions,
         };
 
         this.http.post<CwPracticeAttempt>(`${environment.apiUrl}/cw-practice-attempts`, attempt).subscribe({
@@ -1072,6 +1123,30 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         });
     }
 
+    private buildSpeedAccuracySeries(attempts: CwPracticeAttempt[]): CwSpeedSeries[] {
+        return this.modes.flatMap((modeOption) => {
+            const values = attempts.filter((attempt) => attempt.mode === modeOption.value).slice(0, 80);
+            if (!values.length) return [];
+            const points = values.map((attempt) => ({
+                x: Math.max(0, Math.min(300, (attempt.wpm - 5) * 300 / 35)),
+                y: 100 - attempt.accuracy,
+                accuracy: attempt.accuracy,
+                wpm: attempt.wpm,
+            }));
+            const buckets = new Map<number, number[]>();
+            values.forEach((attempt) => buckets.set(attempt.wpm, [...(buckets.get(attempt.wpm) ?? []), attempt.accuracy]));
+            const averagePoints = [...buckets.entries()]
+                .sort((a, b) => a[0] - b[0])
+                .map(([wpm, scores]) => {
+                    const x = Math.max(0, Math.min(300, (wpm - 5) * 300 / 35));
+                    const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+                    return `${x.toFixed(1)},${(100 - average).toFixed(1)}`;
+                })
+                .join(' ');
+            return [{ mode: modeOption.value, label: modeOption.label, attempts: values.length, points, averagePoints }];
+        });
+    }
+
     private applyServerCharacterScores(attempts: CwPracticeAttempt[]): void {
         const scores: Record<string, number> = {};
         attempts
@@ -1084,6 +1159,17 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
             });
         this.weakCharacterCounts = scores;
         localStorage.setItem('cw-copy-weak-characters', JSON.stringify(scores));
+    }
+
+    private applyServerConfusions(attempts: CwPracticeAttempt[]): void {
+        const confusions: Record<string, number> = {};
+        attempts.slice(0, 100).forEach((attempt) => {
+            Object.entries(attempt.confusions ?? {}).forEach(([pair, count]) => {
+                confusions[pair] = (confusions[pair] ?? 0) + count;
+            });
+        });
+        this.confusionCounts = confusions;
+        localStorage.setItem('cw-copy-confusions', JSON.stringify(confusions));
     }
 
     private currentDrillName(): string {
@@ -1132,6 +1218,23 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         return Math.random() * 100 < this.mixedLetterPercent
             ? this.weightedPick('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
             : this.weightedPick('0123456789/?');
+    }
+
+    private confusionPool(lettersOnly: boolean): string {
+        const characters = this.topConfusions
+            .filter((item) => !lettersOnly || (/^[A-Z]$/.test(item.expected) && /^[A-Z]$/.test(item.copied)))
+            .slice(0, 4)
+            .flatMap((item) => [item.expected, item.copied])
+            .filter((character) => Boolean(this.morse[character]));
+        return [...new Set(characters)].join('') || (lettersOnly ? this.troublePair : 'B6SH');
+    }
+
+    private confusionLabel(lettersOnly: boolean): string {
+        const pairs = this.topConfusions
+            .filter((item) => !lettersOnly || (/^[A-Z]$/.test(item.expected) && /^[A-Z]$/.test(item.copied)))
+            .slice(0, 4)
+            .map((item) => `${item.expected}→${item.copied}`);
+        return pairs.join(', ') || (lettersOnly ? this.troublePair.split('').join(' / ') : 'B→6, S→H');
     }
 
     private randomCallsign(): string {

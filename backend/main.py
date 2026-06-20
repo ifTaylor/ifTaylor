@@ -95,6 +95,7 @@ class CwPracticeAttemptCreate(BaseModel):
     durationSeconds: float = Field(default=0, ge=0, le=7200)
     missedCharacters: dict[str, int] = Field(default_factory=dict)
     characterScores: dict[str, int] = Field(default_factory=dict)
+    confusions: dict[str, int] = Field(default_factory=dict)
 
 
 def get_connection():
@@ -119,6 +120,7 @@ def ensure_cw_metrics_table():
                     duration_seconds double precision not null default 0,
                     missed_characters jsonb not null default '{}'::jsonb,
                     character_scores jsonb not null default '{}'::jsonb,
+                    confusions jsonb not null default '{}'::jsonb,
                     created_at timestamptz not null default now()
                 )
                 """
@@ -127,6 +129,12 @@ def ensure_cw_metrics_table():
                 """
                 alter table cw_practice_attempts
                 add column if not exists character_scores jsonb not null default '{}'::jsonb
+                """
+            )
+            cur.execute(
+                """
+                alter table cw_practice_attempts
+                add column if not exists confusions jsonb not null default '{}'::jsonb
                 """
             )
             cur.execute(
@@ -219,7 +227,8 @@ def cw_attempt_row_to_dict(row):
         "durationSeconds": row[9],
         "missedCharacters": row[10] or {},
         "characterScores": row[11] or {},
-        "createdAt": row[12].isoformat(),
+        "confusions": row[12] or {},
+        "createdAt": row[13].isoformat(),
     }
 
 
@@ -332,6 +341,7 @@ def list_cw_practice_attempts(operator: str, limit: int = 300):
                         duration_seconds,
                         missed_characters,
                         character_scores,
+                        confusions,
                         created_at
                     from cw_practice_attempts
                     where upper(operator) = upper(%s)
@@ -372,9 +382,10 @@ def create_cw_practice_attempt(attempt: CwPracticeAttemptCreate):
                         farnsworth_wpm,
                         duration_seconds,
                         missed_characters,
-                        character_scores
+                        character_scores,
+                        confusions
                     )
-                    values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     returning
                         id,
                         operator,
@@ -388,6 +399,7 @@ def create_cw_practice_attempt(attempt: CwPracticeAttemptCreate):
                         duration_seconds,
                         missed_characters,
                         character_scores,
+                        confusions,
                         created_at
                     """,
                     (
@@ -403,6 +415,7 @@ def create_cw_practice_attempt(attempt: CwPracticeAttemptCreate):
                         attempt.durationSeconds,
                         Jsonb(attempt.missedCharacters),
                         Jsonb(attempt.characterScores),
+                        Jsonb(attempt.confusions),
                     ),
                 )
                 row = cur.fetchone()
