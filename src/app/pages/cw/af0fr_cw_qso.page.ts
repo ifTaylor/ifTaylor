@@ -92,9 +92,9 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     qsoStage: QsoStage = 'mixed';
     wordCategory: WordCategory = 'all';
     audioEffect: AudioEffect = 'clean';
-    wpm = 15;
-    farnsworthWpm = 10;
-    tone = 600;
+    wpm = 17;
+    farnsworthWpm = 5;
+    tone = 550;
     groupSize = 5;
     groupCount = 5;
     letterDrill: LetterDrill = 'random';
