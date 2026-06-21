@@ -27,6 +27,7 @@ interface CopyResult {
     detail: string;
     wpm: number;
     farnsworthWpm: number;
+    effectiveCopyWpm: number;
 }
 
 interface StationProfile {
@@ -79,14 +80,30 @@ interface CwTrendSeries {
     points: string;
     averageY: number;
     latest: number;
+    drill: string;
+    wpm: number;
+    farnsworthWpm: number;
 }
 
 interface CwSpeedSeries {
     mode: PracticeMode;
     label: string;
     attempts: number;
-    points: { x: number; y: number; accuracy: number; wpm: number }[];
+    drill: string;
+    characterWpm: number;
+    points: { x: number; y: number; accuracy: number; characterWpm: number; farnsworthWpm: number }[];
     averagePoints: string;
+}
+
+interface CwProficiency {
+    mode: PracticeMode;
+    label: string;
+    drill: string;
+    characterWpm: number;
+    provenFarnsworthWpm: number | null;
+    candidateFarnsworthWpm: number;
+    candidateAccuracy: number;
+    candidateCharacters: number;
 }
 
 @Component({
@@ -144,6 +161,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     confusionCounts: Record<string, number> = {};
     metricTrends: CwTrendSeries[] = [];
     speedAccuracySeries: CwSpeedSeries[] = [];
+    proficiencySummaries: CwProficiency[] = [];
     metricsLoading = false;
     metricsOnline = false;
     pendingMetricCount = 0;
@@ -367,6 +385,10 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
 
     get history(): CopyResult[] {
         return this.results.slice(0, 5);
+    }
+
+    get effectiveCopyWpm(): number {
+        return Math.round(this.farnsworthWpm * this.accuracy) / 100;
     }
 
     get progressPercent(): number {
@@ -638,6 +660,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
             detail: this.mode === 'qso' ? this.qsoStages.find((item) => item.value === this.qsoStage)?.label ?? '' : this.mode === 'qsoWords' ? this.wordCategories.find((item) => item.value === this.wordCategory)?.label ?? '' : '',
             wpm: this.wpm,
             farnsworthWpm: this.farnsworthWpm,
+            effectiveCopyWpm: Math.round(this.farnsworthWpm * exerciseAccuracy) / 100,
         }, ...this.results];
         this.savePracticeMetric(exerciseAccuracy, comparison.correct, denominator, comparison.confusions);
         if (this.adaptiveSpeed && this.isBasicMode) this.adjustAdaptiveSpeed(exerciseAccuracy);
@@ -679,6 +702,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
                 this.metricsLoading = false;
                 this.metricTrends = this.buildMetricTrends(attempts);
                 this.speedAccuracySeries = this.buildSpeedAccuracySeries(attempts);
+                this.proficiencySummaries = this.buildProficiencySummaries(attempts);
                 this.applyServerCharacterScores(attempts);
                 this.applyServerConfusions(attempts);
             },
@@ -1100,51 +1124,132 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     }
 
     private buildMetricTrends(attempts: CwPracticeAttempt[]): CwTrendSeries[] {
-        return this.modes.flatMap((modeOption) => {
-            const values = attempts
-                .filter((attempt) => attempt.mode === modeOption.value)
+        const cohorts = new Map<string, CwPracticeAttempt[]>();
+        attempts.forEach((attempt) => {
+            const key = `${attempt.mode}|${attempt.drill}|${attempt.wpm}|${attempt.farnsworthWpm}`;
+            cohorts.set(key, [...(cohorts.get(key) ?? []), attempt]);
+        });
+
+        return [...cohorts.values()].map((cohort) => {
+            const values = cohort
                 .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''))
                 .slice(-24);
-            if (!values.length) return [];
-            const average = Math.round(values.reduce((sum, attempt) => sum + attempt.accuracy, 0) / values.length);
+            const sample = values[values.length - 1];
+            const totalCharacters = values.reduce((sum, attempt) => sum + attempt.totalCharacters, 0);
+            const correctCharacters = values.reduce((sum, attempt) => sum + attempt.correctCharacters, 0);
+            const average = Math.round(correctCharacters * 100 / Math.max(1, totalCharacters));
             const points = values.map((attempt, index) => {
                 const x = values.length === 1 ? 150 : index * 300 / (values.length - 1);
                 return `${x.toFixed(1)},${100 - attempt.accuracy}`;
             }).join(' ');
-            return [{
-                mode: modeOption.value,
-                label: modeOption.label,
+            return {
+                mode: sample.mode,
+                label: this.modeLabel(sample.mode),
                 attempts: values.length,
                 average,
                 averageY: 100 - average,
-                latest: values[values.length - 1].accuracy,
+                latest: sample.accuracy,
                 points,
-            }];
-        });
+                drill: sample.drill,
+                wpm: sample.wpm,
+                farnsworthWpm: sample.farnsworthWpm,
+            };
+        })
+            .sort((a, b) => this.latestAttemptTime(cohorts.get(`${b.mode}|${b.drill}|${b.wpm}|${b.farnsworthWpm}`) ?? [])
+                .localeCompare(this.latestAttemptTime(cohorts.get(`${a.mode}|${a.drill}|${a.wpm}|${a.farnsworthWpm}`) ?? [])))
+            .slice(0, 12);
     }
 
     private buildSpeedAccuracySeries(attempts: CwPracticeAttempt[]): CwSpeedSeries[] {
-        return this.modes.flatMap((modeOption) => {
-            const values = attempts.filter((attempt) => attempt.mode === modeOption.value).slice(0, 80);
-            if (!values.length) return [];
+        const cohorts = new Map<string, CwPracticeAttempt[]>();
+        attempts.forEach((attempt) => {
+            const key = `${attempt.mode}|${attempt.drill}|${attempt.wpm}`;
+            cohorts.set(key, [...(cohorts.get(key) ?? []), attempt]);
+        });
+
+        return [...cohorts.values()].map((cohort) => {
+            const values = cohort.slice(0, 80);
+            const sample = values[0];
             const points = values.map((attempt) => ({
-                x: Math.max(0, Math.min(300, (attempt.wpm - 5) * 300 / 35)),
+                x: Math.max(0, Math.min(300, (attempt.farnsworthWpm - 5) * 300 / 35)),
                 y: 100 - attempt.accuracy,
                 accuracy: attempt.accuracy,
-                wpm: attempt.wpm,
+                characterWpm: attempt.wpm,
+                farnsworthWpm: attempt.farnsworthWpm,
             }));
-            const buckets = new Map<number, number[]>();
-            values.forEach((attempt) => buckets.set(attempt.wpm, [...(buckets.get(attempt.wpm) ?? []), attempt.accuracy]));
+            const buckets = new Map<number, CwPracticeAttempt[]>();
+            values.forEach((attempt) => buckets.set(attempt.farnsworthWpm, [...(buckets.get(attempt.farnsworthWpm) ?? []), attempt]));
             const averagePoints = [...buckets.entries()]
                 .sort((a, b) => a[0] - b[0])
-                .map(([wpm, scores]) => {
-                    const x = Math.max(0, Math.min(300, (wpm - 5) * 300 / 35));
-                    const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+                .map(([farnsworthWpm, bucket]) => {
+                    const x = Math.max(0, Math.min(300, (farnsworthWpm - 5) * 300 / 35));
+                    const total = bucket.reduce((sum, attempt) => sum + attempt.totalCharacters, 0);
+                    const correct = bucket.reduce((sum, attempt) => sum + attempt.correctCharacters, 0);
+                    const average = correct * 100 / Math.max(1, total);
                     return `${x.toFixed(1)},${(100 - average).toFixed(1)}`;
                 })
                 .join(' ');
-            return [{ mode: modeOption.value, label: modeOption.label, attempts: values.length, points, averagePoints }];
+            return {
+                mode: sample.mode,
+                label: this.modeLabel(sample.mode),
+                drill: sample.drill,
+                characterWpm: sample.wpm,
+                attempts: values.length,
+                points,
+                averagePoints,
+            };
+        })
+            .sort((a, b) => this.latestAttemptTime(cohorts.get(`${b.mode}|${b.drill}|${b.characterWpm}`) ?? [])
+                .localeCompare(this.latestAttemptTime(cohorts.get(`${a.mode}|${a.drill}|${a.characterWpm}`) ?? [])))
+            .slice(0, 12);
+    }
+
+    private buildProficiencySummaries(attempts: CwPracticeAttempt[]): CwProficiency[] {
+        const cohorts = new Map<string, CwPracticeAttempt[]>();
+        attempts.forEach((attempt) => {
+            const key = `${attempt.mode}|${attempt.drill}|${attempt.wpm}`;
+            cohorts.set(key, [...(cohorts.get(key) ?? []), attempt]);
         });
+
+        return [...cohorts.values()].map((cohort) => {
+            const sample = cohort[0];
+            const speeds = new Map<number, CwPracticeAttempt[]>();
+            cohort.forEach((attempt) => speeds.set(attempt.farnsworthWpm, [...(speeds.get(attempt.farnsworthWpm) ?? []), attempt]));
+            const buckets = [...speeds.entries()].map(([farnsworthWpm, values]) => {
+                const characters = values.reduce((sum, attempt) => sum + attempt.totalCharacters, 0);
+                const correct = values.reduce((sum, attempt) => sum + attempt.correctCharacters, 0);
+                return { farnsworthWpm, characters, accuracy: Math.round(correct * 100 / Math.max(1, characters)) };
+            });
+            const proven = buckets
+                .filter((bucket) => bucket.characters >= 100 && bucket.accuracy >= 90)
+                .sort((a, b) => b.farnsworthWpm - a.farnsworthWpm)[0];
+            const candidate = buckets
+                .slice()
+                .sort((a, b) => (b.accuracy >= 90 ? 1 : 0) - (a.accuracy >= 90 ? 1 : 0)
+                    || b.farnsworthWpm - a.farnsworthWpm
+                    || b.accuracy - a.accuracy)[0];
+            return {
+                mode: sample.mode,
+                label: this.modeLabel(sample.mode),
+                drill: sample.drill,
+                characterWpm: sample.wpm,
+                provenFarnsworthWpm: proven?.farnsworthWpm ?? null,
+                candidateFarnsworthWpm: candidate.farnsworthWpm,
+                candidateAccuracy: candidate.accuracy,
+                candidateCharacters: candidate.characters,
+            };
+        })
+            .sort((a, b) => this.latestAttemptTime(cohorts.get(`${b.mode}|${b.drill}|${b.characterWpm}`) ?? [])
+                .localeCompare(this.latestAttemptTime(cohorts.get(`${a.mode}|${a.drill}|${a.characterWpm}`) ?? [])))
+            .slice(0, 12);
+    }
+
+    private modeLabel(mode: PracticeMode): string {
+        return this.modes.find((item) => item.value === mode)?.label ?? mode;
+    }
+
+    private latestAttemptTime(attempts: CwPracticeAttempt[]): string {
+        return attempts.reduce((latest, attempt) => (attempt.createdAt ?? '') > latest ? (attempt.createdAt ?? '') : latest, '');
     }
 
     private applyServerCharacterScores(attempts: CwPracticeAttempt[]): void {
@@ -1182,9 +1287,9 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     }
 
     private adjustAdaptiveSpeed(score: number): void {
-        if (score >= 90 && this.wpm < 40) {
-            this.wpm += 1;
+        if (score >= 90) {
             if (this.farnsworthWpm < this.wpm) this.farnsworthWpm += 1;
+            else if (this.wpm < 40) this.wpm += 1;
         } else if (score < 70) {
             if (this.farnsworthWpm > 5) this.farnsworthWpm -= 1;
             else if (this.wpm > 5) this.wpm -= 1;
