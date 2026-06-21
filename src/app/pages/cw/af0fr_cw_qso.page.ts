@@ -72,38 +72,54 @@ interface CwPracticeAttempt {
     createdAt?: string;
 }
 
-interface CwTrendSeries {
-    mode: PracticeMode;
+interface CwTrendTrace {
+    key: string;
     label: string;
+    color: string;
     attempts: number;
     average: number;
     points: string;
-    averageY: number;
     latest: number;
+}
+
+interface CwTrendSeries {
+    mode: PracticeMode;
+    label: string;
     drill: string;
-    wpm: number;
-    farnsworthWpm: number;
+    attempts: number;
+    traces: CwTrendTrace[];
+}
+
+interface CwSpeedTrace {
+    key: string;
+    label: string;
+    color: string;
+    attempts: number;
+    points: { x: number; y: number; accuracy: number; characterWpm: number; farnsworthWpm: number }[];
+    averagePoints: string;
 }
 
 interface CwSpeedSeries {
     mode: PracticeMode;
     label: string;
-    attempts: number;
     drill: string;
+    attempts: number;
+    traces: CwSpeedTrace[];
+}
+
+interface CwProficiencySpeed {
     characterWpm: number;
-    points: { x: number; y: number; accuracy: number; characterWpm: number; farnsworthWpm: number }[];
-    averagePoints: string;
+    provenFarnsworthWpm: number | null;
+    candidateFarnsworthWpm: number;
+    candidateAccuracy: number;
+    candidateCharacters: number;
 }
 
 interface CwProficiency {
     mode: PracticeMode;
     label: string;
     drill: string;
-    characterWpm: number;
-    provenFarnsworthWpm: number | null;
-    candidateFarnsworthWpm: number;
-    candidateAccuracy: number;
-    candidateCharacters: number;
+    speeds: CwProficiencySpeed[];
 }
 
 @Component({
@@ -165,6 +181,9 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     metricsLoading = false;
     metricsOnline = false;
     pendingMetricCount = 0;
+    hiddenMetricTraces = new Set<string>();
+
+    private readonly metricColors = ['#0f172a', '#f97316', '#0284c7', '#16a34a', '#9333ea', '#dc2626', '#ca8a04', '#0891b2'];
 
     profile: StationProfile = {
         call: 'AF0FR',
@@ -389,6 +408,16 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
 
     get effectiveCopyWpm(): number {
         return Math.round(this.farnsworthWpm * this.accuracy) / 100;
+    }
+
+    isMetricTraceVisible(chart: 'trend' | 'speed', series: CwTrendSeries | CwSpeedSeries, traceKey: string): boolean {
+        return !this.hiddenMetricTraces.has(this.metricTraceKey(chart, series.mode, series.drill, traceKey));
+    }
+
+    toggleMetricTrace(chart: 'trend' | 'speed', series: CwTrendSeries | CwSpeedSeries, traceKey: string): void {
+        const key = this.metricTraceKey(chart, series.mode, series.drill, traceKey);
+        if (this.hiddenMetricTraces.has(key)) this.hiddenMetricTraces.delete(key);
+        else this.hiddenMetricTraces.add(key);
     }
 
     get progressPercent(): number {
@@ -1124,123 +1153,161 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     }
 
     private buildMetricTrends(attempts: CwPracticeAttempt[]): CwTrendSeries[] {
-        const cohorts = new Map<string, CwPracticeAttempt[]>();
+        const seriesGroups = new Map<string, CwPracticeAttempt[]>();
         attempts.forEach((attempt) => {
-            const key = `${attempt.mode}|${attempt.drill}|${attempt.wpm}|${attempt.farnsworthWpm}`;
-            cohorts.set(key, [...(cohorts.get(key) ?? []), attempt]);
+            const key = `${attempt.mode}|${attempt.drill}`;
+            seriesGroups.set(key, [...(seriesGroups.get(key) ?? []), attempt]);
         });
 
-        return [...cohorts.values()].map((cohort) => {
-            const values = cohort
-                .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''))
-                .slice(-24);
-            const sample = values[values.length - 1];
-            const totalCharacters = values.reduce((sum, attempt) => sum + attempt.totalCharacters, 0);
-            const correctCharacters = values.reduce((sum, attempt) => sum + attempt.correctCharacters, 0);
-            const average = Math.round(correctCharacters * 100 / Math.max(1, totalCharacters));
-            const points = values.map((attempt, index) => {
-                const x = values.length === 1 ? 150 : index * 300 / (values.length - 1);
-                return `${x.toFixed(1)},${100 - attempt.accuracy}`;
-            }).join(' ');
+        return [...seriesGroups.values()].map((seriesAttempts) => {
+            const sample = seriesAttempts[0];
+            const timeline = seriesAttempts
+                .slice()
+                .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
+            const timelinePositions = new Map(timeline.map((attempt, index) => [attempt, index]));
+            const traceGroups = new Map<string, CwPracticeAttempt[]>();
+            seriesAttempts.forEach((attempt) => {
+                const key = `${attempt.wpm}/${attempt.farnsworthWpm}`;
+                traceGroups.set(key, [...(traceGroups.get(key) ?? []), attempt]);
+            });
+            const traces = [...traceGroups.entries()]
+                .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+                .map(([key, traceAttempts], index) => {
+                    const values = traceAttempts
+                        .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''))
+                        .slice(-24);
+                    const totalCharacters = values.reduce((sum, attempt) => sum + attempt.totalCharacters, 0);
+                    const correctCharacters = values.reduce((sum, attempt) => sum + attempt.correctCharacters, 0);
+                    const points = values.map((attempt) => {
+                        const timelineIndex = timelinePositions.get(attempt) ?? 0;
+                        const x = timeline.length === 1 ? 150 : timelineIndex * 300 / (timeline.length - 1);
+                        return `${x.toFixed(1)},${100 - attempt.accuracy}`;
+                    }).join(' ');
+                    return {
+                        key,
+                        label: `${key} WPM`,
+                        color: this.metricColors[index % this.metricColors.length],
+                        attempts: values.length,
+                        average: Math.round(correctCharacters * 100 / Math.max(1, totalCharacters)),
+                        latest: values[values.length - 1].accuracy,
+                        points,
+                    };
+                });
             return {
                 mode: sample.mode,
                 label: this.modeLabel(sample.mode),
-                attempts: values.length,
-                average,
-                averageY: 100 - average,
-                latest: sample.accuracy,
-                points,
                 drill: sample.drill,
-                wpm: sample.wpm,
-                farnsworthWpm: sample.farnsworthWpm,
+                attempts: seriesAttempts.length,
+                traces,
             };
         })
-            .sort((a, b) => this.latestAttemptTime(cohorts.get(`${b.mode}|${b.drill}|${b.wpm}|${b.farnsworthWpm}`) ?? [])
-                .localeCompare(this.latestAttemptTime(cohorts.get(`${a.mode}|${a.drill}|${a.wpm}|${a.farnsworthWpm}`) ?? [])))
+            .sort((a, b) => this.latestAttemptTime(seriesGroups.get(`${b.mode}|${b.drill}`) ?? [])
+                .localeCompare(this.latestAttemptTime(seriesGroups.get(`${a.mode}|${a.drill}`) ?? [])))
             .slice(0, 12);
     }
 
     private buildSpeedAccuracySeries(attempts: CwPracticeAttempt[]): CwSpeedSeries[] {
-        const cohorts = new Map<string, CwPracticeAttempt[]>();
+        const seriesGroups = new Map<string, CwPracticeAttempt[]>();
         attempts.forEach((attempt) => {
-            const key = `${attempt.mode}|${attempt.drill}|${attempt.wpm}`;
-            cohorts.set(key, [...(cohorts.get(key) ?? []), attempt]);
+            const key = `${attempt.mode}|${attempt.drill}`;
+            seriesGroups.set(key, [...(seriesGroups.get(key) ?? []), attempt]);
         });
 
-        return [...cohorts.values()].map((cohort) => {
-            const values = cohort.slice(0, 80);
-            const sample = values[0];
-            const points = values.map((attempt) => ({
-                x: Math.max(0, Math.min(300, (attempt.farnsworthWpm - 5) * 300 / 35)),
-                y: 100 - attempt.accuracy,
-                accuracy: attempt.accuracy,
-                characterWpm: attempt.wpm,
-                farnsworthWpm: attempt.farnsworthWpm,
-            }));
-            const buckets = new Map<number, CwPracticeAttempt[]>();
-            values.forEach((attempt) => buckets.set(attempt.farnsworthWpm, [...(buckets.get(attempt.farnsworthWpm) ?? []), attempt]));
-            const averagePoints = [...buckets.entries()]
-                .sort((a, b) => a[0] - b[0])
-                .map(([farnsworthWpm, bucket]) => {
-                    const x = Math.max(0, Math.min(300, (farnsworthWpm - 5) * 300 / 35));
-                    const total = bucket.reduce((sum, attempt) => sum + attempt.totalCharacters, 0);
-                    const correct = bucket.reduce((sum, attempt) => sum + attempt.correctCharacters, 0);
-                    const average = correct * 100 / Math.max(1, total);
-                    return `${x.toFixed(1)},${(100 - average).toFixed(1)}`;
-                })
-                .join(' ');
+        return [...seriesGroups.values()].map((seriesAttempts) => {
+            const sample = seriesAttempts[0];
+            const traceGroups = new Map<number, CwPracticeAttempt[]>();
+            seriesAttempts.forEach((attempt) => traceGroups.set(attempt.wpm, [...(traceGroups.get(attempt.wpm) ?? []), attempt]));
+            const traces = [...traceGroups.entries()]
+                .sort(([a], [b]) => a - b)
+                .map(([characterWpm, traceAttempts], index) => {
+                    const values = traceAttempts.slice(0, 80);
+                    const points = values.map((attempt) => ({
+                        x: Math.max(0, Math.min(300, (attempt.farnsworthWpm - 5) * 300 / 35)),
+                        y: 100 - attempt.accuracy,
+                        accuracy: attempt.accuracy,
+                        characterWpm: attempt.wpm,
+                        farnsworthWpm: attempt.farnsworthWpm,
+                    }));
+                    const buckets = new Map<number, CwPracticeAttempt[]>();
+                    values.forEach((attempt) => buckets.set(attempt.farnsworthWpm, [...(buckets.get(attempt.farnsworthWpm) ?? []), attempt]));
+                    const averagePoints = [...buckets.entries()]
+                        .sort(([a], [b]) => a - b)
+                        .map(([farnsworthWpm, bucket]) => {
+                            const x = Math.max(0, Math.min(300, (farnsworthWpm - 5) * 300 / 35));
+                            const total = bucket.reduce((sum, attempt) => sum + attempt.totalCharacters, 0);
+                            const correct = bucket.reduce((sum, attempt) => sum + attempt.correctCharacters, 0);
+                            const average = correct * 100 / Math.max(1, total);
+                            return `${x.toFixed(1)},${(100 - average).toFixed(1)}`;
+                        })
+                        .join(' ');
+                    return {
+                        key: String(characterWpm),
+                        label: `${characterWpm} character WPM`,
+                        color: this.metricColors[index % this.metricColors.length],
+                        attempts: values.length,
+                        points,
+                        averagePoints,
+                    };
+                });
             return {
                 mode: sample.mode,
                 label: this.modeLabel(sample.mode),
                 drill: sample.drill,
-                characterWpm: sample.wpm,
-                attempts: values.length,
-                points,
-                averagePoints,
+                attempts: seriesAttempts.length,
+                traces,
             };
         })
-            .sort((a, b) => this.latestAttemptTime(cohorts.get(`${b.mode}|${b.drill}|${b.characterWpm}`) ?? [])
-                .localeCompare(this.latestAttemptTime(cohorts.get(`${a.mode}|${a.drill}|${a.characterWpm}`) ?? [])))
+            .sort((a, b) => this.latestAttemptTime(seriesGroups.get(`${b.mode}|${b.drill}`) ?? [])
+                .localeCompare(this.latestAttemptTime(seriesGroups.get(`${a.mode}|${a.drill}`) ?? [])))
             .slice(0, 12);
     }
 
     private buildProficiencySummaries(attempts: CwPracticeAttempt[]): CwProficiency[] {
-        const cohorts = new Map<string, CwPracticeAttempt[]>();
+        const seriesGroups = new Map<string, CwPracticeAttempt[]>();
         attempts.forEach((attempt) => {
-            const key = `${attempt.mode}|${attempt.drill}|${attempt.wpm}`;
-            cohorts.set(key, [...(cohorts.get(key) ?? []), attempt]);
+            const key = `${attempt.mode}|${attempt.drill}`;
+            seriesGroups.set(key, [...(seriesGroups.get(key) ?? []), attempt]);
         });
 
-        return [...cohorts.values()].map((cohort) => {
-            const sample = cohort[0];
-            const speeds = new Map<number, CwPracticeAttempt[]>();
-            cohort.forEach((attempt) => speeds.set(attempt.farnsworthWpm, [...(speeds.get(attempt.farnsworthWpm) ?? []), attempt]));
-            const buckets = [...speeds.entries()].map(([farnsworthWpm, values]) => {
-                const characters = values.reduce((sum, attempt) => sum + attempt.totalCharacters, 0);
-                const correct = values.reduce((sum, attempt) => sum + attempt.correctCharacters, 0);
-                return { farnsworthWpm, characters, accuracy: Math.round(correct * 100 / Math.max(1, characters)) };
-            });
-            const proven = buckets
-                .filter((bucket) => bucket.characters >= 100 && bucket.accuracy >= 90)
-                .sort((a, b) => b.farnsworthWpm - a.farnsworthWpm)[0];
-            const candidate = buckets
-                .slice()
-                .sort((a, b) => (b.accuracy >= 90 ? 1 : 0) - (a.accuracy >= 90 ? 1 : 0)
-                    || b.farnsworthWpm - a.farnsworthWpm
-                    || b.accuracy - a.accuracy)[0];
+        return [...seriesGroups.values()].map((seriesAttempts) => {
+            const sample = seriesAttempts[0];
+            const characterSpeedGroups = new Map<number, CwPracticeAttempt[]>();
+            seriesAttempts.forEach((attempt) => characterSpeedGroups.set(attempt.wpm, [...(characterSpeedGroups.get(attempt.wpm) ?? []), attempt]));
+            const speeds = [...characterSpeedGroups.entries()]
+                .sort(([a], [b]) => a - b)
+                .map(([characterWpm, speedAttempts]) => {
+                    const farnsworthGroups = new Map<number, CwPracticeAttempt[]>();
+                    speedAttempts.forEach((attempt) => farnsworthGroups.set(attempt.farnsworthWpm, [...(farnsworthGroups.get(attempt.farnsworthWpm) ?? []), attempt]));
+                    const buckets = [...farnsworthGroups.entries()].map(([farnsworthWpm, values]) => {
+                        const characters = values.reduce((sum, attempt) => sum + attempt.totalCharacters, 0);
+                        const correct = values.reduce((sum, attempt) => sum + attempt.correctCharacters, 0);
+                        return { farnsworthWpm, characters, accuracy: Math.round(correct * 100 / Math.max(1, characters)) };
+                    });
+                    const proven = buckets
+                        .filter((bucket) => bucket.characters >= 100 && bucket.accuracy >= 90)
+                        .sort((a, b) => b.farnsworthWpm - a.farnsworthWpm)[0];
+                    const candidate = buckets
+                        .slice()
+                        .sort((a, b) => (b.accuracy >= 90 ? 1 : 0) - (a.accuracy >= 90 ? 1 : 0)
+                            || b.farnsworthWpm - a.farnsworthWpm
+                            || b.accuracy - a.accuracy)[0];
+                    return {
+                        characterWpm,
+                        provenFarnsworthWpm: proven?.farnsworthWpm ?? null,
+                        candidateFarnsworthWpm: candidate.farnsworthWpm,
+                        candidateAccuracy: candidate.accuracy,
+                        candidateCharacters: candidate.characters,
+                    };
+                });
             return {
                 mode: sample.mode,
                 label: this.modeLabel(sample.mode),
                 drill: sample.drill,
-                characterWpm: sample.wpm,
-                provenFarnsworthWpm: proven?.farnsworthWpm ?? null,
-                candidateFarnsworthWpm: candidate.farnsworthWpm,
-                candidateAccuracy: candidate.accuracy,
-                candidateCharacters: candidate.characters,
+                speeds,
             };
         })
-            .sort((a, b) => this.latestAttemptTime(cohorts.get(`${b.mode}|${b.drill}|${b.characterWpm}`) ?? [])
-                .localeCompare(this.latestAttemptTime(cohorts.get(`${a.mode}|${a.drill}|${a.characterWpm}`) ?? [])))
+            .sort((a, b) => this.latestAttemptTime(seriesGroups.get(`${b.mode}|${b.drill}`) ?? [])
+                .localeCompare(this.latestAttemptTime(seriesGroups.get(`${a.mode}|${a.drill}`) ?? [])))
             .slice(0, 12);
     }
 
@@ -1250,6 +1317,10 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
 
     private latestAttemptTime(attempts: CwPracticeAttempt[]): string {
         return attempts.reduce((latest, attempt) => (attempt.createdAt ?? '') > latest ? (attempt.createdAt ?? '') : latest, '');
+    }
+
+    private metricTraceKey(chart: 'trend' | 'speed', mode: PracticeMode, drill: string, traceKey: string): string {
+        return `${chart}|${mode}|${drill}|${traceKey}`;
     }
 
     private applyServerCharacterScores(attempts: CwPracticeAttempt[]): void {

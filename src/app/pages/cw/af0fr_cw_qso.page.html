@@ -256,14 +256,16 @@
                         <span><span class="block text-sm font-black uppercase tracking-widest text-slate-500">Copy proficiency</span><span class="mt-1 block text-xs text-slate-400">Proven speed requires at least 90% accuracy across 100 characters</span></span>
                     </summary>
                     <div class="space-y-3 border-t border-slate-200 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
-                        <div *ngFor="let summary of proficiencySummaries" class="flex items-center justify-between gap-4 rounded-xl bg-slate-100 p-3">
-                            <div>
-                                <div class="font-black">{{ summary.label }} <span class="font-normal text-slate-400">· {{ summary.drill }}</span></div>
-                                <div class="mt-1 text-xs text-slate-500">{{ summary.characterWpm }} character WPM · Best current sample {{ summary.candidateAccuracy }}% at {{ summary.candidateFarnsworthWpm }} Farnsworth WPM ({{ summary.candidateCharacters }} chars)</div>
-                            </div>
-                            <div class="shrink-0 text-right">
-                                <div class="text-xl font-black" [class.text-orange-700]="summary.provenFarnsworthWpm !== null">{{ summary.provenFarnsworthWpm === null ? '—' : summary.provenFarnsworthWpm + ' WPM' }}</div>
-                                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Proven speed</div>
+                        <div *ngFor="let summary of proficiencySummaries" class="rounded-xl bg-slate-100 p-3">
+                            <div class="font-black">{{ summary.label }} <span class="font-normal text-slate-400">· {{ summary.drill }}</span></div>
+                            <div class="mt-2 divide-y divide-slate-200">
+                                <div *ngFor="let speed of summary.speeds" class="flex items-center justify-between gap-4 py-2 first:pt-0 last:pb-0">
+                                    <div class="text-xs text-slate-500"><strong class="text-slate-700">{{ speed.characterWpm }} character WPM</strong><br>Best current sample {{ speed.candidateAccuracy }}% at {{ speed.candidateFarnsworthWpm }} Farnsworth WPM ({{ speed.candidateCharacters }} chars)</div>
+                                    <div class="shrink-0 text-right">
+                                        <div class="text-lg font-black" [class.text-orange-700]="speed.provenFarnsworthWpm !== null">{{ speed.provenFarnsworthWpm === null ? '—' : speed.provenFarnsworthWpm + ' WPM' }}</div>
+                                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Proven speed</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -280,17 +282,18 @@
                         <div *ngIf="metricsLoading" class="text-sm text-slate-500">Loading practice history…</div>
                         <div *ngFor="let trend of metricTrends">
                             <div class="mb-2 flex items-end justify-between gap-3">
-                                <div><div class="font-black">{{ trend.label }} <span class="font-normal text-slate-400">· {{ trend.drill }}</span></div><div class="text-xs text-slate-500">{{ trend.wpm }}/{{ trend.farnsworthWpm }} WPM · {{ trend.attempts }} attempts</div></div>
-                                <div class="text-right"><div class="text-lg font-black">{{ trend.latest }}%</div><div class="text-xs text-orange-700">Weighted avg {{ trend.average }}%</div></div>
+                                <div><div class="font-black">{{ trend.label }} <span class="font-normal text-slate-400">· {{ trend.drill }}</span></div><div class="text-xs text-slate-500">{{ trend.attempts }} attempts across {{ trend.traces.length }} speed combination{{ trend.traces.length === 1 ? '' : 's' }}</div></div>
                             </div>
                             <div class="rounded-xl bg-slate-100 p-2">
-                                <svg class="h-24 w-full overflow-visible" viewBox="0 0 300 100" role="img" [attr.aria-label]="trend.label + ' accuracy trend, average ' + trend.average + ' percent'" preserveAspectRatio="none">
+                                <svg class="h-24 w-full overflow-visible" viewBox="0 0 300 100" role="img" [attr.aria-label]="trend.label + ' accuracy trends by speed combination'" preserveAspectRatio="none">
                                     <line x1="0" x2="300" y1="25" y2="25" stroke="#cbd5e1" stroke-width="1" vector-effect="non-scaling-stroke"></line>
                                     <line x1="0" x2="300" y1="50" y2="50" stroke="#cbd5e1" stroke-width="1" vector-effect="non-scaling-stroke"></line>
                                     <line x1="0" x2="300" y1="75" y2="75" stroke="#cbd5e1" stroke-width="1" vector-effect="non-scaling-stroke"></line>
-                                    <line x1="0" x2="300" [attr.y1]="trend.averageY" [attr.y2]="trend.averageY" stroke="#f97316" stroke-width="2" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"></line>
-                                    <polyline [attr.points]="trend.points" fill="none" stroke="#0f172a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+                                    <polyline *ngFor="let trace of trend.traces" [attr.points]="trace.points" [attr.stroke]="trace.color" [attr.display]="isMetricTraceVisible('trend', trend, trace.key) ? null : 'none'" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
                                 </svg>
+                            </div>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                <button *ngFor="let trace of trend.traces" type="button" class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold" [class.opacity-40]="!isMetricTraceVisible('trend', trend, trace.key)" [class.line-through]="!isMetricTraceVisible('trend', trend, trace.key)" [attr.aria-pressed]="isMetricTraceVisible('trend', trend, trace.key)" (click)="toggleMetricTrace('trend', trend, trace.key)"><span class="mr-1.5 inline-block h-2 w-2 rounded-full" [style.backgroundColor]="trace.color"></span>{{ trace.label }} · {{ trace.latest }}% latest · {{ trace.average }}% avg</button>
                             </div>
                         </div>
                         <div *ngIf="!metricsLoading && !metricTrends.length" class="rounded-xl bg-slate-100 p-4 text-sm text-slate-500">
@@ -301,7 +304,7 @@
                             <span *ngIf="!pendingMetricCount">{{ metricsOnline ? 'Synced with backend' : 'Backend unavailable' }}</span>
                             <button type="button" class="font-black text-orange-700" (click)="loadPracticeMetrics()">Refresh</button>
                         </div>
-                        <div class="flex gap-4 text-[10px] font-bold uppercase tracking-wider text-slate-400"><span><span class="mr-1 inline-block h-0.5 w-4 bg-slate-900 align-middle"></span>Attempts</span><span><span class="mr-1 inline-block w-4 border-t-2 border-dashed border-orange-500 align-middle"></span>Average</span></div>
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Select a legend item to show or hide that trace</div>
                     </div>
                 </details>
 
@@ -311,20 +314,27 @@
                     </summary>
                     <div class="space-y-6 border-t border-slate-200 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
                         <div *ngFor="let series of speedAccuracySeries">
-                            <div class="mb-2 flex items-center justify-between"><strong>{{ series.label }} <span class="font-normal text-slate-400">· {{ series.drill }}</span></strong><span class="text-xs text-slate-500">{{ series.characterWpm }} character WPM · {{ series.attempts }} attempts</span></div>
+                            <div class="mb-2 flex items-center justify-between"><strong>{{ series.label }} <span class="font-normal text-slate-400">· {{ series.drill }}</span></strong><span class="text-xs text-slate-500">{{ series.attempts }} attempts</span></div>
                             <div class="rounded-xl bg-slate-100 p-2">
                                 <svg class="h-28 w-full overflow-visible" viewBox="-20 -8 330 125" role="img" [attr.aria-label]="series.label + ' speed versus accuracy'" preserveAspectRatio="none">
                                     <line x1="0" x2="300" y1="0" y2="0" stroke="#cbd5e1" stroke-width="1" vector-effect="non-scaling-stroke"></line>
                                     <line x1="0" x2="300" y1="50" y2="50" stroke="#cbd5e1" stroke-width="1" vector-effect="non-scaling-stroke"></line>
                                     <line x1="0" x2="300" y1="100" y2="100" stroke="#cbd5e1" stroke-width="1" vector-effect="non-scaling-stroke"></line>
-                                    <polyline [attr.points]="series.averagePoints" fill="none" stroke="#f97316" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
-                                    <circle *ngFor="let point of series.points" [attr.cx]="point.x" [attr.cy]="point.y" r="3.5" fill="#0f172a" opacity="0.65"><title>{{ point.characterWpm }}/{{ point.farnsworthWpm }} WPM · {{ point.accuracy }}%</title></circle>
+                                    <ng-container *ngFor="let trace of series.traces">
+                                        <ng-container *ngIf="isMetricTraceVisible('speed', series, trace.key)">
+                                            <polyline [attr.points]="trace.averagePoints" fill="none" [attr.stroke]="trace.color" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+                                            <circle *ngFor="let point of trace.points" [attr.cx]="point.x" [attr.cy]="point.y" r="3.5" [attr.fill]="trace.color" opacity="0.55"><title>{{ point.characterWpm }}/{{ point.farnsworthWpm }} WPM · {{ point.accuracy }}%</title></circle>
+                                        </ng-container>
+                                    </ng-container>
                                     <text x="0" y="114" font-size="9" fill="#64748b">5</text><text x="113" y="114" font-size="9" fill="#64748b">20 Farnsworth WPM</text><text x="286" y="114" font-size="9" fill="#64748b">40</text>
                                     <text x="-18" y="5" font-size="8" fill="#64748b">100</text><text x="-13" y="54" font-size="8" fill="#64748b">50</text><text x="-8" y="103" font-size="8" fill="#64748b">0</text>
                                 </svg>
                             </div>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                <button *ngFor="let trace of series.traces" type="button" class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold" [class.opacity-40]="!isMetricTraceVisible('speed', series, trace.key)" [class.line-through]="!isMetricTraceVisible('speed', series, trace.key)" [attr.aria-pressed]="isMetricTraceVisible('speed', series, trace.key)" (click)="toggleMetricTrace('speed', series, trace.key)"><span class="mr-1.5 inline-block h-2 w-2 rounded-full" [style.backgroundColor]="trace.color"></span>{{ trace.label }} · {{ trace.attempts }} attempts</button>
+                            </div>
                         </div>
-                        <div class="flex gap-4 text-[10px] font-bold uppercase tracking-wider text-slate-400"><span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-slate-900"></span>Attempt</span><span><span class="mr-1 inline-block h-0.5 w-4 bg-orange-500 align-middle"></span>Character-weighted average</span></div>
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Dots are attempts; lines are character-weighted averages. Select legend items to toggle traces.</div>
                     </div>
                 </details>
 
