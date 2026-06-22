@@ -96,6 +96,21 @@ class CwPracticeAttemptCreate(BaseModel):
     missedCharacters: dict[str, int] = Field(default_factory=dict)
     characterScores: dict[str, int] = Field(default_factory=dict)
     confusions: dict[str, int] = Field(default_factory=dict)
+    trainingGoal: Optional[str] = Field(default=None, max_length=40)
+    exerciseFormat: Optional[str] = Field(default=None, max_length=40)
+    audioEffect: Optional[str] = Field(default=None, max_length=40)
+    repeatCount: Optional[int] = Field(default=None, ge=1, le=3)
+    groupSize: Optional[int] = Field(default=None, ge=1, le=8)
+    strictSpacing: Optional[bool] = None
+    timedMinutes: Optional[int] = Field(default=None, ge=0, le=5)
+    playCount: Optional[int] = Field(default=None, ge=1, le=100)
+    revealedBeforeCheck: Optional[bool] = None
+    sessionId: Optional[str] = Field(default=None, max_length=80)
+    characterAttempts: dict[str, int] = Field(default_factory=dict)
+    characterCorrect: dict[str, int] = Field(default_factory=dict)
+    missingCount: Optional[int] = Field(default=None, ge=0)
+    incorrectCount: Optional[int] = Field(default=None, ge=0)
+    extraCount: Optional[int] = Field(default=None, ge=0)
 
 
 def get_connection():
@@ -121,6 +136,21 @@ def ensure_cw_metrics_table():
                     missed_characters jsonb not null default '{}'::jsonb,
                     character_scores jsonb not null default '{}'::jsonb,
                     confusions jsonb not null default '{}'::jsonb,
+                    training_goal varchar(40),
+                    exercise_format varchar(40),
+                    audio_effect varchar(40),
+                    repeat_count smallint,
+                    group_size smallint,
+                    strict_spacing boolean,
+                    timed_minutes smallint,
+                    play_count smallint,
+                    revealed_before_check boolean,
+                    session_id varchar(80),
+                    character_attempts jsonb not null default '{}'::jsonb,
+                    character_correct jsonb not null default '{}'::jsonb,
+                    missing_count integer,
+                    incorrect_count integer,
+                    extra_count integer,
                     created_at timestamptz not null default now()
                 )
                 """
@@ -134,7 +164,32 @@ def ensure_cw_metrics_table():
             cur.execute(
                 """
                 alter table cw_practice_attempts
+                    add column if not exists play_count smallint,
+                    add column if not exists revealed_before_check boolean,
+                    add column if not exists session_id varchar(80),
+                    add column if not exists character_attempts jsonb not null default '{}'::jsonb,
+                    add column if not exists character_correct jsonb not null default '{}'::jsonb,
+                    add column if not exists missing_count integer,
+                    add column if not exists incorrect_count integer,
+                    add column if not exists extra_count integer
+                """
+            )
+            cur.execute(
+                """
+                alter table cw_practice_attempts
                 add column if not exists confusions jsonb not null default '{}'::jsonb
+                """
+            )
+            cur.execute(
+                """
+                alter table cw_practice_attempts
+                    add column if not exists training_goal varchar(40),
+                    add column if not exists exercise_format varchar(40),
+                    add column if not exists audio_effect varchar(40),
+                    add column if not exists repeat_count smallint,
+                    add column if not exists group_size smallint,
+                    add column if not exists strict_spacing boolean,
+                    add column if not exists timed_minutes smallint
                 """
             )
             cur.execute(
@@ -228,7 +283,22 @@ def cw_attempt_row_to_dict(row):
         "missedCharacters": row[10] or {},
         "characterScores": row[11] or {},
         "confusions": row[12] or {},
-        "createdAt": row[13].isoformat(),
+        "trainingGoal": row[13],
+        "exerciseFormat": row[14],
+        "audioEffect": row[15],
+        "repeatCount": row[16],
+        "groupSize": row[17],
+        "strictSpacing": row[18],
+        "timedMinutes": row[19],
+        "playCount": row[20],
+        "revealedBeforeCheck": row[21],
+        "sessionId": row[22],
+        "characterAttempts": row[23] or {},
+        "characterCorrect": row[24] or {},
+        "missingCount": row[25],
+        "incorrectCount": row[26],
+        "extraCount": row[27],
+        "createdAt": row[28].isoformat(),
     }
 
 
@@ -342,6 +412,21 @@ def list_cw_practice_attempts(operator: str, limit: int = 300):
                         missed_characters,
                         character_scores,
                         confusions,
+                        training_goal,
+                        exercise_format,
+                        audio_effect,
+                        repeat_count,
+                        group_size,
+                        strict_spacing,
+                        timed_minutes,
+                        play_count,
+                        revealed_before_check,
+                        session_id,
+                        character_attempts,
+                        character_correct,
+                        missing_count,
+                        incorrect_count,
+                        extra_count,
                         created_at
                     from cw_practice_attempts
                     where upper(operator) = upper(%s)
@@ -383,9 +468,24 @@ def create_cw_practice_attempt(attempt: CwPracticeAttemptCreate):
                         duration_seconds,
                         missed_characters,
                         character_scores,
-                        confusions
+                        confusions,
+                        training_goal,
+                        exercise_format,
+                        audio_effect,
+                        repeat_count,
+                        group_size,
+                        strict_spacing,
+                        timed_minutes,
+                        play_count,
+                        revealed_before_check,
+                        session_id,
+                        character_attempts,
+                        character_correct,
+                        missing_count,
+                        incorrect_count,
+                        extra_count
                     )
-                    values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     returning
                         id,
                         operator,
@@ -400,6 +500,21 @@ def create_cw_practice_attempt(attempt: CwPracticeAttemptCreate):
                         missed_characters,
                         character_scores,
                         confusions,
+                        training_goal,
+                        exercise_format,
+                        audio_effect,
+                        repeat_count,
+                        group_size,
+                        strict_spacing,
+                        timed_minutes,
+                        play_count,
+                        revealed_before_check,
+                        session_id,
+                        character_attempts,
+                        character_correct,
+                        missing_count,
+                        incorrect_count,
+                        extra_count,
                         created_at
                     """,
                     (
@@ -416,6 +531,21 @@ def create_cw_practice_attempt(attempt: CwPracticeAttemptCreate):
                         Jsonb(attempt.missedCharacters),
                         Jsonb(attempt.characterScores),
                         Jsonb(attempt.confusions),
+                        attempt.trainingGoal,
+                        attempt.exerciseFormat,
+                        attempt.audioEffect,
+                        attempt.repeatCount,
+                        attempt.groupSize,
+                        attempt.strictSpacing,
+                        attempt.timedMinutes,
+                        attempt.playCount,
+                        attempt.revealedBeforeCheck,
+                        attempt.sessionId,
+                        Jsonb(attempt.characterAttempts),
+                        Jsonb(attempt.characterCorrect),
+                        attempt.missingCount,
+                        attempt.incorrectCount,
+                        attempt.extraCount,
                     ),
                 )
                 row = cur.fetchone()

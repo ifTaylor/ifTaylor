@@ -4,6 +4,13 @@ import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } fro
 import { environment } from '../../../environments/environment';
 
 type PracticeMode = 'letters' | 'numbers' | 'mixed' | 'callsigns' | 'qsoWords' | 'qso';
+type TrainingGoal = 'learn' | 'speed' | 'accuracy' | 'weaknesses' | 'qso';
+type ExerciseFormat = 'groups' | 'continuous' | 'instant' | 'guidedQso' | 'simulatedQso';
+type SessionPreset = 'warmup' | 'weaknesses' | 'callsigns' | 'firstQso' | 'onAir';
+type WorkspaceView = 'practice' | 'progress';
+type ToastTone = 'success' | 'info' | 'error';
+type SettingsSection = 'advanced' | 'content' | 'speed' | 'audio' | 'timing' | 'scoring';
+type SettingsSectionState = Record<SettingsSection, boolean>;
 type QsoStage = 'mixed' | 'frequency' | 'cq' | 'answer' | 'p1' | 'p2' | 'p3' | 'recovery' | 'closing' | 'complete';
 type WordCategory = 'all' | 'core' | 'prosigns' | 'qsignals' | 'abbreviations' | 'recovery' | 'ragchew';
 type AudioEffect = 'clean' | 'light' | 'challenging';
@@ -69,12 +76,52 @@ interface CwPracticeAttempt {
     missedCharacters: Record<string, number>;
     characterScores: Record<string, number>;
     confusions: Record<string, number>;
+    trainingGoal?: TrainingGoal | null;
+    exerciseFormat?: ExerciseFormat | null;
+    audioEffect?: AudioEffect | null;
+    repeatCount?: number | null;
+    groupSize?: number | null;
+    strictSpacing?: boolean | null;
+    timedMinutes?: number | null;
+    playCount?: number | null;
+    revealedBeforeCheck?: boolean | null;
+    sessionId?: string | null;
+    characterAttempts?: Record<string, number> | null;
+    characterCorrect?: Record<string, number> | null;
+    missingCount?: number | null;
+    incorrectCount?: number | null;
+    extraCount?: number | null;
     createdAt?: string;
+}
+
+interface CwPerformanceOverview {
+    attempts: number;
+    characters: number;
+    weightedAccuracy: number;
+    masteryAccuracy: number;
+    confidenceLow: number;
+    confidenceHigh: number;
+    effectiveWpm: number;
+    consistency: 'High' | 'Moderate' | 'Variable';
+    consistencySpread: number;
+    reliableSpeed: string;
+    retention: string;
+    retentionDelta: number | null;
+    firstPlayAccuracy: number | null;
+    repeatedAccuracy: number | null;
+    revealRate: number | null;
+    fatigueDelta: number | null;
+    missingRate: number | null;
+    incorrectRate: number | null;
+    extraRate: number | null;
+    weakestCharacters: string[];
+    audioBreakdown: { label: string; accuracy: number; characters: number }[];
 }
 
 interface CwTrendTrace {
     key: string;
     label: string;
+    detail: string;
     color: string;
     attempts: number;
     average: number;
@@ -93,6 +140,7 @@ interface CwTrendSeries {
 interface CwSpeedTrace {
     key: string;
     label: string;
+    detail: string;
     color: string;
     attempts: number;
     points: { x: number; y: number; accuracy: number; characterWpm: number; farnsworthWpm: number }[];
@@ -108,6 +156,8 @@ interface CwSpeedSeries {
 }
 
 interface CwProficiencySpeed {
+    key: string;
+    conditionLabel: string;
     characterWpm: number;
     provenFarnsworthWpm: number | null;
     candidateFarnsworthWpm: number;
@@ -129,8 +179,22 @@ interface CwProficiency {
 })
 export class Af0frCwQsoPage implements OnInit, OnDestroy {
     @ViewChild('copyInput') copyInput?: ElementRef<HTMLTextAreaElement>;
+    @ViewChild('mobileSetupDrawer') mobileSetupDrawer?: ElementRef<HTMLElement>;
+    @ViewChild('mobileSetupTrigger') mobileSetupTrigger?: ElementRef<HTMLButtonElement>;
 
     mode: PracticeMode = 'letters';
+    trainingGoal: TrainingGoal = 'accuracy';
+    exerciseFormat: ExerciseFormat = 'groups';
+    activePreset: SessionPreset | null = null;
+    presetModified = false;
+    activeWorkspace: WorkspaceView = 'practice';
+    mobileSetupOpen = false;
+    showAllMetricConditions = false;
+    sessionTargetAttempts = 10;
+    toastMessage = '';
+    toastTone: ToastTone = 'info';
+    selectedMetricPoint = '';
+    settingsSections: SettingsSectionState = { advanced: false, content: true, speed: true, audio: false, timing: false, scoring: false };
     qsoStage: QsoStage = 'mixed';
     wordCategory: WordCategory = 'all';
     audioEffect: AudioEffect = 'clean';
@@ -201,6 +265,30 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         { value: 'callsigns', label: 'Callsigns', description: 'Realistic amateur call patterns' },
         { value: 'qsoWords', label: 'QSO Words', description: 'Prosigns, Q signals, and abbreviations' },
         { value: 'qso', label: 'QSO', description: 'Guided LICW-style on-air traffic' },
+    ];
+
+    readonly trainingGoals: { value: TrainingGoal; label: string; description: string }[] = [
+        { value: 'learn', label: 'Learn characters', description: 'Build recognition with Koch progression.' },
+        { value: 'speed', label: 'Build speed', description: 'Increase sustained copy speed.' },
+        { value: 'accuracy', label: 'Improve accuracy', description: 'Practice clean, consistent copy.' },
+        { value: 'weaknesses', label: 'Fix weaknesses', description: 'Target missed and confused characters.' },
+        { value: 'qso', label: 'Prepare for QSOs', description: 'Practice realistic exchanges and protocol.' },
+    ];
+
+    readonly exerciseFormats: { value: ExerciseFormat; label: string }[] = [
+        { value: 'groups', label: 'Copy groups' },
+        { value: 'continuous', label: 'Continuous copy' },
+        { value: 'instant', label: 'Instant characters' },
+        { value: 'guidedQso', label: 'Guided QSO' },
+        { value: 'simulatedQso', label: 'Simulated contact' },
+    ];
+
+    readonly sessionPresets: { value: SessionPreset; label: string; description: string }[] = [
+        { value: 'warmup', label: 'Daily warm-up', description: 'Mixed copy at a comfortable pace' },
+        { value: 'weaknesses', label: 'Weak-character repair', description: 'Target recent misses and confusions' },
+        { value: 'callsigns', label: 'Callsign sprint', description: 'Fast callsign recognition' },
+        { value: 'firstQso', label: 'First QSO', description: 'Guided basic exchange' },
+        { value: 'onAir', label: 'On-air simulation', description: 'Full exchange with noise and QSB' },
     ];
 
     readonly letterDrills: { value: LetterDrill; label: string }[] = [
@@ -360,6 +448,10 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     private playbackStartedAt = 0;
     private playbackOffset = 0;
     private timeline: ToneEvent[] = [];
+    private toastTimer: number | null = null;
+    private practiceAttempts: CwPracticeAttempt[] = [];
+    private exercisePlayCount = 0;
+    private sessionId = this.createSessionId();
 
     private readonly morse: Record<string, string> = {
         A: '.-', B: '-...', C: '-.-.', D: '-..', E: '.', F: '..-.', G: '--.',
@@ -378,6 +470,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         const savedWeakWords = localStorage.getItem('cw-copy-weak-words');
         const savedWeakCharacters = localStorage.getItem('cw-copy-weak-characters');
         const savedConfusions = localStorage.getItem('cw-copy-confusions');
+        const savedUi = localStorage.getItem('cw-copy-ui');
         if (savedProfile) {
             try { this.profile = { ...this.profile, ...JSON.parse(savedProfile) }; } catch { /* keep defaults */ }
         }
@@ -389,6 +482,45 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         }
         if (savedConfusions) {
             try { this.confusionCounts = JSON.parse(savedConfusions); } catch { /* start fresh */ }
+        }
+        if (savedUi) {
+            try {
+                const ui = JSON.parse(savedUi) as Partial<{
+                    activeWorkspace: WorkspaceView; showAllMetricConditions: boolean; trainingGoal: TrainingGoal; mode: PracticeMode;
+                    exerciseFormat: ExerciseFormat; activePreset: SessionPreset | null; wpm: number; farnsworthWpm: number;
+                    audioEffect: AudioEffect; groupSize: number; groupCount: number; sessionTargetAttempts: number;
+                    tone: number; repeatCount: number; countdownSeconds: number; timedMinutes: number; strictSpacing: boolean;
+                    adaptiveCharacters: boolean; adaptiveSpeed: boolean; revealMode: RevealMode; letterDrill: LetterDrill;
+                    numberDrill: NumberDrill; mixedDrill: MixedDrill; qsoStage: QsoStage; wordCategory: WordCategory;
+                    settingsSections: SettingsSectionState;
+                }>;
+                if (ui.activeWorkspace) this.activeWorkspace = ui.activeWorkspace;
+                if (typeof ui.showAllMetricConditions === 'boolean') this.showAllMetricConditions = ui.showAllMetricConditions;
+                if (ui.trainingGoal) this.trainingGoal = ui.trainingGoal;
+                if (ui.mode) this.mode = ui.mode;
+                if (ui.exerciseFormat) this.exerciseFormat = ui.exerciseFormat;
+                if (ui.activePreset !== undefined) this.activePreset = ui.activePreset;
+                if (ui.wpm) this.wpm = ui.wpm;
+                if (ui.farnsworthWpm) this.farnsworthWpm = Math.min(ui.farnsworthWpm, this.wpm);
+                if (ui.audioEffect) this.audioEffect = ui.audioEffect;
+                if (ui.groupSize) this.groupSize = ui.groupSize;
+                if (ui.groupCount) this.groupCount = ui.groupCount;
+                if (ui.sessionTargetAttempts) this.sessionTargetAttempts = ui.sessionTargetAttempts;
+                if (ui.tone) this.tone = ui.tone;
+                if (ui.repeatCount) this.repeatCount = ui.repeatCount;
+                if (ui.countdownSeconds !== undefined) this.countdownSeconds = ui.countdownSeconds;
+                if (ui.timedMinutes !== undefined) this.timedMinutes = ui.timedMinutes;
+                if (typeof ui.strictSpacing === 'boolean') this.strictSpacing = ui.strictSpacing;
+                if (typeof ui.adaptiveCharacters === 'boolean') this.adaptiveCharacters = ui.adaptiveCharacters;
+                if (typeof ui.adaptiveSpeed === 'boolean') this.adaptiveSpeed = ui.adaptiveSpeed;
+                if (ui.revealMode) this.revealMode = ui.revealMode;
+                if (ui.letterDrill) this.letterDrill = ui.letterDrill;
+                if (ui.numberDrill) this.numberDrill = ui.numberDrill;
+                if (ui.mixedDrill) this.mixedDrill = ui.mixedDrill;
+                if (ui.qsoStage) this.qsoStage = ui.qsoStage;
+                if (ui.wordCategory) this.wordCategory = ui.wordCategory;
+                if (ui.settingsSections) this.settingsSections = { ...this.settingsSections, ...ui.settingsSections };
+            } catch { /* keep UI defaults */ }
         }
         this.pendingMetricCount = this.readPendingMetrics().length;
     }
@@ -408,6 +540,26 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
 
     get effectiveCopyWpm(): number {
         return Math.round(this.farnsworthWpm * this.accuracy) / 100;
+    }
+
+    get sessionProgressPercent(): number {
+        return Math.min(100, this.attempts * 100 / Math.max(1, this.sessionTargetAttempts));
+    }
+
+    get sessionProgressLabel(): string {
+        return this.attempts >= this.sessionTargetAttempts ? 'Session complete' : `Exercise ${this.attempts + 1} of ${this.sessionTargetAttempts}`;
+    }
+
+    get missedCharactersThisExercise(): string[] {
+        return [...new Set(this.expectedMarks.filter((mark) => mark.status === 'missing').map((mark) => mark.character))];
+    }
+
+    get incorrectCharactersThisExercise(): string[] {
+        return [...new Set(this.expectedMarks.filter((mark) => mark.status === 'incorrect').map((mark) => mark.character))];
+    }
+
+    get extraCharactersThisExercise(): string[] {
+        return [...new Set(this.copyMarks.filter((mark) => mark.status === 'extra').map((mark) => mark.character))];
     }
 
     isMetricTraceVisible(chart: 'trend' | 'speed', series: CwTrendSeries | CwSpeedSeries, traceKey: string): boolean {
@@ -430,6 +582,227 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
 
     get isBasicMode(): boolean {
         return this.mode === 'letters' || this.mode === 'numbers' || this.mode === 'mixed';
+    }
+
+    get activeTrainingGoalDescription(): string {
+        return this.trainingGoals.find((goal) => goal.value === this.trainingGoal)?.description ?? '';
+    }
+
+    get activeContentDescription(): string {
+        return this.modes.find((option) => option.value === this.mode)?.description ?? '';
+    }
+
+    get activeTrainingGoalLabel(): string {
+        return this.trainingGoals.find((goal) => goal.value === this.trainingGoal)?.label ?? this.trainingGoal;
+    }
+
+    get activeContentLabel(): string {
+        return this.modes.find((option) => option.value === this.mode)?.label ?? this.mode;
+    }
+
+    get activeExerciseFormatLabel(): string {
+        return this.exerciseFormats.find((format) => format.value === this.exerciseFormat)?.label ?? this.exerciseFormat;
+    }
+
+    get activePresetLabel(): string {
+        if (!this.activePreset) return 'Custom session';
+        return this.sessionPresets.find((preset) => preset.value === this.activePreset)?.label ?? 'Custom session';
+    }
+
+    get sessionLengthLabel(): string {
+        if (this.exerciseFormat === 'instant') return 'One character at a time';
+        if (this.exerciseFormat === 'continuous') return `${this.timedMinutes}-minute stream`;
+        if (this.mode === 'qso') return this.qsoStages.find((stage) => stage.value === this.qsoStage)?.label ?? 'QSO exchange';
+        return `${this.groupCount} ${this.mode === 'qsoWords' ? 'words' : 'groups'}`;
+    }
+
+    get visibleMetricTrends(): CwTrendSeries[] {
+        return this.metricTrends
+            .filter((series) => this.showAllMetricConditions || (series.mode === this.mode && series.drill === this.currentDrillName()))
+            .map((series) => ({ ...series, traces: this.showAllMetricConditions ? series.traces : series.traces.filter((trace) => trace.key.endsWith(`|${this.currentMetricConditionKey()}`)) }))
+            .filter((series) => series.traces.length > 0);
+    }
+
+    get visibleSpeedAccuracySeries(): CwSpeedSeries[] {
+        return this.speedAccuracySeries
+            .filter((series) => this.showAllMetricConditions || (series.mode === this.mode && series.drill === this.currentDrillName()))
+            .map((series) => ({ ...series, traces: this.showAllMetricConditions ? series.traces : series.traces.filter((trace) => trace.key.endsWith(`|${this.currentMetricConditionKey()}`)) }))
+            .filter((series) => series.traces.length > 0);
+    }
+
+    get visibleProficiencySummaries(): CwProficiency[] {
+        return this.proficiencySummaries
+            .filter((summary) => this.showAllMetricConditions || (summary.mode === this.mode && summary.drill === this.currentDrillName()))
+            .map((summary) => ({ ...summary, speeds: this.showAllMetricConditions ? summary.speeds : summary.speeds.filter((speed) => speed.key.endsWith(`|${this.currentMetricConditionKey()}`)) }))
+            .filter((summary) => summary.speeds.length > 0);
+    }
+
+    get performanceOverview(): CwPerformanceOverview | null {
+        const values = this.practiceAttempts.filter((attempt) => this.showAllMetricConditions
+            || (attempt.mode === this.mode && attempt.drill === this.currentDrillName() && this.metricConditionKey(attempt) === this.currentMetricConditionKey()));
+        if (!values.length) return null;
+
+        const aggregate = (items: CwPracticeAttempt[]) => {
+            const characters = items.reduce((sum, attempt) => sum + attempt.totalCharacters, 0);
+            const correct = items.reduce((sum, attempt) => sum + attempt.correctCharacters, 0);
+            return { characters, correct, accuracy: characters ? correct * 100 / characters : 0 };
+        };
+        const all = aggregate(values);
+        const now = Date.now();
+        let recencyCorrect = 0;
+        let recencyCharacters = 0;
+        values.forEach((attempt) => {
+            const ageDays = Math.max(0, (now - Date.parse(attempt.createdAt ?? new Date().toISOString())) / 86_400_000);
+            const weight = Math.exp(-ageDays / 30);
+            recencyCorrect += attempt.correctCharacters * weight;
+            recencyCharacters += attempt.totalCharacters * weight;
+        });
+        const [confidenceLow, confidenceHigh] = this.wilsonInterval(recencyCorrect, recencyCharacters);
+        const recentScores = values.slice(0, 20).map((attempt) => attempt.accuracy);
+        const scoreMean = recentScores.reduce((sum, score) => sum + score, 0) / recentScores.length;
+        const spread = Math.sqrt(recentScores.reduce((sum, score) => sum + (score - scoreMean) ** 2, 0) / recentScores.length);
+        const consistency: CwPerformanceOverview['consistency'] = spread < 5 ? 'High' : spread < 10 ? 'Moderate' : 'Variable';
+
+        const speedBuckets = new Map<string, CwPracticeAttempt[]>();
+        values.forEach((attempt) => {
+            const key = `${attempt.wpm}/${attempt.farnsworthWpm}`;
+            speedBuckets.set(key, [...(speedBuckets.get(key) ?? []), attempt]);
+        });
+        const reliable = [...speedBuckets.entries()]
+            .map(([label, items]) => ({ label, ...aggregate(items), wpm: items[0].wpm, farnsworthWpm: items[0].farnsworthWpm }))
+            .filter((bucket) => bucket.characters >= 100 && bucket.accuracy >= 90 && this.wilsonInterval(bucket.correct, bucket.characters)[0] >= 80)
+            .sort((a, b) => b.farnsworthWpm - a.farnsworthWpm || b.wpm - a.wpm)[0];
+
+        const recent = aggregate(values.filter((attempt) => now - Date.parse(attempt.createdAt ?? '') <= 7 * 86_400_000));
+        const prior = aggregate(values.filter((attempt) => {
+            const age = now - Date.parse(attempt.createdAt ?? '');
+            return age > 7 * 86_400_000 && age <= 30 * 86_400_000;
+        }));
+        const retentionDelta = recent.characters >= 50 && prior.characters >= 50 ? recent.accuracy - prior.accuracy : null;
+        const retention = retentionDelta === null ? 'Collecting data' : retentionDelta < -3 ? 'Slipping' : retentionDelta > 3 ? 'Improving' : 'Stable';
+
+        const knownPlayCounts = values.filter((attempt) => attempt.playCount !== null && attempt.playCount !== undefined);
+        const firstPlay = aggregate(knownPlayCounts.filter((attempt) => attempt.playCount === 1));
+        const repeated = aggregate(knownPlayCounts.filter((attempt) => (attempt.playCount ?? 0) > 1));
+        const knownReveals = values.filter((attempt) => attempt.revealedBeforeCheck !== null && attempt.revealedBeforeCheck !== undefined);
+
+        const sessions = new Map<string, CwPracticeAttempt[]>();
+        values.filter((attempt) => attempt.sessionId).forEach((attempt) => sessions.set(attempt.sessionId!, [...(sessions.get(attempt.sessionId!) ?? []), attempt]));
+        const firstThird: CwPracticeAttempt[] = [];
+        const lastThird: CwPracticeAttempt[] = [];
+        sessions.forEach((items) => {
+            const ordered = items.slice().sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
+            if (ordered.length < 6) return;
+            const size = Math.max(1, Math.floor(ordered.length / 3));
+            firstThird.push(...ordered.slice(0, size));
+            lastThird.push(...ordered.slice(-size));
+        });
+        const firstFatigue = aggregate(firstThird);
+        const lastFatigue = aggregate(lastThird);
+        const fatigueDelta = firstFatigue.characters && lastFatigue.characters ? lastFatigue.accuracy - firstFatigue.accuracy : null;
+
+        const knownErrors = values.filter((attempt) => attempt.missingCount !== null && attempt.missingCount !== undefined);
+        const errorCharacters = knownErrors.reduce((sum, attempt) => sum + attempt.totalCharacters, 0);
+        const misses = knownErrors.reduce((sum, attempt) => sum + (attempt.missingCount ?? 0), 0);
+        const incorrect = knownErrors.reduce((sum, attempt) => sum + (attempt.incorrectCount ?? 0), 0);
+        const extras = knownErrors.reduce((sum, attempt) => sum + (attempt.extraCount ?? 0), 0);
+        const weakCounts: Record<string, number> = {};
+        const characterEvidence: Record<string, { attempts: number; correct: number }> = {};
+        values.forEach((attempt) => Object.entries(attempt.missedCharacters ?? {}).forEach(([character, count]) => weakCounts[character] = (weakCounts[character] ?? 0) + count));
+        values.forEach((attempt) => Object.entries(attempt.characterAttempts ?? {}).forEach(([character, count]) => {
+            const evidence = characterEvidence[character] ?? { attempts: 0, correct: 0 };
+            evidence.attempts += count;
+            evidence.correct += attempt.characterCorrect?.[character] ?? 0;
+            characterEvidence[character] = evidence;
+        }));
+        const weakestFromEvidence = Object.entries(characterEvidence)
+            .filter(([, evidence]) => evidence.attempts >= 3)
+            .sort((a, b) => a[1].correct / a[1].attempts - b[1].correct / b[1].attempts || b[1].attempts - a[1].attempts)
+            .slice(0, 5)
+            .map(([character]) => character);
+
+        const audioGroups = new Map<string, CwPracticeAttempt[]>();
+        values.forEach((attempt) => {
+            const label = attempt.audioEffect ?? 'legacy';
+            audioGroups.set(label, [...(audioGroups.get(label) ?? []), attempt]);
+        });
+
+        return {
+            attempts: values.length,
+            characters: all.characters,
+            weightedAccuracy: this.roundMetric(all.accuracy),
+            masteryAccuracy: this.roundMetric(recencyCharacters ? recencyCorrect * 100 / recencyCharacters : 0),
+            confidenceLow: this.roundMetric(confidenceLow),
+            confidenceHigh: this.roundMetric(confidenceHigh),
+            effectiveWpm: this.roundMetric(values.reduce((sum, attempt) => sum + attempt.farnsworthWpm * attempt.correctCharacters, 0) / Math.max(1, all.characters)),
+            consistency,
+            consistencySpread: this.roundMetric(spread),
+            reliableSpeed: reliable ? `${reliable.label} WPM` : 'Building evidence',
+            retention,
+            retentionDelta: retentionDelta === null ? null : this.roundMetric(retentionDelta),
+            firstPlayAccuracy: firstPlay.characters ? this.roundMetric(firstPlay.accuracy) : null,
+            repeatedAccuracy: repeated.characters ? this.roundMetric(repeated.accuracy) : null,
+            revealRate: knownReveals.length ? this.roundMetric(knownReveals.filter((attempt) => attempt.revealedBeforeCheck).length * 100 / knownReveals.length) : null,
+            fatigueDelta: fatigueDelta === null ? null : this.roundMetric(fatigueDelta),
+            missingRate: errorCharacters ? this.roundMetric(misses * 100 / errorCharacters) : null,
+            incorrectRate: errorCharacters ? this.roundMetric(incorrect * 100 / errorCharacters) : null,
+            extraRate: errorCharacters ? this.roundMetric(extras * 100 / errorCharacters) : null,
+            weakestCharacters: weakestFromEvidence.length ? weakestFromEvidence : Object.entries(weakCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([character]) => character),
+            audioBreakdown: [...audioGroups.entries()].map(([label, items]) => ({ label, accuracy: this.roundMetric(aggregate(items).accuracy), characters: aggregate(items).characters })),
+        };
+    }
+
+    selectWorkspace(view: WorkspaceView): void {
+        this.activeWorkspace = view;
+        if (this.mobileSetupOpen) this.closeMobileSetup(false);
+        if (view === 'progress') this.loadPracticeMetrics();
+        this.persistUiState();
+    }
+
+    setMetricScope(showAll: boolean): void {
+        this.showAllMetricConditions = showAll;
+        this.selectedMetricPoint = '';
+        this.persistUiState();
+    }
+
+    toggleSettingsSection(section: SettingsSection, open: boolean): void {
+        this.settingsSections[section] = open;
+        this.persistUiState();
+    }
+
+    selectMetricPoint(characterWpm: number, farnsworthWpm: number, accuracy: number, detail: string): void {
+        this.selectedMetricPoint = `${characterWpm}/${farnsworthWpm} WPM · ${accuracy}% · ${detail}`;
+    }
+
+    openMobileSetup(): void {
+        this.mobileSetupOpen = true;
+        window.setTimeout(() => {
+            const firstControl = this.mobileSetupDrawer?.nativeElement.querySelector<HTMLElement>('button, select, input, textarea, [tabindex]:not([tabindex="-1"])');
+            (firstControl ?? this.mobileSetupDrawer?.nativeElement)?.focus();
+        }, 0);
+    }
+
+    closeMobileSetup(restoreFocus = true): void {
+        this.mobileSetupOpen = false;
+        if (restoreFocus) window.setTimeout(() => this.mobileSetupTrigger?.nativeElement.focus(), 0);
+    }
+
+    retryExercise(): void {
+        this.stop();
+        this.copy = '';
+        this.hasChecked = false;
+        this.answerRevealed = false;
+        this.expectedMarks = [];
+        this.copyMarks = [];
+        this.playbackPosition = 0;
+        window.setTimeout(() => this.copyInput?.nativeElement.focus(), 0);
+        this.play();
+    }
+
+    get availableExerciseFormats(): { value: ExerciseFormat; label: string }[] {
+        if (this.mode === 'qso') return this.exerciseFormats.filter((format) => format.value === 'guidedQso' || format.value === 'simulatedQso');
+        if (this.isBasicMode) return this.exerciseFormats.filter((format) => format.value === 'groups' || format.value === 'continuous' || format.value === 'instant');
+        return this.exerciseFormats.filter((format) => format.value === 'groups');
     }
 
     get playbackStatus(): string {
@@ -486,21 +859,131 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     }
 
     selectMode(mode: PracticeMode): void {
-        this.mode = mode;
+        this.selectContent(mode);
+    }
+
+    selectTrainingGoal(goal: string): void {
+        this.markPresetModified();
+        this.trainingGoal = goal as TrainingGoal;
+        if (this.trainingGoal === 'learn') {
+            this.mode = 'letters';
+            this.letterDrill = 'koch';
+            this.adaptiveCharacters = false;
+            this.adaptiveSpeed = false;
+            this.applyExerciseFormat('groups');
+            this.audioEffect = 'clean';
+        } else if (this.trainingGoal === 'speed') {
+            if (!this.isBasicMode) this.mode = 'mixed';
+            this.adaptiveCharacters = false;
+            this.adaptiveSpeed = true;
+            this.applyExerciseFormat('continuous');
+        } else if (this.trainingGoal === 'accuracy') {
+            this.adaptiveCharacters = false;
+            this.adaptiveSpeed = false;
+            if (this.mode === 'qso') this.mode = 'mixed';
+            this.applyExerciseFormat('groups');
+            this.audioEffect = 'clean';
+        } else if (this.trainingGoal === 'weaknesses') {
+            if (!this.isBasicMode) this.mode = 'letters';
+            this.adaptiveCharacters = true;
+            this.adaptiveSpeed = false;
+            if (this.mode === 'letters') this.letterDrill = 'confusions';
+            if (this.mode === 'mixed') this.mixedDrill = 'confusions';
+            this.applyExerciseFormat('groups');
+        } else {
+            this.mode = 'qso';
+            this.adaptiveCharacters = false;
+            this.adaptiveSpeed = false;
+            this.applyExerciseFormat('guidedQso');
+        }
         this.resetExercise();
     }
 
+    selectContent(mode: PracticeMode): void {
+        this.markPresetModified();
+        this.mode = mode;
+        if (mode === 'qso') {
+            if (this.exerciseFormat !== 'guidedQso' && this.exerciseFormat !== 'simulatedQso') this.applyExerciseFormat('guidedQso');
+        } else if (!this.availableExerciseFormats.some((format) => format.value === this.exerciseFormat)) {
+            this.applyExerciseFormat('groups');
+        }
+        this.resetExercise();
+    }
+
+    selectExerciseFormat(format: string): void {
+        this.markPresetModified();
+        this.applyExerciseFormat(format as ExerciseFormat);
+        this.resetExercise();
+    }
+
+    applySessionPreset(preset: SessionPreset): void {
+        this.repeatCount = 1;
+        this.strictSpacing = false;
+        this.countdownSeconds = 0;
+        this.revealMode = 'check';
+        this.adaptiveCharacters = false;
+        this.adaptiveSpeed = false;
+        this.audioEffect = 'clean';
+        if (preset === 'warmup') {
+            this.trainingGoal = 'accuracy';
+            this.mode = 'mixed';
+            this.mixedDrill = 'radio';
+            this.wpm = 17;
+            this.farnsworthWpm = 10;
+            this.groupSize = 5;
+            this.groupCount = 5;
+            this.applyExerciseFormat('groups');
+        } else if (preset === 'weaknesses') {
+            this.trainingGoal = 'weaknesses';
+            this.mode = 'letters';
+            this.letterDrill = 'confusions';
+            this.adaptiveCharacters = true;
+            this.applyExerciseFormat('groups');
+        } else if (preset === 'callsigns') {
+            this.trainingGoal = 'speed';
+            this.mode = 'callsigns';
+            this.wpm = 20;
+            this.farnsworthWpm = 15;
+            this.groupCount = 10;
+            this.applyExerciseFormat('groups');
+        } else if (preset === 'firstQso') {
+            this.trainingGoal = 'qso';
+            this.mode = 'qso';
+            this.qsoStage = 'p1';
+            this.wpm = 15;
+            this.farnsworthWpm = 8;
+            this.applyExerciseFormat('guidedQso');
+        } else {
+            this.trainingGoal = 'qso';
+            this.mode = 'qso';
+            this.qsoStage = 'complete';
+            this.wpm = 18;
+            this.farnsworthWpm = 12;
+            this.audioEffect = 'light';
+            this.applyExerciseFormat('simulatedQso');
+        }
+        this.activePreset = preset;
+        this.presetModified = false;
+        this.resetExercise();
+        this.persistUiState();
+        this.showToast(`${this.activePresetLabel} applied`, 'success');
+    }
+
     selectQsoStage(stage: string): void {
+        this.markPresetModified();
         this.qsoStage = stage as QsoStage;
+        this.exerciseFormat = this.qsoStage === 'complete' ? 'simulatedQso' : 'guidedQso';
         this.resetExercise();
     }
 
     selectWordCategory(category: string): void {
+        this.markPresetModified();
         this.wordCategory = category as WordCategory;
         this.resetExercise();
     }
 
     selectDrill(kind: 'letter' | 'number' | 'mixed', value: string): void {
+        this.markPresetModified();
         if (kind === 'letter') this.letterDrill = value as LetterDrill;
         if (kind === 'number') this.numberDrill = value as NumberDrill;
         if (kind === 'mixed') this.mixedDrill = value as MixedDrill;
@@ -508,27 +991,34 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     }
 
     selectOption(setting: 'troublePair' | 'revealMode', value: string): void {
+        this.markPresetModified();
         if (setting === 'troublePair') this.troublePair = value;
         else this.revealMode = value as RevealMode;
         this.resetExercise();
     }
 
     updateCustomCharacters(value: string): void {
+        this.markPresetModified();
         const supported = value.toUpperCase().split('').filter((character) => Boolean(this.morse[character]));
         this.customCharacters = [...new Set(supported)].join('');
         this.resetExercise();
     }
 
     toggleSetting(setting: 'adaptiveCharacters' | 'adaptiveSpeed' | 'instantCharacters' | 'strictSpacing', checked: boolean): void {
+        this.markPresetModified();
         this[setting] = checked;
         if (setting === 'instantCharacters' && checked) {
             this.timedMinutes = 0;
             this.repeatCount = 1;
+            this.exerciseFormat = 'instant';
+        } else if (setting === 'instantCharacters' && this.exerciseFormat === 'instant') {
+            this.exerciseFormat = 'groups';
         }
         this.resetExercise();
     }
 
     selectAudioEffect(effect: string): void {
+        this.markPresetModified();
         this.audioEffect = effect as AudioEffect;
         this.stop();
         if (this.exercise) this.prepareTimeline();
@@ -544,14 +1034,17 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         this.profileSaved = true;
         this.resetExercise();
         this.loadPracticeMetrics();
+        this.showToast('Station profile saved', 'success');
     }
 
-    updateNumber(setting: 'wpm' | 'farnsworthWpm' | 'tone' | 'groupSize' | 'groupCount' | 'kochLevel' | 'repeatCount' | 'countdownSeconds' | 'timedMinutes' | 'mixedLetterPercent', value: string): void {
+    updateNumber(setting: 'wpm' | 'farnsworthWpm' | 'tone' | 'groupSize' | 'groupCount' | 'kochLevel' | 'repeatCount' | 'countdownSeconds' | 'timedMinutes' | 'mixedLetterPercent' | 'sessionTargetAttempts', value: string): void {
+        this.markPresetModified();
         const ranges = {
             wpm: [5, 40], farnsworthWpm: [5, this.wpm], tone: [350, 900],
             groupSize: [1, 8], groupCount: [1, 10], kochLevel: [2, 26],
             repeatCount: [1, 3], countdownSeconds: [0, 5], timedMinutes: [0, 5],
             mixedLetterPercent: [0, 100],
+            sessionTargetAttempts: [5, 25],
         } as const;
         const parsed = Number(value);
         if (!Number.isFinite(parsed)) return;
@@ -559,6 +1052,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         const [minimum, maximum] = ranges[setting];
         this[setting] = Math.min(maximum, Math.max(minimum, parsed));
         if (setting === 'wpm' && this.farnsworthWpm > this.wpm) this.farnsworthWpm = this.wpm;
+        if (setting === 'timedMinutes' && this.isBasicMode && !this.instantCharacters) this.exerciseFormat = this.timedMinutes > 0 ? 'continuous' : 'groups';
         if (['groupSize', 'groupCount', 'kochLevel', 'repeatCount', 'countdownSeconds', 'timedMinutes', 'mixedLetterPercent'].includes(setting)) this.resetExercise();
         else {
             this.stop();
@@ -577,6 +1071,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         this.revealedGroupCount = 0;
         this.expectedMarks = [];
         this.copyMarks = [];
+        this.exercisePlayCount = 0;
         this.prepareTimeline();
         window.setTimeout(() => this.copyInput?.nativeElement.focus(), 0);
         if (playImmediately) this.play();
@@ -584,7 +1079,9 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
 
     play(): void {
         if (!this.exercise) this.newExercise(false);
+        const startingFromBeginning = this.playbackPosition <= 0 || this.playbackPosition >= this.playbackDuration;
         if (this.playbackPosition >= this.playbackDuration) this.playbackPosition = 0;
+        if (startingFromBeginning) this.exercisePlayCount += 1;
         this.clearPlayback(false);
 
         const AudioContextClass = window.AudioContext
@@ -662,6 +1159,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
 
     checkCopy(): void {
         if (!this.exercise || !this.copy.trim()) return;
+        const revealedBeforeCheck = this.answerRevealed;
         this.clearPlayback(false);
         this.playbackPosition = this.playbackDuration;
         const expected = this.strictSpacing ? this.normalize(this.exercise) : this.exercise.replace(/\s+/g, '');
@@ -691,7 +1189,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
             farnsworthWpm: this.farnsworthWpm,
             effectiveCopyWpm: Math.round(this.farnsworthWpm * exerciseAccuracy) / 100,
         }, ...this.results];
-        this.savePracticeMetric(exerciseAccuracy, comparison.correct, denominator, comparison.confusions);
+        this.savePracticeMetric(exerciseAccuracy, comparison.correct, denominator, comparison.confusions, revealedBeforeCheck);
         if (this.adaptiveSpeed && this.isBasicMode) this.adjustAdaptiveSpeed(exerciseAccuracy);
         if (this.instantCharacters && this.isBasicMode) window.setTimeout(() => this.newExercise(), 700);
     }
@@ -710,6 +1208,12 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         this.totalCharacters = 0;
         this.attempts = 0;
         this.results = [];
+        this.sessionId = this.createSessionId();
+        this.showToast('Session reset', 'info');
+    }
+
+    confirmResetSession(): void {
+        if (!this.attempts || window.confirm('Reset this practice session and clear its current results?')) this.resetSession();
     }
 
     clearWeakWords(): void {
@@ -719,6 +1223,11 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         localStorage.removeItem('cw-copy-weak-words');
         localStorage.removeItem('cw-copy-weak-characters');
         localStorage.removeItem('cw-copy-confusions');
+        this.showToast('Review list cleared', 'info');
+    }
+
+    confirmClearWeakWords(): void {
+        if (window.confirm('Clear all saved weak characters, words, and confusion pairs?')) this.clearWeakWords();
     }
 
     loadPracticeMetrics(): void {
@@ -729,6 +1238,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
             next: (attempts) => {
                 this.metricsOnline = true;
                 this.metricsLoading = false;
+                this.practiceAttempts = attempts;
                 this.metricTrends = this.buildMetricTrends(attempts);
                 this.speedAccuracySeries = this.buildSpeedAccuracySeries(attempts);
                 this.proficiencySummaries = this.buildProficiencySummaries(attempts);
@@ -738,15 +1248,28 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
             error: () => {
                 this.metricsOnline = false;
                 this.metricsLoading = false;
+                this.showToast('Progress service unavailable', 'error');
             },
         });
     }
 
     @HostListener('document:keydown', ['$event'])
     handleKeyboard(event: KeyboardEvent): void {
+        if (this.mobileSetupOpen) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                this.closeMobileSetup();
+                return;
+            }
+            if (event.key === 'Tab') {
+                this.trapMobileSetupFocus(event);
+                return;
+            }
+        }
         const target = event.target as HTMLElement;
         const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
-        if (isTyping) {
+        const isInteractive = isTyping || ['BUTTON', 'A'].includes(target.tagName);
+        if (isInteractive) {
             if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') this.checkCopy();
             return;
         }
@@ -760,6 +1283,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
 
     ngOnDestroy(): void {
         this.stop();
+        if (this.toastTimer !== null) window.clearTimeout(this.toastTimer);
         void this.audioContext?.close();
     }
 
@@ -773,6 +1297,27 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         this.revealedGroupCount = 0;
         this.expectedMarks = [];
         this.copyMarks = [];
+    }
+
+    private applyExerciseFormat(format: ExerciseFormat): void {
+        this.exerciseFormat = format;
+        if (format === 'instant') {
+            this.instantCharacters = true;
+            this.timedMinutes = 0;
+            this.repeatCount = 1;
+        } else if (format === 'continuous') {
+            this.instantCharacters = false;
+            this.timedMinutes = 1;
+        } else if (format === 'groups') {
+            this.instantCharacters = false;
+            this.timedMinutes = 0;
+        } else {
+            this.mode = 'qso';
+            this.instantCharacters = false;
+            this.timedMinutes = 0;
+            if (format === 'simulatedQso') this.qsoStage = 'complete';
+            else if (this.qsoStage === 'complete') this.qsoStage = 'mixed';
+        }
     }
 
     private generateExercise(): GeneratedExercise {
@@ -1085,16 +1630,20 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         localStorage.setItem('cw-copy-confusions', JSON.stringify(this.confusionCounts));
     }
 
-    private savePracticeMetric(accuracy: number, correctCharacters: number, totalCharacters: number, confusions: Record<string, number>): void {
+    private savePracticeMetric(accuracy: number, correctCharacters: number, totalCharacters: number, confusions: Record<string, number>, revealedBeforeCheck: boolean): void {
         const missedCharacters: Record<string, number> = {};
         const characterScores: Record<string, number> = {};
+        const characterAttempts: Record<string, number> = {};
+        const characterCorrect: Record<string, number> = {};
         this.expectedMarks.forEach((mark) => {
             if (mark.character === ' ') return;
+            characterAttempts[mark.character] = (characterAttempts[mark.character] ?? 0) + 1;
             if (mark.status === 'missing' || mark.status === 'incorrect') {
                 missedCharacters[mark.character] = (missedCharacters[mark.character] ?? 0) + 1;
                 characterScores[mark.character] = (characterScores[mark.character] ?? 0) + 2;
             } else if (mark.status === 'correct') {
                 characterScores[mark.character] = (characterScores[mark.character] ?? 0) - 1;
+                characterCorrect[mark.character] = (characterCorrect[mark.character] ?? 0) + 1;
             }
         });
 
@@ -1111,12 +1660,28 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
             missedCharacters,
             characterScores,
             confusions,
+            trainingGoal: this.trainingGoal,
+            exerciseFormat: this.exerciseFormat,
+            audioEffect: this.audioEffect,
+            repeatCount: this.repeatCount,
+            groupSize: this.groupSize,
+            strictSpacing: this.strictSpacing,
+            timedMinutes: this.timedMinutes,
+            playCount: this.exercisePlayCount,
+            revealedBeforeCheck,
+            sessionId: this.sessionId,
+            characterAttempts,
+            characterCorrect,
+            missingCount: this.expectedMarks.filter((mark) => mark.status === 'missing').length,
+            incorrectCount: this.expectedMarks.filter((mark) => mark.status === 'incorrect').length,
+            extraCount: this.copyMarks.filter((mark) => mark.status === 'extra').length,
         };
 
         this.http.post<CwPracticeAttempt>(`${environment.apiUrl}/cw-practice-attempts`, attempt).subscribe({
             next: () => {
                 this.metricsOnline = true;
                 this.loadPracticeMetrics();
+                this.showToast('Attempt synced', 'success');
             },
             error: () => {
                 this.metricsOnline = false;
@@ -1124,6 +1689,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
                 pending.push(attempt);
                 localStorage.setItem('cw-pending-metrics', JSON.stringify(pending.slice(-100)));
                 this.pendingMetricCount = Math.min(100, pending.length);
+                this.showToast('Attempt saved locally and queued', 'info');
             },
         });
     }
@@ -1167,7 +1733,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
             const timelinePositions = new Map(timeline.map((attempt, index) => [attempt, index]));
             const traceGroups = new Map<string, CwPracticeAttempt[]>();
             seriesAttempts.forEach((attempt) => {
-                const key = `${attempt.wpm}/${attempt.farnsworthWpm}`;
+                const key = `${attempt.wpm}/${attempt.farnsworthWpm}|${this.metricConditionKey(attempt)}`;
                 traceGroups.set(key, [...(traceGroups.get(key) ?? []), attempt]);
             });
             const traces = [...traceGroups.entries()]
@@ -1185,7 +1751,8 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
                     }).join(' ');
                     return {
                         key,
-                        label: `${key} WPM`,
+                        label: `${values[0].wpm}/${values[0].farnsworthWpm} WPM`,
+                        detail: this.metricConditionLabel(values[0]),
                         color: this.metricColors[index % this.metricColors.length],
                         attempts: values.length,
                         average: Math.round(correctCharacters * 100 / Math.max(1, totalCharacters)),
@@ -1215,11 +1782,15 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
 
         return [...seriesGroups.values()].map((seriesAttempts) => {
             const sample = seriesAttempts[0];
-            const traceGroups = new Map<number, CwPracticeAttempt[]>();
-            seriesAttempts.forEach((attempt) => traceGroups.set(attempt.wpm, [...(traceGroups.get(attempt.wpm) ?? []), attempt]));
+            const traceGroups = new Map<string, CwPracticeAttempt[]>();
+            seriesAttempts.forEach((attempt) => {
+                const key = `${attempt.wpm}|${this.metricConditionKey(attempt)}`;
+                traceGroups.set(key, [...(traceGroups.get(key) ?? []), attempt]);
+            });
             const traces = [...traceGroups.entries()]
-                .sort(([a], [b]) => a - b)
-                .map(([characterWpm, traceAttempts], index) => {
+                .sort(([, a], [, b]) => a[0].wpm - b[0].wpm)
+                .map(([key, traceAttempts], index) => {
+                    const characterWpm = traceAttempts[0].wpm;
                     const values = traceAttempts.slice(0, 80);
                     const points = values.map((attempt) => ({
                         x: Math.max(0, Math.min(300, (attempt.farnsworthWpm - 5) * 300 / 35)),
@@ -1241,8 +1812,9 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
                         })
                         .join(' ');
                     return {
-                        key: String(characterWpm),
+                        key,
                         label: `${characterWpm} character WPM`,
+                        detail: this.metricConditionLabel(traceAttempts[0]),
                         color: this.metricColors[index % this.metricColors.length],
                         attempts: values.length,
                         points,
@@ -1271,11 +1843,15 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
 
         return [...seriesGroups.values()].map((seriesAttempts) => {
             const sample = seriesAttempts[0];
-            const characterSpeedGroups = new Map<number, CwPracticeAttempt[]>();
-            seriesAttempts.forEach((attempt) => characterSpeedGroups.set(attempt.wpm, [...(characterSpeedGroups.get(attempt.wpm) ?? []), attempt]));
+            const characterSpeedGroups = new Map<string, CwPracticeAttempt[]>();
+            seriesAttempts.forEach((attempt) => {
+                const key = `${attempt.wpm}|${this.metricConditionKey(attempt)}`;
+                characterSpeedGroups.set(key, [...(characterSpeedGroups.get(key) ?? []), attempt]);
+            });
             const speeds = [...characterSpeedGroups.entries()]
-                .sort(([a], [b]) => a - b)
-                .map(([characterWpm, speedAttempts]) => {
+                .sort(([, a], [, b]) => a[0].wpm - b[0].wpm)
+                .map(([key, speedAttempts]) => {
+                    const characterWpm = speedAttempts[0].wpm;
                     const farnsworthGroups = new Map<number, CwPracticeAttempt[]>();
                     speedAttempts.forEach((attempt) => farnsworthGroups.set(attempt.farnsworthWpm, [...(farnsworthGroups.get(attempt.farnsworthWpm) ?? []), attempt]));
                     const buckets = [...farnsworthGroups.entries()].map(([farnsworthWpm, values]) => {
@@ -1292,6 +1868,8 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
                             || b.farnsworthWpm - a.farnsworthWpm
                             || b.accuracy - a.accuracy)[0];
                     return {
+                        key,
+                        conditionLabel: this.metricConditionLabel(speedAttempts[0]),
                         characterWpm,
                         provenFarnsworthWpm: proven?.farnsworthWpm ?? null,
                         candidateFarnsworthWpm: candidate.farnsworthWpm,
@@ -1315,12 +1893,138 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         return this.modes.find((item) => item.value === mode)?.label ?? mode;
     }
 
+    private metricConditionKey(attempt: CwPracticeAttempt): string {
+        if (!attempt.exerciseFormat && !attempt.audioEffect && !attempt.trainingGoal) return 'legacy';
+        const basicMode = attempt.mode === 'letters' || attempt.mode === 'numbers' || attempt.mode === 'mixed';
+        return [
+            attempt.trainingGoal ?? 'unknown-goal',
+            attempt.exerciseFormat ?? 'unknown-format',
+            attempt.audioEffect ?? 'unknown-audio',
+            attempt.exerciseFormat === 'instant' ? 'na' : attempt.repeatCount ?? 'unknown-repeats',
+            basicMode && attempt.exerciseFormat !== 'instant' ? attempt.groupSize ?? 'unknown-group' : 'na',
+            attempt.strictSpacing === null || attempt.strictSpacing === undefined ? 'unknown-spacing' : attempt.strictSpacing,
+            attempt.exerciseFormat === 'continuous' ? attempt.timedMinutes ?? 'unknown-duration' : 'na',
+        ].join('|');
+    }
+
+    private currentMetricConditionKey(): string {
+        const basicMode = this.mode === 'letters' || this.mode === 'numbers' || this.mode === 'mixed';
+        return [
+            this.trainingGoal,
+            this.exerciseFormat,
+            this.audioEffect,
+            this.exerciseFormat === 'instant' ? 'na' : this.repeatCount,
+            basicMode && this.exerciseFormat !== 'instant' ? this.groupSize : 'na',
+            this.strictSpacing,
+            this.exerciseFormat === 'continuous' ? this.timedMinutes : 'na',
+        ].join('|');
+    }
+
+    private metricConditionLabel(attempt: CwPracticeAttempt): string {
+        if (this.metricConditionKey(attempt) === 'legacy') return 'legacy conditions';
+        const goal = this.trainingGoals.find((item) => item.value === attempt.trainingGoal)?.label ?? attempt.trainingGoal ?? 'Unknown goal';
+        const format = this.exerciseFormats.find((item) => item.value === attempt.exerciseFormat)?.label ?? attempt.exerciseFormat ?? 'Unknown format';
+        const conditions = [goal, format, attempt.audioEffect ?? 'unknown audio'];
+        const basicMode = attempt.mode === 'letters' || attempt.mode === 'numbers' || attempt.mode === 'mixed';
+        if (basicMode && attempt.exerciseFormat !== 'instant' && attempt.groupSize) conditions.push(`groups of ${attempt.groupSize}`);
+        if (attempt.exerciseFormat === 'continuous' && attempt.timedMinutes) conditions.push(`${attempt.timedMinutes} min`);
+        if ((attempt.repeatCount ?? 1) > 1) conditions.push(`×${attempt.repeatCount}`);
+        if (attempt.strictSpacing) conditions.push('spaces scored');
+        return conditions.join(' · ');
+    }
+
     private latestAttemptTime(attempts: CwPracticeAttempt[]): string {
         return attempts.reduce((latest, attempt) => (attempt.createdAt ?? '') > latest ? (attempt.createdAt ?? '') : latest, '');
     }
 
     private metricTraceKey(chart: 'trend' | 'speed', mode: PracticeMode, drill: string, traceKey: string): string {
         return `${chart}|${mode}|${drill}|${traceKey}`;
+    }
+
+    private markPresetModified(): void {
+        if (this.activePreset) this.presetModified = true;
+        window.setTimeout(() => this.persistUiState(), 0);
+    }
+
+    private persistUiState(): void {
+        localStorage.setItem('cw-copy-ui', JSON.stringify({
+            activeWorkspace: this.activeWorkspace,
+            showAllMetricConditions: this.showAllMetricConditions,
+            trainingGoal: this.trainingGoal,
+            mode: this.mode,
+            exerciseFormat: this.exerciseFormat,
+            activePreset: this.activePreset,
+            wpm: this.wpm,
+            farnsworthWpm: this.farnsworthWpm,
+            audioEffect: this.audioEffect,
+            groupSize: this.groupSize,
+            groupCount: this.groupCount,
+            sessionTargetAttempts: this.sessionTargetAttempts,
+            tone: this.tone,
+            repeatCount: this.repeatCount,
+            countdownSeconds: this.countdownSeconds,
+            timedMinutes: this.timedMinutes,
+            strictSpacing: this.strictSpacing,
+            adaptiveCharacters: this.adaptiveCharacters,
+            adaptiveSpeed: this.adaptiveSpeed,
+            revealMode: this.revealMode,
+            letterDrill: this.letterDrill,
+            numberDrill: this.numberDrill,
+            mixedDrill: this.mixedDrill,
+            qsoStage: this.qsoStage,
+            wordCategory: this.wordCategory,
+            settingsSections: this.settingsSections,
+        }));
+    }
+
+    private showToast(message: string, tone: ToastTone): void {
+        this.toastMessage = message;
+        this.toastTone = tone;
+        if (this.toastTimer !== null) window.clearTimeout(this.toastTimer);
+        this.toastTimer = window.setTimeout(() => {
+            this.toastMessage = '';
+            this.toastTimer = null;
+        }, 2800);
+    }
+
+    private roundMetric(value: number): number {
+        return Math.round(value * 10) / 10;
+    }
+
+    private wilsonInterval(correct: number, total: number): [number, number] {
+        if (!total) return [0, 0];
+        const z = 1.96;
+        const proportion = correct / total;
+        const denominator = 1 + z ** 2 / total;
+        const center = (proportion + z ** 2 / (2 * total)) / denominator;
+        const margin = z * Math.sqrt((proportion * (1 - proportion) + z ** 2 / (4 * total)) / total) / denominator;
+        return [Math.max(0, (center - margin) * 100), Math.min(100, (center + margin) * 100)];
+    }
+
+    private createSessionId(): string {
+        return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+
+    private trapMobileSetupFocus(event: KeyboardEvent): void {
+        const drawer = this.mobileSetupDrawer?.nativeElement;
+        if (!drawer) return;
+        const controls = Array.from(drawer.querySelectorAll<HTMLElement>('button:not([disabled]), select:not([disabled]), input:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'))
+            .filter((control) => control.offsetParent !== null);
+        if (!controls.length) {
+            event.preventDefault();
+            drawer.focus();
+            return;
+        }
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        const active = document.activeElement;
+        if (event.shiftKey && (active === first || !drawer.contains(active))) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && (active === last || !drawer.contains(active))) {
+            event.preventDefault();
+            first.focus();
+        }
     }
 
     private applyServerCharacterScores(attempts: CwPracticeAttempt[]): void {

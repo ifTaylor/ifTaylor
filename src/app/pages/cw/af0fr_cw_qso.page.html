@@ -11,24 +11,70 @@
             </div>
         </header>
 
-        <section class="rounded-2xl bg-white p-3 shadow-xl sm:rounded-3xl sm:p-5">
-            <div class="flex gap-2 overflow-x-auto pb-1" style="scrollbar-width: none" aria-label="Practice mode">
-                <button
-                    *ngFor="let option of modes"
-                    type="button"
-                    class="min-w-max rounded-full border-2 px-4 py-2 text-sm font-black transition"
-                    [class.border-orange-500]="mode === option.value"
-                    [class.bg-orange-500]="mode === option.value"
-                    [class.text-white]="mode === option.value"
-                    [class.border-slate-200]="mode !== option.value"
-                    [class.bg-white]="mode !== option.value"
-                    (click)="selectMode(option.value)"
-                >
-                    {{ option.label }}
-                </button>
+        <nav class="flex rounded-2xl bg-slate-950 p-1.5 text-white shadow-xl" aria-label="CW trainer sections">
+            <button type="button" class="min-h-11 flex-1 rounded-xl px-4 py-2 text-sm font-black transition motion-reduce:transition-none" [class.bg-orange-500]="activeWorkspace === 'practice'" [class.text-white]="activeWorkspace === 'practice'" [class.text-slate-400]="activeWorkspace !== 'practice'" (click)="selectWorkspace('practice')">Practice</button>
+            <button type="button" class="min-h-11 flex-1 rounded-xl px-4 py-2 text-sm font-black transition motion-reduce:transition-none" [class.bg-orange-500]="activeWorkspace === 'progress'" [class.text-white]="activeWorkspace === 'progress'" [class.text-slate-400]="activeWorkspace !== 'progress'" (click)="selectWorkspace('progress')">Progress</button>
+        </nav>
+
+        <div *ngIf="activeWorkspace === 'practice'" class="flex items-center justify-between gap-3 rounded-2xl bg-white p-3 shadow-xl lg:hidden">
+            <div class="min-w-0"><div class="truncate text-sm font-black">{{ activeContentLabel }} · {{ activeExerciseFormatLabel }}</div><div class="truncate text-xs text-slate-500">{{ wpm }}/{{ farnsworthWpm }} WPM · {{ audioEffect }} · {{ sessionLengthLabel }}</div></div>
+            <button #mobileSetupTrigger type="button" class="min-h-11 shrink-0 rounded-xl bg-slate-950 px-4 text-sm font-black text-white" aria-haspopup="dialog" [attr.aria-expanded]="mobileSetupOpen" (click)="openMobileSetup()">Adjust</button>
+        </div>
+
+        <button *ngIf="mobileSetupOpen" type="button" class="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm lg:hidden" aria-label="Close session settings" (click)="closeMobileSetup()"></button>
+
+        <section class="grid items-start gap-4" [ngClass]="activeWorkspace === 'practice' ? 'lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)] lg:gap-6' : 'grid-cols-1'">
+        <aside #mobileSetupDrawer *ngIf="activeWorkspace === 'practice'" class="fixed inset-3 z-50 hidden overflow-y-auto rounded-2xl bg-white p-3 shadow-2xl outline-none sm:p-5 lg:sticky lg:top-4 lg:block lg:max-h-[calc(100vh-2rem)] lg:rounded-3xl" [class.!block]="mobileSetupOpen" tabindex="-1" [attr.role]="mobileSetupOpen ? 'dialog' : null" [attr.aria-modal]="mobileSetupOpen ? 'true' : null" [attr.aria-label]="mobileSetupOpen ? 'Session settings' : null">
+            <div class="mb-3 flex items-center justify-between lg:hidden"><strong>Adjust session</strong><button type="button" class="min-h-11 rounded-xl bg-slate-100 px-4 text-sm font-black" (click)="closeMobileSetup()">Done</button></div>
+            <div>
+                <div class="text-xs font-black uppercase tracking-wider text-slate-500">Quick sessions</div>
+                <div class="mt-2 flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-2 lg:overflow-visible" style="scrollbar-width: none" aria-label="Session presets">
+                    <button *ngFor="let preset of sessionPresets" type="button" class="min-w-max rounded-xl border px-3 py-2 text-left transition motion-reduce:transition-none hover:border-orange-300 hover:bg-orange-50 lg:min-w-0" [class.lg:col-span-2]="preset.value === 'onAir'" [class.border-orange-500]="activePreset === preset.value" [class.bg-orange-50]="activePreset === preset.value" [class.border-slate-200]="activePreset !== preset.value" [class.bg-slate-50]="activePreset !== preset.value" [attr.aria-pressed]="activePreset === preset.value" [attr.title]="preset.description" (click)="applySessionPreset(preset.value)">
+                        <span class="block text-xs font-black">{{ preset.label }}</span>
+                        <span class="mt-0.5 block text-[10px] text-slate-500 lg:hidden">{{ preset.description }}</span>
+                    </button>
+                </div>
             </div>
 
-            <div class="mt-3 grid gap-3 sm:grid-cols-2">
+            <div class="mt-4 grid gap-3 rounded-xl bg-slate-100 p-3">
+                <label class="block">
+                    <span class="text-xs font-black uppercase tracking-wider text-slate-500">Training goal</span>
+                    <select class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 font-semibold" [value]="trainingGoal" (change)="selectTrainingGoal($any($event.target).value)">
+                        <option *ngFor="let goal of trainingGoals" [value]="goal.value">{{ goal.label }}</option>
+                    </select>
+                    <span class="mt-1 block text-[10px] text-slate-500">{{ activeTrainingGoalDescription }}</span>
+                </label>
+                <label class="block">
+                    <span class="text-xs font-black uppercase tracking-wider text-slate-500">Content</span>
+                    <select class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 font-semibold" [value]="mode" (change)="selectContent($any($event.target).value)">
+                        <option *ngFor="let option of modes" [value]="option.value">{{ option.label }}</option>
+                    </select>
+                    <span class="mt-1 block text-[10px] text-slate-500">{{ activeContentDescription }}</span>
+                </label>
+                <label class="block">
+                    <span class="text-xs font-black uppercase tracking-wider text-slate-500">Exercise format</span>
+                    <select class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 font-semibold" [value]="exerciseFormat" (change)="selectExerciseFormat($any($event.target).value)">
+                        <option *ngFor="let format of availableExerciseFormats" [value]="format.value">{{ format.label }}</option>
+                    </select>
+                    <span class="mt-1 block text-[10px] text-slate-500">Choose how the content is presented.</span>
+                </label>
+            </div>
+
+            <div class="mt-3 rounded-xl border border-orange-200 bg-orange-50 p-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="text-xs font-black uppercase tracking-wider text-orange-800">Session recipe</div>
+                    <div class="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-slate-600">{{ activePresetLabel }}<span *ngIf="presetModified" class="text-orange-700"> · Modified</span></div>
+                </div>
+                <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
+                    <div><span class="block font-bold text-slate-400">Goal</span><strong>{{ activeTrainingGoalLabel }}</strong></div>
+                    <div><span class="block font-bold text-slate-400">Exercise</span><strong>{{ activeContentLabel }} · {{ activeExerciseFormatLabel }}</strong></div>
+                    <div><span class="block font-bold text-slate-400">Conditions</span><strong>{{ wpm }}/{{ farnsworthWpm }} WPM · {{ audioEffect }}</strong></div>
+                    <div><span class="block font-bold text-slate-400">Length</span><strong>{{ sessionLengthLabel }}</strong></div>
+                </div>
+                <button type="button" class="mt-3 min-h-11 w-full rounded-xl bg-orange-500 px-4 text-sm font-black text-white hover:bg-orange-400" (click)="closeMobileSetup(false); newExercise()">Start this session</button>
+            </div>
+
+            <div class="mt-3 grid gap-3">
                 <label *ngIf="mode === 'qso'" class="block">
                     <span class="text-xs font-black uppercase tracking-wider text-slate-500">QSO stage</span>
                     <select class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 font-semibold" [value]="qsoStage" (change)="selectQsoStage($any($event.target).value)">
@@ -43,14 +89,12 @@
                 </label>
             </div>
 
-            <details class="mt-3 rounded-xl bg-slate-100">
-                <summary class="cursor-pointer list-none px-4 py-3 text-sm font-black">
-                    <span class="flex items-center justify-between gap-3">
-                        <span>Practice settings</span>
-                        <span class="text-xs font-semibold text-slate-500">{{ wpm }}/{{ farnsworthWpm }} WPM · {{ tone }} Hz · {{ audioEffect }}</span>
-                    </span>
-                </summary>
-                <div class="grid gap-5 border-t border-slate-200 px-4 pt-4 sm:grid-cols-2 lg:grid-cols-3">
+            <details class="mt-3 rounded-xl bg-slate-100" [open]="settingsSections.advanced" (toggle)="toggleSettingsSection('advanced', $any($event.target).open)">
+                <summary class="cursor-pointer list-none px-4 py-3 text-sm font-black"><span class="flex items-center justify-between gap-3"><span>Advanced settings</span><span class="text-xs font-semibold text-slate-500">{{ wpm }}/{{ farnsworthWpm }} WPM · {{ tone }} Hz · {{ audioEffect }}</span></span></summary>
+                <div class="space-y-2 border-t border-slate-200 p-3">
+                <details class="rounded-xl bg-white" [open]="settingsSections.content" (toggle)="toggleSettingsSection('content', $any($event.target).open)">
+                    <summary class="cursor-pointer px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-500">Content</summary>
+                    <div class="grid gap-4 border-t border-slate-100 p-3">
                     <label *ngIf="mode === 'letters'" class="block">
                         <span class="text-sm font-bold">Letter drill</span>
                         <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="letterDrill" (change)="selectDrill('letter', $any($event.target).value)"><option *ngFor="let drill of letterDrills" [value]="drill.value">{{ drill.label }}</option></select>
@@ -81,6 +125,12 @@
                         <input class="mt-2 w-full accent-orange-500" type="range" min="0" max="100" step="10" [value]="mixedLetterPercent" (input)="updateNumber('mixedLetterPercent', $any($event.target).value)">
                         <span class="mt-1 block text-xs text-slate-500">{{ mixedLetterPercent }}% letters; the remainder is numbers and punctuation.</span>
                     </label>
+                    </div>
+                </details>
+
+                <details class="rounded-xl bg-white" [open]="settingsSections.speed" (toggle)="toggleSettingsSection('speed', $any($event.target).open)">
+                    <summary class="cursor-pointer px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-500">Speed and groups</summary>
+                    <div class="grid gap-4 border-t border-slate-100 p-3">
                     <label class="block">
                         <span class="flex justify-between text-sm font-bold"><span>Character speed</span><span>{{ wpm }} WPM</span></span>
                         <input aria-label="Character speed" class="mt-2 w-full accent-orange-500" type="range" min="5" max="40" [value]="wpm" (input)="updateNumber('wpm', $any($event.target).value)">
@@ -89,18 +139,22 @@
                         <span class="flex justify-between text-sm font-bold"><span>Farnsworth</span><span>{{ farnsworthWpm }} WPM</span></span>
                         <input aria-label="Farnsworth speed" class="mt-2 w-full accent-orange-500" type="range" min="5" [max]="wpm" [value]="farnsworthWpm" (input)="updateNumber('farnsworthWpm', $any($event.target).value)">
                     </label>
-                    <label class="block">
-                        <span class="flex justify-between text-sm font-bold"><span>Tone</span><span>{{ tone }} Hz</span></span>
-                        <input aria-label="Tone frequency" class="mt-2 w-full accent-orange-500" type="range" min="350" max="900" step="25" [value]="tone" (input)="updateNumber('tone', $any($event.target).value)">
-                    </label>
-                    <label *ngIf="isBasicMode && !instantCharacters" class="block">
+                    <label *ngIf="isBasicMode && exerciseFormat !== 'instant'" class="block">
                         <span class="flex justify-between text-sm font-bold"><span>Group size</span><span>{{ groupSize }}</span></span>
                         <input aria-label="Group size" class="mt-2 w-full accent-orange-500" type="range" min="1" max="8" [value]="groupSize" (input)="updateNumber('groupSize', $any($event.target).value)">
                     </label>
-                    <label *ngIf="mode !== 'qso' && (!isBasicMode || timedMinutes === 0) && (!isBasicMode || !instantCharacters)" class="block">
+                    <label *ngIf="mode !== 'qso' && (!isBasicMode || exerciseFormat === 'groups')" class="block">
                         <span class="flex justify-between text-sm font-bold"><span>{{ mode === 'qsoWords' ? 'Words' : 'Groups' }}</span><span>{{ groupCount }}</span></span>
                         <input aria-label="Exercise length" class="mt-2 w-full accent-orange-500" type="range" min="1" max="10" [value]="groupCount" (input)="updateNumber('groupCount', $any($event.target).value)">
                     </label>
+                    <label *ngIf="isBasicMode" class="flex min-h-11 items-center gap-3 rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold"><input class="h-5 w-5 accent-orange-500" type="checkbox" [checked]="adaptiveSpeed" (change)="toggleSetting('adaptiveSpeed', $any($event.target).checked)">Adaptive speed</label>
+                    </div>
+                </details>
+
+                <details class="rounded-xl bg-white" [open]="settingsSections.audio" (toggle)="toggleSettingsSection('audio', $any($event.target).open)">
+                    <summary class="cursor-pointer px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-500">Audio</summary>
+                    <div class="grid gap-4 border-t border-slate-100 p-3">
+                    <label class="block"><span class="flex justify-between text-sm font-bold"><span>Tone</span><span>{{ tone }} Hz</span></span><input aria-label="Tone frequency" class="mt-2 w-full accent-orange-500" type="range" min="350" max="900" step="25" [value]="tone" (input)="updateNumber('tone', $any($event.target).value)"></label>
                     <label class="block">
                         <span class="text-sm font-bold">On-air sound</span>
                         <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="audioEffect" (change)="selectAudioEffect($any($event.target).value)">
@@ -109,28 +163,39 @@
                             <option value="challenging">Weak and unstable</option>
                         </select>
                     </label>
-                    <label *ngIf="!isBasicMode || !instantCharacters" class="block">
+                    <label *ngIf="!isBasicMode || exerciseFormat !== 'instant'" class="block">
                         <span class="text-sm font-bold">Repeat audio</span>
                         <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="repeatCount" (change)="updateNumber('repeatCount', $any($event.target).value)"><option value="1">Once</option><option value="2">Twice</option><option value="3">Three times</option></select>
                     </label>
+                    </div>
+                </details>
+
+                <details class="rounded-xl bg-white" [open]="settingsSections.timing" (toggle)="toggleSettingsSection('timing', $any($event.target).open)">
+                    <summary class="cursor-pointer px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-500">Timing and session</summary>
+                    <div class="grid gap-4 border-t border-slate-100 p-3">
                     <label class="block">
                         <span class="text-sm font-bold">Start countdown</span>
                         <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="countdownSeconds" (change)="updateNumber('countdownSeconds', $any($event.target).value)"><option value="0">None</option><option value="1">1 second</option><option value="3">3 seconds</option><option value="5">5 seconds</option></select>
                     </label>
-                    <label *ngIf="isBasicMode" class="block">
-                        <span class="text-sm font-bold">Exercise length</span>
-                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="timedMinutes" (change)="updateNumber('timedMinutes', $any($event.target).value)"><option value="0">Use group count</option><option value="1">1-minute stream</option><option value="3">3-minute stream</option><option value="5">5-minute stream</option></select>
+                    <label *ngIf="isBasicMode && exerciseFormat === 'continuous'" class="block">
+                        <span class="text-sm font-bold">Stream duration</span>
+                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="timedMinutes" (change)="updateNumber('timedMinutes', $any($event.target).value)"><option value="1">1 minute</option><option value="3">3 minutes</option><option value="5">5 minutes</option></select>
                     </label>
+                    <label class="block"><span class="flex justify-between text-sm font-bold"><span>Session exercises</span><span>{{ sessionTargetAttempts }}</span></span><input aria-label="Session exercise target" class="mt-2 w-full accent-orange-500" type="range" min="5" max="25" step="5" [value]="sessionTargetAttempts" (input)="updateNumber('sessionTargetAttempts', $any($event.target).value)"></label>
+                    </div>
+                </details>
+
+                <details class="rounded-xl bg-white" [open]="settingsSections.scoring" (toggle)="toggleSettingsSection('scoring', $any($event.target).open)">
+                    <summary class="cursor-pointer px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-500">Scoring and adaptation</summary>
+                    <div class="grid gap-3 border-t border-slate-100 p-3">
                     <label class="block">
                         <span class="text-sm font-bold">Answer reveal</span>
                         <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="revealMode" (change)="selectOption('revealMode', $any($event.target).value)"><option value="check">Only after checking</option><option value="afterPlayback">After playback</option><option value="groups">One group at a time</option></select>
                     </label>
-                </div>
-                <div class="mx-4 mt-5 grid gap-2 border-t border-slate-200 pb-4 pt-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <label *ngIf="isBasicMode" class="flex min-h-11 items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm font-bold"><input class="h-5 w-5 accent-orange-500" type="checkbox" [checked]="adaptiveCharacters" (change)="toggleSetting('adaptiveCharacters', $any($event.target).checked)">Practice missed characters</label>
-                    <label *ngIf="isBasicMode" class="flex min-h-11 items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm font-bold"><input class="h-5 w-5 accent-orange-500" type="checkbox" [checked]="adaptiveSpeed" (change)="toggleSetting('adaptiveSpeed', $any($event.target).checked)">Adaptive speed</label>
-                    <label *ngIf="isBasicMode" class="flex min-h-11 items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm font-bold"><input class="h-5 w-5 accent-orange-500" type="checkbox" [checked]="instantCharacters" (change)="toggleSetting('instantCharacters', $any($event.target).checked)">Instant character mode</label>
-                    <label class="flex min-h-11 items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm font-bold"><input class="h-5 w-5 accent-orange-500" type="checkbox" [checked]="strictSpacing" (change)="toggleSetting('strictSpacing', $any($event.target).checked)">Score spaces</label>
+                    <label *ngIf="isBasicMode" class="flex min-h-11 items-center gap-3 rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold"><input class="h-5 w-5 accent-orange-500" type="checkbox" [checked]="adaptiveCharacters" (change)="toggleSetting('adaptiveCharacters', $any($event.target).checked)">Practice missed characters</label>
+                    <label class="flex min-h-11 items-center gap-3 rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold"><input class="h-5 w-5 accent-orange-500" type="checkbox" [checked]="strictSpacing" (change)="toggleSetting('strictSpacing', $any($event.target).checked)">Score spaces</label>
+                    </div>
+                </details>
                 </div>
             </details>
 
@@ -138,7 +203,7 @@
                 <summary class="cursor-pointer list-none px-4 py-3 text-sm font-black">
                     <span class="flex items-center justify-between"><span>My station</span><span class="font-mono text-xs text-slate-500">{{ profile.call }} · {{ profile.name }}</span></span>
                 </summary>
-                <div class="grid gap-3 border-t border-orange-100 px-4 pt-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div class="grid gap-3 border-t border-orange-100 px-4 pt-4">
                     <label class="text-xs font-bold text-slate-500">Callsign<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.call" (input)="updateProfile('call', $any($event.target).value)"></label>
                     <label class="text-xs font-bold text-slate-500">Name<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.name" (input)="updateProfile('name', $any($event.target).value)"></label>
                     <label class="text-xs font-bold text-slate-500">QTH<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.qth" (input)="updateProfile('qth', $any($event.target).value)"></label>
@@ -148,31 +213,39 @@
                 </div>
                 <button type="button" class="mx-4 mt-4 rounded-full bg-slate-950 px-5 py-2 text-sm font-black text-white" (click)="saveProfile()">{{ profileSaved ? 'Saved' : 'Save station' }}</button>
             </details>
-        </section>
+        </aside>
 
-        <section class="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] lg:gap-6">
-            <div class="rounded-2xl bg-slate-950 p-4 text-white shadow-xl sm:rounded-3xl sm:p-7">
+        <section class="grid min-w-0 items-start gap-4 lg:gap-6" [ngClass]="activeWorkspace === 'practice' ? 'lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]' : 'grid-cols-1'">
+            <div *ngIf="activeWorkspace === 'practice'" class="min-w-0 rounded-2xl bg-slate-950 p-4 text-white shadow-xl sm:rounded-3xl sm:p-7">
                 <div *ngIf="exerciseContext" class="mb-4 rounded-xl border border-orange-400/30 bg-orange-400/10 px-4 py-3">
                     <div class="text-[10px] font-black uppercase tracking-widest text-orange-300">Situation</div>
                     <div class="mt-1 text-sm text-orange-50">{{ exerciseContext }}</div>
                 </div>
 
-                <div class="flex gap-2">
+                <div *ngIf="!exercise" class="rounded-2xl border border-orange-400/30 bg-slate-900 p-6 text-center">
+                    <div class="text-xs font-black uppercase tracking-widest text-orange-300">Ready when you are</div>
+                    <div class="mt-2 text-xl font-black">{{ activeContentLabel }} · {{ activeExerciseFormatLabel }}</div>
+                    <div class="mt-1 text-sm text-slate-400">{{ wpm }}/{{ farnsworthWpm }} WPM · {{ audioEffect }} · {{ sessionLengthLabel }}</div>
+                    <button type="button" class="mt-5 min-h-12 w-full max-w-sm rounded-xl bg-orange-500 px-6 py-3 font-black text-white hover:bg-orange-400" (click)="newExercise()">Start copying</button>
+                </div>
+
+                <div *ngIf="exercise" class="sticky top-2 z-20 flex gap-2 rounded-2xl bg-slate-950/95 p-2 shadow-xl backdrop-blur sm:static sm:p-0 sm:shadow-none">
                     <button type="button" class="min-h-12 flex-1 rounded-xl bg-orange-500 px-5 py-3 font-black text-white hover:bg-orange-400" (click)="newExercise()">
-                        {{ exercise ? 'New' : 'Start copying' }}
+                        New
                     </button>
                     <button *ngIf="exercise" type="button" class="min-h-12 flex-1 rounded-xl bg-slate-700 px-5 py-3 font-bold hover:bg-slate-600" (click)="isPlaying ? pause() : play()">
                         {{ isPlaying ? 'Pause' : (isPaused ? 'Resume' : 'Replay') }}
                     </button>
                     <button *ngIf="exercise && (isPlaying || isPaused)" type="button" aria-label="Stop playback" class="min-h-12 rounded-xl border border-slate-600 px-4 text-sm font-bold text-slate-300" (click)="stop()">Stop</button>
                 </div>
+                <details *ngIf="exercise" class="mt-2 text-right text-xs text-slate-400"><summary class="cursor-pointer font-bold hover:text-white">Keyboard help</summary><div class="mt-1">Space: play/pause · N: new exercise · Ctrl/⌘ + Enter: check</div></details>
 
                 <div *ngIf="exercise" class="mt-4" aria-live="polite">
                     <div class="flex justify-between text-xs font-bold text-slate-400"><span>{{ playbackStatus }}</span><span>{{ secondsRemaining }}s</span></div>
-                    <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-800"><div class="h-full rounded-full bg-orange-500 transition-[width] duration-100" [style.width.%]="progressPercent"></div></div>
+                    <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-800"><div class="h-full rounded-full bg-orange-500 transition-[width] duration-100 motion-reduce:transition-none" [style.width.%]="progressPercent"></div></div>
                 </div>
 
-                <label class="mt-5 block">
+                <label *ngIf="exercise" class="mt-5 block">
                     <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Your copy</span>
                     <textarea
                         #copyInput
@@ -192,12 +265,23 @@
                     ></textarea>
                 </label>
 
-                <div class="sticky bottom-2 z-10 mt-3 rounded-2xl bg-slate-950/95 p-2 shadow-2xl backdrop-blur">
+                <div *ngIf="exercise" class="sticky bottom-2 z-10 mt-3 rounded-2xl bg-slate-950/95 p-2 shadow-2xl backdrop-blur">
                     <button type="button" class="min-h-12 w-full rounded-xl bg-white px-6 py-3 font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-40" [disabled]="!copy.trim() || hasChecked" (click)="checkCopy()">Check copy</button>
                     <button *ngIf="exercise && revealMode === 'groups' && !hasChecked" type="button" class="mt-2 min-h-11 w-full rounded-xl border border-slate-600 px-5 py-2 text-sm font-bold text-slate-200" (click)="revealNextGroup()">Reveal next group</button>
                 </div>
 
                 <div *ngIf="hasChecked || answerRevealed" class="mt-5 space-y-5 border-t border-slate-700 pt-5">
+                    <div *ngIf="hasChecked && results[0]" class="rounded-2xl border border-orange-400/30 bg-orange-400/10 p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-4">
+                            <div><div class="text-[10px] font-black uppercase tracking-widest text-orange-300">Exercise result</div><div class="mt-1 text-3xl font-black">{{ results[0].accuracy }}% <span class="text-base font-bold text-slate-400">· {{ results[0].effectiveCopyWpm }} effective WPM</span></div></div>
+                            <div class="flex gap-2"><button type="button" class="min-h-11 rounded-xl border border-slate-600 px-4 text-sm font-black" (click)="retryExercise()">Try again</button><button type="button" class="min-h-11 rounded-xl bg-orange-500 px-4 text-sm font-black text-white" (click)="newExercise()">Next exercise</button></div>
+                        </div>
+                        <div *ngIf="missedCharactersThisExercise.length || incorrectCharactersThisExercise.length || extraCharactersThisExercise.length" class="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+                            <div *ngIf="missedCharactersThisExercise.length" class="rounded-lg bg-amber-300/10 p-2"><strong class="text-amber-200">— Missed</strong><div class="mt-1 font-mono text-white">{{ missedCharactersThisExercise.join(', ') }}</div></div>
+                            <div *ngIf="incorrectCharactersThisExercise.length" class="rounded-lg bg-red-300/10 p-2"><strong class="text-red-200">× Incorrect</strong><div class="mt-1 font-mono text-white">{{ incorrectCharactersThisExercise.join(', ') }}</div></div>
+                            <div *ngIf="extraCharactersThisExercise.length" class="rounded-lg bg-red-300/10 p-2"><strong class="text-red-200">+ Extra</strong><div class="mt-1 font-mono text-white">{{ extraCharactersThisExercise.join(', ') }}</div></div>
+                        </div>
+                    </div>
                     <div>
                         <div class="text-xs font-bold uppercase tracking-widest text-slate-400">Sent</div>
                         <div class="mt-2 break-words rounded-xl bg-slate-900 p-4 font-mono text-base font-bold leading-relaxed text-orange-200">{{ revealedExercise }}</div>
@@ -205,7 +289,7 @@
                     <div *ngIf="hasChecked">
                         <div class="text-xs font-bold uppercase tracking-widest text-slate-400">Character check <span class="normal-case tracking-normal text-slate-500">· {{ strictSpacing ? 'spaces scored as ·' : 'spaces ignored' }}</span></div>
                         <div class="mt-2 break-words font-mono text-xl font-black tracking-wider">
-                            <span *ngFor="let mark of expectedMarks" class="rounded-sm" [ngClass]="{'text-emerald-300': mark.status === 'correct', 'bg-red-500/30 text-red-200': mark.status === 'incorrect', 'bg-amber-400/30 text-amber-200': mark.status === 'missing'}">{{ mark.character === ' ' ? '·' : mark.character }}</span>
+                            <span *ngFor="let mark of expectedMarks" class="rounded-sm" [attr.aria-label]="(mark.character === ' ' ? 'space' : mark.character) + ' ' + mark.status" [ngClass]="{'text-emerald-300': mark.status === 'correct', 'bg-red-500/30 text-red-200': mark.status === 'incorrect', 'bg-amber-400/30 text-amber-200': mark.status === 'missing'}">{{ mark.character === ' ' ? '·' : mark.character }}</span>
                         </div>
                     </div>
                     <div *ngIf="hasChecked">
@@ -214,12 +298,19 @@
                             <span *ngFor="let mark of copyMarks" [class.text-emerald-300]="mark.status === 'correct'" [class.text-red-300]="mark.status === 'incorrect' || mark.status === 'extra'" [class.underline]="mark.status === 'extra'">{{ mark.character === ' ' ? '·' : mark.character }}</span>
                         </div>
                     </div>
-                    <div *ngIf="hasChecked" class="flex flex-wrap gap-4 text-xs text-slate-400"><span><span class="text-emerald-300">Green</span> correct</span><span><span class="text-red-300">Red</span> incorrect/extra</span><span><span class="text-amber-300">Amber</span> missed</span></div>
+                    <div *ngIf="hasChecked" class="flex flex-wrap gap-4 text-xs text-slate-400"><span><span class="text-emerald-300">✓ Green</span> correct</span><span><span class="text-red-300">× Red</span> incorrect/extra</span><span><span class="text-amber-300">— Amber</span> missed</span></div>
                 </div>
             </div>
 
-            <aside class="space-y-4 sm:space-y-6">
-                <details *ngIf="(hasChecked || answerRevealed) && (mode === 'qso' || mode === 'qsoWords')" open class="rounded-2xl bg-white shadow-xl sm:rounded-3xl">
+            <aside class="min-w-0 space-y-4 sm:space-y-6" [class.lg:col-span-2]="activeWorkspace === 'progress'">
+                <div *ngIf="activeWorkspace === 'progress'" class="rounded-2xl bg-white p-4 shadow-xl sm:rounded-3xl sm:p-6">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div><div class="text-sm font-black uppercase tracking-widest text-slate-500">Progress dashboard</div><div class="mt-1 text-xs text-slate-400">{{ showAllMetricConditions ? 'All recorded modes and conditions' : activeContentLabel + ' · ' + activeExerciseFormatLabel + ' · current conditions' }}</div></div>
+                        <div class="flex gap-2"><button type="button" class="min-h-10 rounded-xl px-3 text-xs font-black" [class.bg-orange-500]="!showAllMetricConditions" [class.text-white]="!showAllMetricConditions" [class.bg-slate-100]="showAllMetricConditions" (click)="setMetricScope(false)">Current recipe</button><button type="button" class="min-h-10 rounded-xl px-3 text-xs font-black" [class.bg-orange-500]="showAllMetricConditions" [class.text-white]="showAllMetricConditions" [class.bg-slate-100]="!showAllMetricConditions" (click)="setMetricScope(true)">Show all</button></div>
+                    </div>
+                </div>
+
+                <details *ngIf="activeWorkspace === 'practice' && (hasChecked || answerRevealed) && (mode === 'qso' || mode === 'qsoWords')" open class="rounded-2xl bg-white shadow-xl sm:rounded-3xl">
                     <summary class="cursor-pointer list-none p-5 sm:p-6">
                         <span class="flex items-center justify-between gap-3">
                             <span><span class="block text-sm font-black uppercase tracking-widest text-slate-500">Term reference</span><span class="mt-1 block text-xs text-slate-400">{{ activeQsoDefinitions.length }} definitions from this exercise</span></span>
@@ -241,26 +332,46 @@
                     </div>
                 </details>
 
-                <div class="rounded-2xl bg-white p-5 shadow-xl sm:rounded-3xl sm:p-6">
-                    <div class="text-sm font-black uppercase tracking-widest text-slate-500">Session</div>
-                    <div class="mt-4 grid grid-cols-3 gap-3">
+                <div *ngIf="activeWorkspace === 'practice'" class="rounded-2xl bg-white p-5 shadow-xl sm:rounded-3xl sm:p-6">
+                    <div class="flex items-center justify-between gap-3"><div class="text-sm font-black uppercase tracking-widest text-slate-500">Session</div><div class="text-xs font-bold text-slate-400">{{ sessionProgressLabel }}</div></div>
+                    <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-orange-500 transition-[width] duration-300 motion-reduce:transition-none" [style.width.%]="sessionProgressPercent"></div></div>
+                    <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                         <div class="rounded-xl bg-orange-50 p-3"><div class="text-3xl font-black">{{ accuracy }}%</div><div class="text-xs font-bold text-slate-500">Accuracy</div></div>
                         <div class="rounded-xl bg-orange-50 p-3"><div class="text-3xl font-black">{{ effectiveCopyWpm }}</div><div class="text-xs font-bold text-slate-500">Effective WPM</div></div>
-                        <div class="rounded-xl bg-slate-100 p-3"><div class="text-3xl font-black">{{ attempts }}</div><div class="text-xs font-bold text-slate-500">Attempts</div></div>
+                        <div class="col-span-2 rounded-xl bg-slate-100 p-3 sm:col-span-1"><div class="text-3xl font-black">{{ attempts }}</div><div class="text-xs font-bold text-slate-500">Attempts</div></div>
                     </div>
-                    <button type="button" class="mt-3 text-sm font-bold text-slate-500 hover:text-slate-950" (click)="resetSession()">Reset session</button>
+                    <button type="button" class="mt-3 text-sm font-bold text-slate-500 hover:text-slate-950" (click)="confirmResetSession()">Reset session</button>
                 </div>
 
-                <details *ngIf="proficiencySummaries.length" open class="rounded-2xl bg-white shadow-xl sm:rounded-3xl">
+                <section *ngIf="activeWorkspace === 'progress' && performanceOverview as performance" class="rounded-2xl bg-white p-5 shadow-xl sm:rounded-3xl sm:p-6">
+                    <div><div class="text-sm font-black uppercase tracking-widest text-slate-500">Performance profile</div><div class="mt-1 text-xs text-slate-400">{{ performance.attempts }} attempts · {{ performance.characters }} characters · confidence reflects sample size</div></div>
+                    <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
+                        <div class="rounded-xl bg-orange-50 p-3"><div class="text-2xl font-black">{{ performance.masteryAccuracy }}%</div><div class="text-xs font-bold text-slate-500">Recency-weighted mastery</div><div class="mt-1 text-[10px] text-slate-400">95% range {{ performance.confidenceLow }}–{{ performance.confidenceHigh }}%</div></div>
+                        <div class="rounded-xl bg-slate-100 p-3"><div class="text-2xl font-black">{{ performance.reliableSpeed }}</div><div class="text-xs font-bold text-slate-500">Reliable speed</div></div>
+                        <div class="rounded-xl bg-slate-100 p-3"><div class="text-2xl font-black">{{ performance.consistency }}</div><div class="text-xs font-bold text-slate-500">Consistency · ±{{ performance.consistencySpread }} points</div></div>
+                        <div class="rounded-xl bg-slate-100 p-3"><div class="text-2xl font-black">{{ performance.retention }}</div><div class="text-xs font-bold text-slate-500">7–30 day retention<span *ngIf="performance.retentionDelta !== null"> · {{ performance.retentionDelta > 0 ? '+' : '' }}{{ performance.retentionDelta }}%</span></div></div>
+                        <div class="rounded-xl bg-slate-100 p-3"><div class="text-2xl font-black">{{ performance.effectiveWpm }}</div><div class="text-xs font-bold text-slate-500">Correct-copy throughput</div></div>
+                        <div class="rounded-xl bg-slate-100 p-3"><div class="text-2xl font-black">{{ performance.weightedAccuracy }}%</div><div class="text-xs font-bold text-slate-500">Character-weighted accuracy</div></div>
+                    </div>
+                    <div class="mt-4 grid gap-3 lg:grid-cols-3">
+                        <div class="rounded-xl border border-slate-200 p-3"><div class="text-xs font-black uppercase tracking-wider text-slate-400">Copy behavior</div><div class="mt-2 space-y-1 text-sm"><div>First play <strong class="float-right">{{ performance.firstPlayAccuracy === null ? 'Collecting' : performance.firstPlayAccuracy + '%' }}</strong></div><div>After replay <strong class="float-right">{{ performance.repeatedAccuracy === null ? 'Collecting' : performance.repeatedAccuracy + '%' }}</strong></div><div>Reveal use <strong class="float-right">{{ performance.revealRate === null ? 'Collecting' : performance.revealRate + '%' }}</strong></div><div>Session fatigue <strong class="float-right">{{ performance.fatigueDelta === null ? 'Collecting' : (performance.fatigueDelta > 0 ? '+' : '') + performance.fatigueDelta + '%' }}</strong></div></div></div>
+                        <div class="rounded-xl border border-slate-200 p-3"><div class="text-xs font-black uppercase tracking-wider text-slate-400">Error rates</div><div class="mt-2 space-y-1 text-sm"><div>Missing <strong class="float-right">{{ performance.missingRate === null ? 'Collecting' : performance.missingRate + '%' }}</strong></div><div>Incorrect <strong class="float-right">{{ performance.incorrectRate === null ? 'Collecting' : performance.incorrectRate + '%' }}</strong></div><div>Extra <strong class="float-right">{{ performance.extraRate === null ? 'Collecting' : performance.extraRate + '%' }}</strong></div><div>Weakest <strong class="float-right font-mono">{{ performance.weakestCharacters.length ? performance.weakestCharacters.join(' ') : 'None yet' }}</strong></div></div></div>
+                        <div class="rounded-xl border border-slate-200 p-3"><div class="text-xs font-black uppercase tracking-wider text-slate-400">Audio conditions</div><div class="mt-2 space-y-2"><div *ngFor="let audio of performance.audioBreakdown" class="flex items-center justify-between gap-3 text-sm"><span class="capitalize">{{ audio.label }}</span><strong>{{ audio.accuracy }}% <span class="font-normal text-slate-400">· {{ audio.characters }} chars</span></strong></div></div></div>
+                    </div>
+                </section>
+
+                <div *ngIf="activeWorkspace === 'progress' && !metricsLoading && !performanceOverview" class="rounded-2xl bg-white p-5 text-sm text-slate-500 shadow-xl sm:rounded-3xl">No performance evidence for this recipe yet. Complete an exercise or choose “Show all.”</div>
+
+                <details *ngIf="activeWorkspace === 'progress' && visibleProficiencySummaries.length" open class="rounded-2xl bg-white shadow-xl sm:rounded-3xl">
                     <summary class="cursor-pointer list-none p-5 sm:p-6">
                         <span><span class="block text-sm font-black uppercase tracking-widest text-slate-500">Copy proficiency</span><span class="mt-1 block text-xs text-slate-400">Proven speed requires at least 90% accuracy across 100 characters</span></span>
                     </summary>
                     <div class="space-y-3 border-t border-slate-200 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
-                        <div *ngFor="let summary of proficiencySummaries" class="rounded-xl bg-slate-100 p-3">
+                        <div *ngFor="let summary of visibleProficiencySummaries" class="rounded-xl bg-slate-100 p-3">
                             <div class="font-black">{{ summary.label }} <span class="font-normal text-slate-400">· {{ summary.drill }}</span></div>
                             <div class="mt-2 divide-y divide-slate-200">
                                 <div *ngFor="let speed of summary.speeds" class="flex items-center justify-between gap-4 py-2 first:pt-0 last:pb-0">
-                                    <div class="text-xs text-slate-500"><strong class="text-slate-700">{{ speed.characterWpm }} character WPM</strong><br>Best current sample {{ speed.candidateAccuracy }}% at {{ speed.candidateFarnsworthWpm }} Farnsworth WPM ({{ speed.candidateCharacters }} chars)</div>
+                                    <div class="text-xs text-slate-500"><strong class="text-slate-700">{{ speed.characterWpm }} character WPM</strong> · {{ speed.conditionLabel }}<br>Best current sample {{ speed.candidateAccuracy }}% at {{ speed.candidateFarnsworthWpm }} Farnsworth WPM ({{ speed.candidateCharacters }} chars)</div>
                                     <div class="shrink-0 text-right">
                                         <div class="text-lg font-black" [class.text-orange-700]="speed.provenFarnsworthWpm !== null">{{ speed.provenFarnsworthWpm === null ? '—' : speed.provenFarnsworthWpm + ' WPM' }}</div>
                                         <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Proven speed</div>
@@ -271,7 +382,7 @@
                     </div>
                 </details>
 
-                <details open class="rounded-2xl bg-white shadow-xl sm:rounded-3xl">
+                <details *ngIf="activeWorkspace === 'progress'" open class="rounded-2xl bg-white shadow-xl sm:rounded-3xl">
                     <summary class="cursor-pointer list-none p-5 sm:p-6">
                         <span class="flex items-center justify-between gap-3">
                             <span><span class="block text-sm font-black uppercase tracking-widest text-slate-500">Progress trends</span><span class="mt-1 block text-xs text-slate-400">Like-for-like results at the same drill and speed settings</span></span>
@@ -280,12 +391,12 @@
                     </summary>
                     <div class="space-y-5 border-t border-slate-200 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
                         <div *ngIf="metricsLoading" class="text-sm text-slate-500">Loading practice history…</div>
-                        <div *ngFor="let trend of metricTrends">
+                        <div *ngFor="let trend of visibleMetricTrends">
                             <div class="mb-2 flex items-end justify-between gap-3">
                                 <div><div class="font-black">{{ trend.label }} <span class="font-normal text-slate-400">· {{ trend.drill }}</span></div><div class="text-xs text-slate-500">{{ trend.attempts }} attempts across {{ trend.traces.length }} speed combination{{ trend.traces.length === 1 ? '' : 's' }}</div></div>
                             </div>
-                            <div class="rounded-xl bg-slate-100 p-2">
-                                <svg class="h-24 w-full overflow-visible" viewBox="0 0 300 100" role="img" [attr.aria-label]="trend.label + ' accuracy trends by speed combination'" preserveAspectRatio="none">
+                            <div class="overflow-x-auto rounded-xl bg-slate-100 p-2">
+                                <svg class="h-24 w-full min-w-[36rem] overflow-visible sm:min-w-0" viewBox="0 0 300 100" role="img" [attr.aria-label]="trend.label + ' accuracy trends by speed combination'" preserveAspectRatio="none">
                                     <line x1="0" x2="300" y1="25" y2="25" stroke="#cbd5e1" stroke-width="1" vector-effect="non-scaling-stroke"></line>
                                     <line x1="0" x2="300" y1="50" y2="50" stroke="#cbd5e1" stroke-width="1" vector-effect="non-scaling-stroke"></line>
                                     <line x1="0" x2="300" y1="75" y2="75" stroke="#cbd5e1" stroke-width="1" vector-effect="non-scaling-stroke"></line>
@@ -293,11 +404,12 @@
                                 </svg>
                             </div>
                             <div class="mt-2 flex flex-wrap gap-2">
-                                <button *ngFor="let trace of trend.traces" type="button" class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold" [class.opacity-40]="!isMetricTraceVisible('trend', trend, trace.key)" [class.line-through]="!isMetricTraceVisible('trend', trend, trace.key)" [attr.aria-pressed]="isMetricTraceVisible('trend', trend, trace.key)" (click)="toggleMetricTrace('trend', trend, trace.key)"><span class="mr-1.5 inline-block h-2 w-2 rounded-full" [style.backgroundColor]="trace.color"></span>{{ trace.label }} · {{ trace.latest }}% latest · {{ trace.average }}% avg</button>
+                                <button *ngFor="let trace of trend.traces" type="button" class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold" [class.opacity-40]="!isMetricTraceVisible('trend', trend, trace.key)" [class.line-through]="!isMetricTraceVisible('trend', trend, trace.key)" [attr.aria-pressed]="isMetricTraceVisible('trend', trend, trace.key)" [attr.title]="trace.detail" (click)="toggleMetricTrace('trend', trend, trace.key)"><span class="mr-1.5 inline-block h-2 w-2 rounded-full" [style.backgroundColor]="trace.color"></span>{{ trace.label }} · {{ trace.latest }}% latest · {{ trace.average }}% avg</button>
                             </div>
+                            <details class="mt-2 rounded-lg bg-slate-50 text-xs"><summary class="cursor-pointer px-3 py-2 font-bold text-slate-500">Accessible data table</summary><div class="overflow-x-auto border-t border-slate-200"><table class="w-full text-left"><thead><tr><th class="p-2">Trace</th><th class="p-2">Latest</th><th class="p-2">Average</th><th class="p-2">Attempts</th></tr></thead><tbody><tr *ngFor="let trace of trend.traces"><td class="p-2"><strong>{{ trace.label }}</strong><br><span class="text-slate-400">{{ trace.detail }}</span></td><td class="p-2">{{ trace.latest }}%</td><td class="p-2">{{ trace.average }}%</td><td class="p-2">{{ trace.attempts }}</td></tr></tbody></table></div></details>
                         </div>
-                        <div *ngIf="!metricsLoading && !metricTrends.length" class="rounded-xl bg-slate-100 p-4 text-sm text-slate-500">
-                            Complete a checked exercise to start a trend.
+                        <div *ngIf="!metricsLoading && !visibleMetricTrends.length" class="rounded-xl bg-slate-100 p-4 text-sm text-slate-500">
+                            No comparable attempts for this recipe yet. Complete an exercise or choose “Show all.”
                         </div>
                         <div class="flex items-center justify-between gap-3 text-xs text-slate-500">
                             <span *ngIf="pendingMetricCount">{{ pendingMetricCount }} attempt{{ pendingMetricCount === 1 ? '' : 's' }} queued for sync</span>
@@ -308,22 +420,22 @@
                     </div>
                 </details>
 
-                <details *ngIf="speedAccuracySeries.length" class="rounded-2xl bg-white shadow-xl sm:rounded-3xl">
+                <details *ngIf="activeWorkspace === 'progress' && visibleSpeedAccuracySeries.length" class="rounded-2xl bg-white shadow-xl sm:rounded-3xl">
                     <summary class="cursor-pointer list-none p-5 sm:p-6">
                         <span><span class="block text-sm font-black uppercase tracking-widest text-slate-500">Farnsworth speed vs. accuracy</span><span class="mt-1 block text-xs text-slate-400">Each chart holds character speed and drill constant</span></span>
                     </summary>
                     <div class="space-y-6 border-t border-slate-200 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
-                        <div *ngFor="let series of speedAccuracySeries">
+                        <div *ngFor="let series of visibleSpeedAccuracySeries">
                             <div class="mb-2 flex items-center justify-between"><strong>{{ series.label }} <span class="font-normal text-slate-400">· {{ series.drill }}</span></strong><span class="text-xs text-slate-500">{{ series.attempts }} attempts</span></div>
-                            <div class="rounded-xl bg-slate-100 p-2">
-                                <svg class="h-28 w-full overflow-visible" viewBox="-20 -8 330 125" role="img" [attr.aria-label]="series.label + ' speed versus accuracy'" preserveAspectRatio="none">
+                            <div class="overflow-x-auto rounded-xl bg-slate-100 p-2">
+                                <svg class="h-28 w-full min-w-[36rem] overflow-visible sm:min-w-0" viewBox="-20 -8 330 125" role="img" [attr.aria-label]="series.label + ' speed versus accuracy'" preserveAspectRatio="none">
                                     <line x1="0" x2="300" y1="0" y2="0" stroke="#cbd5e1" stroke-width="1" vector-effect="non-scaling-stroke"></line>
                                     <line x1="0" x2="300" y1="50" y2="50" stroke="#cbd5e1" stroke-width="1" vector-effect="non-scaling-stroke"></line>
                                     <line x1="0" x2="300" y1="100" y2="100" stroke="#cbd5e1" stroke-width="1" vector-effect="non-scaling-stroke"></line>
                                     <ng-container *ngFor="let trace of series.traces">
                                         <ng-container *ngIf="isMetricTraceVisible('speed', series, trace.key)">
                                             <polyline [attr.points]="trace.averagePoints" fill="none" [attr.stroke]="trace.color" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
-                                            <circle *ngFor="let point of trace.points" [attr.cx]="point.x" [attr.cy]="point.y" r="3.5" [attr.fill]="trace.color" opacity="0.55"><title>{{ point.characterWpm }}/{{ point.farnsworthWpm }} WPM · {{ point.accuracy }}%</title></circle>
+                                            <circle *ngFor="let point of trace.points" [attr.cx]="point.x" [attr.cy]="point.y" r="4.5" [attr.fill]="trace.color" stroke="transparent" stroke-width="12" class="cursor-pointer" opacity="0.65" tabindex="0" role="button" (click)="selectMetricPoint(point.characterWpm, point.farnsworthWpm, point.accuracy, trace.detail)" (keydown.enter)="selectMetricPoint(point.characterWpm, point.farnsworthWpm, point.accuracy, trace.detail)"><title>{{ point.characterWpm }}/{{ point.farnsworthWpm }} WPM · {{ point.accuracy }}%</title></circle>
                                         </ng-container>
                                     </ng-container>
                                     <text x="0" y="114" font-size="9" fill="#64748b">5</text><text x="113" y="114" font-size="9" fill="#64748b">20 Farnsworth WPM</text><text x="286" y="114" font-size="9" fill="#64748b">40</text>
@@ -331,24 +443,26 @@
                                 </svg>
                             </div>
                             <div class="mt-2 flex flex-wrap gap-2">
-                                <button *ngFor="let trace of series.traces" type="button" class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold" [class.opacity-40]="!isMetricTraceVisible('speed', series, trace.key)" [class.line-through]="!isMetricTraceVisible('speed', series, trace.key)" [attr.aria-pressed]="isMetricTraceVisible('speed', series, trace.key)" (click)="toggleMetricTrace('speed', series, trace.key)"><span class="mr-1.5 inline-block h-2 w-2 rounded-full" [style.backgroundColor]="trace.color"></span>{{ trace.label }} · {{ trace.attempts }} attempts</button>
+                                <button *ngFor="let trace of series.traces" type="button" class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold" [class.opacity-40]="!isMetricTraceVisible('speed', series, trace.key)" [class.line-through]="!isMetricTraceVisible('speed', series, trace.key)" [attr.aria-pressed]="isMetricTraceVisible('speed', series, trace.key)" [attr.title]="trace.detail" (click)="toggleMetricTrace('speed', series, trace.key)"><span class="mr-1.5 inline-block h-2 w-2 rounded-full" [style.backgroundColor]="trace.color"></span>{{ trace.label }} · {{ trace.attempts }} attempts</button>
                             </div>
+                            <div *ngIf="selectedMetricPoint" class="mt-2 rounded-lg bg-orange-50 px-3 py-2 text-xs font-bold text-orange-900" aria-live="polite">{{ selectedMetricPoint }}</div>
+                            <details class="mt-2 rounded-lg bg-slate-50 text-xs"><summary class="cursor-pointer px-3 py-2 font-bold text-slate-500">Accessible data table</summary><div class="overflow-x-auto border-t border-slate-200"><table class="w-full text-left"><thead><tr><th class="p-2">Trace</th><th class="p-2">Farnsworth</th><th class="p-2">Accuracy</th></tr></thead><tbody><ng-container *ngFor="let trace of series.traces"><tr *ngFor="let point of trace.points"><td class="p-2"><strong>{{ trace.label }}</strong><br><span class="text-slate-400">{{ trace.detail }}</span></td><td class="p-2">{{ point.farnsworthWpm }} WPM</td><td class="p-2">{{ point.accuracy }}%</td></tr></ng-container></tbody></table></div></details>
                         </div>
                         <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Dots are attempts; lines are character-weighted averages. Select legend items to toggle traces.</div>
                     </div>
                 </details>
 
-                <details *ngIf="weakWords.length || weakCharacters.length || topConfusions.length" class="rounded-2xl bg-white shadow-xl sm:rounded-3xl">
+                <details *ngIf="activeWorkspace === 'progress' && (weakWords.length || weakCharacters.length || topConfusions.length)" class="rounded-2xl bg-white shadow-xl sm:rounded-3xl">
                     <summary class="cursor-pointer list-none p-5 sm:p-6"><span class="flex justify-between"><span class="text-sm font-black uppercase tracking-widest text-slate-500">Needs review</span><span class="text-xs font-bold text-orange-700">{{ weakWords.length + weakCharacters.length + topConfusions.length }}</span></span></summary>
                     <div class="border-t border-slate-200 px-5 pb-5 pt-4">
                         <div *ngIf="topConfusions.length" class="mb-4"><div class="mb-2 text-xs font-black uppercase tracking-wider text-slate-400">Confused pairs</div><div class="flex flex-wrap gap-2"><span *ngFor="let item of topConfusions" class="rounded-full bg-red-50 px-3 py-1 font-mono text-sm font-black text-red-900">{{ item.expected }} → {{ item.copied }} ×{{ item.count }}</span></div></div>
                         <div *ngIf="weakCharacters.length" class="mb-4"><div class="mb-2 text-xs font-black uppercase tracking-wider text-slate-400">Characters</div><div class="flex flex-wrap gap-2"><span *ngFor="let item of weakCharacters" class="rounded-full bg-slate-100 px-3 py-1 font-mono text-sm font-black">{{ item.character }} ×{{ item.misses }}</span></div></div>
                         <div *ngIf="weakWords.length"><div class="mb-2 text-xs font-black uppercase tracking-wider text-slate-400">Words</div><div class="flex flex-wrap gap-2"><span *ngFor="let item of weakWords" class="rounded-full bg-orange-100 px-3 py-1 font-mono text-sm font-black">{{ item.word }} ×{{ item.misses }}</span></div></div>
-                        <button type="button" class="mt-4 text-xs font-bold text-slate-400" (click)="clearWeakWords()">Clear review list</button>
+                        <button type="button" class="mt-4 text-xs font-bold text-slate-400" (click)="confirmClearWeakWords()">Clear review list</button>
                     </div>
                 </details>
 
-                <details *ngIf="history.length" class="rounded-2xl bg-white shadow-xl sm:rounded-3xl">
+                <details *ngIf="activeWorkspace === 'practice' && history.length" class="rounded-2xl bg-white shadow-xl sm:rounded-3xl">
                     <summary class="cursor-pointer list-none p-5 sm:p-6"><span class="text-sm font-black uppercase tracking-widest text-slate-500">Recent copy</span></summary>
                     <div class="space-y-3 border-t border-slate-200 px-5 pb-5 pt-4">
                         <div *ngFor="let result of history" class="rounded-xl border p-3" [class.border-emerald-300]="result.correct" [class.bg-emerald-50]="result.correct" [class.border-slate-200]="!result.correct">
@@ -358,11 +472,13 @@
                     </div>
                 </details>
 
-                <div class="rounded-2xl bg-orange-100 p-5 text-sm shadow-xl sm:rounded-3xl sm:p-6">
+                <div *ngIf="activeWorkspace === 'practice'" class="rounded-2xl bg-orange-100 p-5 text-sm shadow-xl sm:rounded-3xl sm:p-6">
                     <h2 class="font-black">Copying tip</h2>
                     <p class="mt-2 text-slate-700">Write the character you hear and move on. A blank costs one character; chasing it can cost the next five.</p>
                 </div>
             </aside>
         </section>
+        </section>
+        <div *ngIf="toastMessage" class="fixed bottom-4 left-1/2 z-[70] w-[min(92vw,28rem)] -translate-x-1/2 rounded-xl px-4 py-3 text-center text-sm font-black text-white shadow-2xl" [class.bg-emerald-700]="toastTone === 'success'" [class.bg-slate-800]="toastTone === 'info'" [class.bg-red-700]="toastTone === 'error'" role="status" aria-live="polite">{{ toastMessage }}</div>
     </div>
 </main>
