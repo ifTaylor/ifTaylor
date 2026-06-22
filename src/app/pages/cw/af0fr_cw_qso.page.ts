@@ -930,7 +930,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
             this.mode = 'mixed';
             this.mixedDrill = 'radio';
             this.wpm = 17;
-            this.farnsworthWpm = 10;
+            this.farnsworthWpm = 7;
             this.groupSize = 5;
             this.groupCount = 5;
             this.applyExerciseFormat('groups');
