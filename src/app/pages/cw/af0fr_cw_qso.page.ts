@@ -199,7 +199,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     wordCategory: WordCategory = 'all';
     audioEffect: AudioEffect = 'clean';
     wpm = 17;
-    farnsworthWpm = 5;
+    farnsworthWpm = 7;
     tone = 550;
     groupSize = 5;
     groupCount = 5;
