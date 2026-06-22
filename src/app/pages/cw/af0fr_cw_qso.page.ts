@@ -907,6 +907,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         } else if (!this.availableExerciseFormats.some((format) => format.value === this.exerciseFormat)) {
             this.applyExerciseFormat('groups');
         }
+        if (mode === 'letters' && this.letterDrill === 'custom' && !/[A-Z]/.test(this.customCharacters)) this.letterDrill = 'random';
         this.resetExercise();
     }
 
@@ -1321,13 +1322,25 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     }
 
     private generateExercise(): GeneratedExercise {
-        if (this.mode === 'callsigns') return { text: Array.from({ length: this.groupCount }, () => this.randomCallsign()).join(' '), context: 'Copy the callsigns' };
-        if (this.mode === 'qsoWords') return { text: this.generateQsoWords(), context: `${this.wordCategories.find((item) => item.value === this.wordCategory)?.label} drill` };
-        if (this.mode === 'qso') return this.randomQsoOver();
+        let generated: GeneratedExercise;
+        if (this.mode === 'callsigns') generated = { text: Array.from({ length: this.groupCount }, () => this.randomCallsign()).join(' '), context: 'Copy the callsigns' };
+        else if (this.mode === 'qsoWords') generated = { text: this.generateQsoWords(), context: `${this.wordCategories.find((item) => item.value === this.wordCategory)?.label} drill` };
+        else if (this.mode === 'qso') generated = this.randomQsoOver();
+        else if (this.mode === 'letters') generated = this.generateLetterExercise();
+        else if (this.mode === 'numbers') generated = this.generateNumberExercise();
+        else generated = this.generateMixedExercise();
 
-        if (this.mode === 'letters') return this.generateLetterExercise();
-        if (this.mode === 'numbers') return this.generateNumberExercise();
-        return this.generateMixedExercise();
+        return this.enforceContentBoundary(generated);
+    }
+
+    private enforceContentBoundary(generated: GeneratedExercise): GeneratedExercise {
+        if (this.mode !== 'letters') return generated;
+        const text = generated.text
+            .toUpperCase()
+            .replace(/[^A-Z\s]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        return { ...generated, text: text || this.randomGroups('ABCDEFGHIJKLMNOPQRSTUVWXYZ', Math.max(1, this.groupCount)) };
     }
 
     private generateLetterExercise(): GeneratedExercise {
