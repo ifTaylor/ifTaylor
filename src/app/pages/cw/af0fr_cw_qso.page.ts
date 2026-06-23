@@ -207,13 +207,13 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     numberDrill: NumberDrill = 'random';
     mixedDrill: MixedDrill = 'random';
     mixedLetterPercent = 60;
-    kochLevel = 6;
+    kochLevel = 26;
     troublePair = 'SH';
     customCharacters = 'ABCDE12345';
     adaptiveCharacters = false;
     adaptiveSpeed = false;
     instantCharacters = false;
-    strictSpacing = false;
+    strictSpacing = true;
     repeatCount = 1;
     countdownSeconds = 0;
     timedMinutes = 0;
@@ -452,6 +452,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     private practiceAttempts: CwPracticeAttempt[] = [];
     private exercisePlayCount = 0;
     private sessionId = this.createSessionId();
+    private readonly uiStateVersion = 2;
 
     private readonly morse: Record<string, string> = {
         A: '.-', B: '-...', C: '-.-.', D: '-..', E: '.', F: '..-.', G: '--.',
@@ -486,6 +487,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         if (savedUi) {
             try {
                 const ui = JSON.parse(savedUi) as Partial<{
+                    uiStateVersion: number;
                     activeWorkspace: WorkspaceView; showAllMetricConditions: boolean; trainingGoal: TrainingGoal; mode: PracticeMode;
                     exerciseFormat: ExerciseFormat; activePreset: SessionPreset | null; wpm: number; farnsworthWpm: number;
                     audioEffect: AudioEffect; groupSize: number; groupCount: number; sessionTargetAttempts: number;
@@ -510,7 +512,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
                 if (ui.repeatCount) this.repeatCount = ui.repeatCount;
                 if (ui.countdownSeconds !== undefined) this.countdownSeconds = ui.countdownSeconds;
                 if (ui.timedMinutes !== undefined) this.timedMinutes = ui.timedMinutes;
-                if (typeof ui.strictSpacing === 'boolean') this.strictSpacing = ui.strictSpacing;
+                if ((ui.uiStateVersion ?? 1) >= 2 && typeof ui.strictSpacing === 'boolean') this.strictSpacing = ui.strictSpacing;
                 if (typeof ui.adaptiveCharacters === 'boolean') this.adaptiveCharacters = ui.adaptiveCharacters;
                 if (typeof ui.adaptiveSpeed === 'boolean') this.adaptiveSpeed = ui.adaptiveSpeed;
                 if (ui.revealMode) this.revealMode = ui.revealMode;
@@ -776,6 +778,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
 
     openMobileSetup(): void {
         this.mobileSetupOpen = true;
+        this.settingsSections.advanced = false;
         window.setTimeout(() => {
             const firstControl = this.mobileSetupDrawer?.nativeElement.querySelector<HTMLElement>('button, select, input, textarea, [tabindex]:not([tabindex="-1"])');
             (firstControl ?? this.mobileSetupDrawer?.nativeElement)?.focus();
@@ -919,7 +922,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
 
     applySessionPreset(preset: SessionPreset): void {
         this.repeatCount = 1;
-        this.strictSpacing = false;
+        this.strictSpacing = true;
         this.countdownSeconds = 0;
         this.revealMode = 'check';
         this.adaptiveCharacters = false;
@@ -1961,6 +1964,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
 
     private persistUiState(): void {
         localStorage.setItem('cw-copy-ui', JSON.stringify({
+            uiStateVersion: this.uiStateVersion,
             activeWorkspace: this.activeWorkspace,
             showAllMetricConditions: this.showAllMetricConditions,
             trainingGoal: this.trainingGoal,
