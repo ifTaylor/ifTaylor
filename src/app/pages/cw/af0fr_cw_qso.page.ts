@@ -570,6 +570,10 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         return Math.max(0, Math.ceil(this.playbackDuration - this.playbackPosition));
     }
 
+    get secondsElapsed(): number {
+        return Math.max(0, Math.floor(this.playbackPosition));
+    }
+
     get isBasicMode(): boolean {
         return this.mode === 'letters' || this.mode === 'numbers' || this.mode === 'mixed';
     }
@@ -1136,6 +1140,17 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         this.isPaused = true;
     }
 
+    seekPlayback(value: string): void {
+        if (!this.exercise || !this.playbackDuration) return;
+        const nextPosition = Math.min(this.playbackDuration, Math.max(0, Number(value)));
+        if (!Number.isFinite(nextPosition)) return;
+        const resume = this.isPlaying;
+        this.clearPlayback(false);
+        this.playbackPosition = nextPosition;
+        this.isPaused = !resume && nextPosition > 0 && nextPosition < this.playbackDuration;
+        if (resume && nextPosition < this.playbackDuration) this.play();
+    }
+
     stop(): void {
         this.clearPlayback(true);
     }
@@ -1345,7 +1360,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         let context = 'Random letter groups';
         if (this.letterDrill === 'koch') {
             pool = this.kochSequence.slice(0, this.kochLevel);
-            context = `Koch progression: first ${this.kochLevel} characters`;
+            context = `Koch progression: ${this.kochLevel} characters`;
         } else if (this.letterDrill === 'trouble') {
             pool = this.troublePair;
             context = `Trouble-pair drill: ${this.troublePair.split('').join(' and ')}`;

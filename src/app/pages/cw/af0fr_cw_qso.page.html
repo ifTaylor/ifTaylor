@@ -245,8 +245,18 @@
                 <details *ngIf="exercise" class="mt-2 text-right text-xs text-slate-400"><summary class="cursor-pointer font-bold hover:text-white">Keyboard help</summary><div class="mt-1">Space: play/pause · N: new exercise · Ctrl/⌘ + Enter: check</div></details>
 
                 <div *ngIf="exercise" class="mt-4" aria-live="polite">
-                    <div class="flex justify-between text-xs font-bold text-slate-400"><span>{{ playbackStatus }}</span><span>{{ secondsRemaining }}s</span></div>
-                    <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-800"><div class="h-full rounded-full bg-orange-500 transition-[width] duration-100 motion-reduce:transition-none" [style.width.%]="progressPercent"></div></div>
+                    <div class="flex justify-between text-xs font-bold text-slate-400"><span>{{ playbackStatus }}</span><span>{{ secondsElapsed }}s / {{ playbackDuration | number:'1.0-0' }}s</span></div>
+                    <input
+                        type="range"
+                        class="mt-2 h-6 w-full cursor-pointer appearance-none rounded-full border border-slate-700 accent-orange-500 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-orange-500 [&::-moz-range-thumb]:shadow-lg [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-orange-500 [&::-webkit-slider-thumb]:shadow-lg"
+                        min="0"
+                        [max]="playbackDuration"
+                        step="0.1"
+                        [value]="playbackPosition"
+                        [style.background]="'linear-gradient(to right, #f97316 0%, #f97316 ' + progressPercent + '%, #1e293b ' + progressPercent + '%, #1e293b 100%)'"
+                        aria-label="Sending position"
+                        (input)="seekPlayback($any($event.target).value)"
+                    >
                 </div>
 
                 <label *ngIf="exercise" class="mt-5 block">
