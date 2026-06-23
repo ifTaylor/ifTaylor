@@ -288,17 +288,17 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     metricsOnline = false;
     pendingMetricCount = 0;
     hiddenMetricTraces = new Set<string>();
-    activeOperator = 'AF0FR';
+    activeOperator = 'N0CALL';
 
     private readonly metricColors = ['#0f172a', '#f97316', '#0284c7', '#16a34a', '#9333ea', '#dc2626', '#ca8a04', '#0891b2'];
 
     profile: StationProfile = {
-        call: 'AF0FR',
-        name: 'TAYLOR',
-        qth: 'OAKVILLE MO',
-        rig: 'XIEGU G90',
-        antenna: 'EFHW',
-        power: '20W',
+        call: 'N0CALL',
+        name: '',
+        qth: '',
+        rig: '',
+        antenna: '',
+        power: '',
     };
 
     readonly modes: { value: PracticeMode; label: string; description: string }[] = [
@@ -1228,7 +1228,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     }
 
     loadPracticeMetrics(): void {
-        const operator = this.profile.call.trim() || 'AF0FR';
+        const operator = this.profile.call.trim() || 'N0CALL';
         this.metricsLoading = true;
         const params = new HttpParams().set('operator', operator).set('limit', 300);
         this.http.get<CwPracticeAttempt[]>(`${environment.apiUrl}/cw-practice-attempts`, { params }).subscribe({
@@ -1657,7 +1657,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         });
 
         const attempt: CwPracticeAttempt = {
-            operator: this.profile.call.trim() || 'AF0FR',
+            operator: this.profile.call.trim() || 'N0CALL',
             mode: this.mode,
             drill: this.currentDrillName(),
             accuracy,
@@ -1959,7 +1959,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         const legacyProfile = this.readLocalJson<Partial<StationProfile>>('cw-copy-profile');
         const initialOperator = this.sanitizeOperator(
             localStorage.getItem('cw-copy-active-operator') ?? legacyProfile?.call ?? this.profile.call,
-        ) || 'AF0FR';
+        ) || 'N0CALL';
 
         this.migrateLegacyOperatorState(initialOperator);
         this.loadOperatorState(initialOperator);
@@ -1986,7 +1986,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
                 this.profileSaved = true;
             },
             error: () => {
-                if (callsign === this.activeOperator) this.saveServerOperator(false);
+                /* Fresh callsigns stay local until the user saves them. */
             },
         });
     }
@@ -2028,7 +2028,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
 
     private loadOperatorState(operator: string): void {
         this.resetLocalStateDefaults();
-        this.activeOperator = this.sanitizeOperator(operator) || 'AF0FR';
+        this.activeOperator = this.sanitizeOperator(operator) || 'N0CALL';
         localStorage.setItem('cw-copy-active-operator', this.activeOperator);
 
         const savedProfile = this.readLocalJson<Partial<StationProfile>>(this.storageKey('profile'));
@@ -2151,7 +2151,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     }
 
     private storageKeyFor(operator: string, key: string): string {
-        return `cw-copy:${this.sanitizeOperator(operator) || 'AF0FR'}:${key}`;
+        return `cw-copy:${this.sanitizeOperator(operator) || 'N0CALL'}:${key}`;
     }
 
     private readLocalJson<T>(key: string): T | null {
