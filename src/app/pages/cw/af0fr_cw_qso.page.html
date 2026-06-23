@@ -2,10 +2,15 @@
     <div class="mx-auto max-w-7xl space-y-4 sm:space-y-6">
         <header class="rounded-2xl bg-slate-950 p-5 text-white shadow-xl sm:rounded-3xl sm:p-8">
             <div class="flex items-start justify-between gap-4">
-                <div>
+                <div class="min-w-0">
                     <div class="text-[10px] font-semibold uppercase tracking-[0.28em] text-orange-400 sm:text-xs">AF0FR Toolbox</div>
                     <h1 class="mt-2 text-3xl font-black tracking-tight sm:text-5xl">CW Copy Trainer</h1>
-                    <p class="mt-2 max-w-3xl text-sm text-slate-300">Clean practice, QSO protocol, and realistic on-air copy.</p>
+                    <label class="mt-3 flex max-w-sm items-end gap-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        <span class="min-w-0 flex-1">Callsign
+                            <input class="mt-1 min-h-10 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 font-mono text-sm font-bold uppercase tracking-normal text-white outline-none focus:border-orange-500" [value]="profile.call" maxlength="16" autocorrect="off" spellcheck="false" (input)="updateProfile('call', $any($event.target).value)">
+                        </span>
+                        <button type="button" class="min-h-10 rounded-xl bg-orange-500 px-4 text-sm font-black tracking-normal text-white hover:bg-orange-400" (click)="saveProfile()">Save</button>
+                    </label>
                 </div>
                 <a href="/af0fr#toolbox" class="shrink-0 text-sm font-semibold text-orange-300 hover:text-orange-200">← Back</a>
             </div>
@@ -204,7 +209,6 @@
                     <span class="flex items-center justify-between"><span>My station</span><span class="font-mono text-xs text-slate-500">{{ profile.call }} · {{ profile.name }}</span></span>
                 </summary>
                 <div class="grid gap-3 border-t border-orange-100 px-4 pt-4">
-                    <label class="text-xs font-bold text-slate-500">Callsign<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.call" (input)="updateProfile('call', $any($event.target).value)"></label>
                     <label class="text-xs font-bold text-slate-500">Name<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.name" (input)="updateProfile('name', $any($event.target).value)"></label>
                     <label class="text-xs font-bold text-slate-500">QTH<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.qth" (input)="updateProfile('qth', $any($event.target).value)"></label>
                     <label class="text-xs font-bold text-slate-500">Rig<input class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono font-bold uppercase" [value]="profile.rig" (input)="updateProfile('rig', $any($event.target).value)"></label>

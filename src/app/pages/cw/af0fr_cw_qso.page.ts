@@ -46,6 +46,48 @@ interface StationProfile {
     power: string;
 }
 
+interface CwOperatorProfile {
+    callsign: string;
+    name: string;
+    qth: string;
+    rig: string;
+    antenna: string;
+    power: string;
+    settings?: Partial<CwUiState>;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+interface CwUiState {
+    uiStateVersion: number;
+    activeWorkspace: WorkspaceView;
+    showAllMetricConditions: boolean;
+    trainingGoal: TrainingGoal;
+    mode: PracticeMode;
+    exerciseFormat: ExerciseFormat;
+    activePreset: SessionPreset | null;
+    wpm: number;
+    farnsworthWpm: number;
+    audioEffect: AudioEffect;
+    groupSize: number;
+    groupCount: number;
+    sessionTargetAttempts: number;
+    tone: number;
+    repeatCount: number;
+    countdownSeconds: number;
+    timedMinutes: number;
+    strictSpacing: boolean;
+    adaptiveCharacters: boolean;
+    adaptiveSpeed: boolean;
+    revealMode: RevealMode;
+    letterDrill: LetterDrill;
+    numberDrill: NumberDrill;
+    mixedDrill: MixedDrill;
+    qsoStage: QsoStage;
+    wordCategory: WordCategory;
+    settingsSections: SettingsSectionState;
+}
+
 interface ToneEvent {
     start: number;
     duration: number;
@@ -246,6 +288,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     metricsOnline = false;
     pendingMetricCount = 0;
     hiddenMetricTraces = new Set<string>();
+    activeOperator = 'AF0FR';
 
     private readonly metricColors = ['#0f172a', '#f97316', '#0284c7', '#16a34a', '#9333ea', '#dc2626', '#ca8a04', '#0891b2'];
 
@@ -467,67 +510,12 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     private readonly joinedProsigns = new Set(['AR', 'AS', 'BT', 'KN', 'SK']);
 
     constructor(private http: HttpClient) {
-        const savedProfile = localStorage.getItem('cw-copy-profile');
-        const savedWeakWords = localStorage.getItem('cw-copy-weak-words');
-        const savedWeakCharacters = localStorage.getItem('cw-copy-weak-characters');
-        const savedConfusions = localStorage.getItem('cw-copy-confusions');
-        const savedUi = localStorage.getItem('cw-copy-ui');
-        if (savedProfile) {
-            try { this.profile = { ...this.profile, ...JSON.parse(savedProfile) }; } catch { /* keep defaults */ }
-        }
-        if (savedWeakWords) {
-            try { this.weakWordCounts = JSON.parse(savedWeakWords); } catch { /* start fresh */ }
-        }
-        if (savedWeakCharacters) {
-            try { this.weakCharacterCounts = JSON.parse(savedWeakCharacters); } catch { /* start fresh */ }
-        }
-        if (savedConfusions) {
-            try { this.confusionCounts = JSON.parse(savedConfusions); } catch { /* start fresh */ }
-        }
-        if (savedUi) {
-            try {
-                const ui = JSON.parse(savedUi) as Partial<{
-                    uiStateVersion: number;
-                    activeWorkspace: WorkspaceView; showAllMetricConditions: boolean; trainingGoal: TrainingGoal; mode: PracticeMode;
-                    exerciseFormat: ExerciseFormat; activePreset: SessionPreset | null; wpm: number; farnsworthWpm: number;
-                    audioEffect: AudioEffect; groupSize: number; groupCount: number; sessionTargetAttempts: number;
-                    tone: number; repeatCount: number; countdownSeconds: number; timedMinutes: number; strictSpacing: boolean;
-                    adaptiveCharacters: boolean; adaptiveSpeed: boolean; revealMode: RevealMode; letterDrill: LetterDrill;
-                    numberDrill: NumberDrill; mixedDrill: MixedDrill; qsoStage: QsoStage; wordCategory: WordCategory;
-                    settingsSections: SettingsSectionState;
-                }>;
-                if (ui.activeWorkspace) this.activeWorkspace = ui.activeWorkspace;
-                if (typeof ui.showAllMetricConditions === 'boolean') this.showAllMetricConditions = ui.showAllMetricConditions;
-                if (ui.trainingGoal) this.trainingGoal = ui.trainingGoal;
-                if (ui.mode) this.mode = ui.mode;
-                if (ui.exerciseFormat) this.exerciseFormat = ui.exerciseFormat;
-                if (ui.activePreset !== undefined) this.activePreset = ui.activePreset;
-                if (ui.wpm) this.wpm = ui.wpm;
-                if (ui.farnsworthWpm) this.farnsworthWpm = Math.min(ui.farnsworthWpm, this.wpm);
-                if (ui.audioEffect) this.audioEffect = ui.audioEffect;
-                if (ui.groupSize) this.groupSize = ui.groupSize;
-                if (ui.groupCount) this.groupCount = ui.groupCount;
-                if (ui.sessionTargetAttempts) this.sessionTargetAttempts = ui.sessionTargetAttempts;
-                if (ui.tone) this.tone = ui.tone;
-                if (ui.repeatCount) this.repeatCount = ui.repeatCount;
-                if (ui.countdownSeconds !== undefined) this.countdownSeconds = ui.countdownSeconds;
-                if (ui.timedMinutes !== undefined) this.timedMinutes = ui.timedMinutes;
-                if ((ui.uiStateVersion ?? 1) >= 2 && typeof ui.strictSpacing === 'boolean') this.strictSpacing = ui.strictSpacing;
-                if (typeof ui.adaptiveCharacters === 'boolean') this.adaptiveCharacters = ui.adaptiveCharacters;
-                if (typeof ui.adaptiveSpeed === 'boolean') this.adaptiveSpeed = ui.adaptiveSpeed;
-                if (ui.revealMode) this.revealMode = ui.revealMode;
-                if (ui.letterDrill) this.letterDrill = ui.letterDrill;
-                if (ui.numberDrill) this.numberDrill = ui.numberDrill;
-                if (ui.mixedDrill) this.mixedDrill = ui.mixedDrill;
-                if (ui.qsoStage) this.qsoStage = ui.qsoStage;
-                if (ui.wordCategory) this.wordCategory = ui.wordCategory;
-                if (ui.settingsSections) this.settingsSections = { ...this.settingsSections, ...ui.settingsSections };
-            } catch { /* keep UI defaults */ }
-        }
+        this.initializeOperatorState();
         this.pendingMetricCount = this.readPendingMetrics().length;
     }
 
     ngOnInit(): void {
+        this.loadServerOperator(this.activeOperator);
         this.flushPendingMetrics();
         this.loadPracticeMetrics();
     }
@@ -1034,11 +1022,16 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     }
 
     saveProfile(): void {
-        localStorage.setItem('cw-copy-profile', JSON.stringify(this.profile));
+        const operator = this.sanitizeOperator(this.profile.call) || this.activeOperator;
+        this.activeOperator = operator;
+        this.profile = { ...this.profile, call: operator };
+        localStorage.setItem('cw-copy-active-operator', operator);
+        localStorage.setItem(this.storageKey('profile'), JSON.stringify(this.profile));
+        this.persistUiState();
         this.profileSaved = true;
         this.resetExercise();
         this.loadPracticeMetrics();
-        this.showToast('Station profile saved', 'success');
+        this.saveServerOperator(true);
     }
 
     updateNumber(setting: 'wpm' | 'farnsworthWpm' | 'tone' | 'groupSize' | 'groupCount' | 'kochLevel' | 'repeatCount' | 'countdownSeconds' | 'timedMinutes' | 'mixedLetterPercent' | 'sessionTargetAttempts', value: string): void {
@@ -1224,9 +1217,9 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         this.weakWordCounts = {};
         this.weakCharacterCounts = {};
         this.confusionCounts = {};
-        localStorage.removeItem('cw-copy-weak-words');
-        localStorage.removeItem('cw-copy-weak-characters');
-        localStorage.removeItem('cw-copy-confusions');
+        localStorage.removeItem(this.storageKey('weak-words'));
+        localStorage.removeItem(this.storageKey('weak-characters'));
+        localStorage.removeItem(this.storageKey('confusions'));
         this.showToast('Review list cleared', 'info');
     }
 
@@ -1623,7 +1616,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
             if (!copiedWords.includes(word)) this.weakWordCounts[word] = (this.weakWordCounts[word] ?? 0) + 1;
             else if (this.weakWordCounts[word]) this.weakWordCounts[word] = Math.max(0, this.weakWordCounts[word] - 1);
         });
-        localStorage.setItem('cw-copy-weak-words', JSON.stringify(this.weakWordCounts));
+        localStorage.setItem(this.storageKey('weak-words'), JSON.stringify(this.weakWordCounts));
     }
 
     private trackWeakCharacters(): void {
@@ -1636,14 +1629,14 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
                 this.weakCharacterCounts[mark.character] = Math.max(0, this.weakCharacterCounts[mark.character] - 1);
             }
         });
-        localStorage.setItem('cw-copy-weak-characters', JSON.stringify(this.weakCharacterCounts));
+        localStorage.setItem(this.storageKey('weak-characters'), JSON.stringify(this.weakCharacterCounts));
     }
 
     private trackConfusions(confusions: Record<string, number>): void {
         Object.entries(confusions).forEach(([pair, count]) => {
             this.confusionCounts[pair] = (this.confusionCounts[pair] ?? 0) + count;
         });
-        localStorage.setItem('cw-copy-confusions', JSON.stringify(this.confusionCounts));
+        localStorage.setItem(this.storageKey('confusions'), JSON.stringify(this.confusionCounts));
     }
 
     private savePracticeMetric(accuracy: number, correctCharacters: number, totalCharacters: number, confusions: Record<string, number>, revealedBeforeCheck: boolean): void {
@@ -1703,7 +1696,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
                 this.metricsOnline = false;
                 const pending = this.readPendingMetrics();
                 pending.push(attempt);
-                localStorage.setItem('cw-pending-metrics', JSON.stringify(pending.slice(-100)));
+                localStorage.setItem(this.storageKey('pending-metrics'), JSON.stringify(pending.slice(-100)));
                 this.pendingMetricCount = Math.min(100, pending.length);
                 this.showToast('Attempt saved locally and queued', 'info');
             },
@@ -1717,7 +1710,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         this.http.post<CwPracticeAttempt>(`${environment.apiUrl}/cw-practice-attempts`, pending[0]).subscribe({
             next: () => {
                 pending.shift();
-                localStorage.setItem('cw-pending-metrics', JSON.stringify(pending));
+                localStorage.setItem(this.storageKey('pending-metrics'), JSON.stringify(pending));
                 this.pendingMetricCount = pending.length;
                 if (pending.length) this.flushPendingMetrics();
                 else this.loadPracticeMetrics();
@@ -1729,7 +1722,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     }
 
     private readPendingMetrics(): CwPracticeAttempt[] {
-        const saved = localStorage.getItem('cw-pending-metrics');
+        const saved = localStorage.getItem(this.storageKey('pending-metrics'));
         if (!saved) return [];
         try { return JSON.parse(saved) as CwPracticeAttempt[]; } catch { return []; }
     }
@@ -1962,8 +1955,213 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
         window.setTimeout(() => this.persistUiState(), 0);
     }
 
-    private persistUiState(): void {
-        localStorage.setItem('cw-copy-ui', JSON.stringify({
+    private initializeOperatorState(): void {
+        const legacyProfile = this.readLocalJson<Partial<StationProfile>>('cw-copy-profile');
+        const initialOperator = this.sanitizeOperator(
+            localStorage.getItem('cw-copy-active-operator') ?? legacyProfile?.call ?? this.profile.call,
+        ) || 'AF0FR';
+
+        this.migrateLegacyOperatorState(initialOperator);
+        this.loadOperatorState(initialOperator);
+    }
+
+    private loadServerOperator(operator: string): void {
+        const callsign = this.sanitizeOperator(operator);
+        if (!callsign) return;
+        this.http.get<CwOperatorProfile>(`${environment.apiUrl}/cw-operators/${encodeURIComponent(callsign)}`).subscribe({
+            next: (serverProfile) => {
+                const serverCallsign = this.sanitizeOperator(serverProfile.callsign) || callsign;
+                if (serverCallsign !== this.activeOperator) return;
+                this.profile = {
+                    call: serverCallsign,
+                    name: this.normalize(serverProfile.name),
+                    qth: this.normalize(serverProfile.qth),
+                    rig: this.normalize(serverProfile.rig),
+                    antenna: this.normalize(serverProfile.antenna),
+                    power: this.normalize(serverProfile.power),
+                };
+                if (serverProfile.settings) this.applyUiState(serverProfile.settings);
+                localStorage.setItem(this.storageKey('profile'), JSON.stringify(this.profile));
+                this.persistUiState();
+                this.profileSaved = true;
+            },
+            error: () => {
+                if (callsign === this.activeOperator) this.saveServerOperator(false);
+            },
+        });
+    }
+
+    private saveServerOperator(showSuccessToast: boolean): void {
+        const callsign = this.sanitizeOperator(this.profile.call) || this.activeOperator;
+        const payload: CwOperatorProfile = {
+            callsign,
+            name: this.profile.name,
+            qth: this.profile.qth,
+            rig: this.profile.rig,
+            antenna: this.profile.antenna,
+            power: this.profile.power,
+            settings: this.currentUiState(),
+        };
+        this.http.put<CwOperatorProfile>(`${environment.apiUrl}/cw-operators/${encodeURIComponent(callsign)}`, payload).subscribe({
+            next: (serverProfile) => {
+                const serverCallsign = this.sanitizeOperator(serverProfile.callsign) || callsign;
+                this.activeOperator = serverCallsign;
+                this.profile = {
+                    call: serverCallsign,
+                    name: this.normalize(serverProfile.name),
+                    qth: this.normalize(serverProfile.qth),
+                    rig: this.normalize(serverProfile.rig),
+                    antenna: this.normalize(serverProfile.antenna),
+                    power: this.normalize(serverProfile.power),
+                };
+                localStorage.setItem('cw-copy-active-operator', serverCallsign);
+                localStorage.setItem(this.storageKey('profile'), JSON.stringify(this.profile));
+                this.persistUiState();
+                this.profileSaved = true;
+                if (showSuccessToast) this.showToast('Operator profile synced', 'success');
+            },
+            error: () => {
+                if (showSuccessToast) this.showToast('Operator saved locally; sync unavailable', 'info');
+            },
+        });
+    }
+
+    private loadOperatorState(operator: string): void {
+        this.resetLocalStateDefaults();
+        this.activeOperator = this.sanitizeOperator(operator) || 'AF0FR';
+        localStorage.setItem('cw-copy-active-operator', this.activeOperator);
+
+        const savedProfile = this.readLocalJson<Partial<StationProfile>>(this.storageKey('profile'));
+        this.profile = { ...this.defaultProfile(this.activeOperator), ...(savedProfile ?? {}), call: this.activeOperator };
+        this.profileSaved = true;
+        this.weakWordCounts = this.readLocalJson<Record<string, number>>(this.storageKey('weak-words')) ?? {};
+        this.weakCharacterCounts = this.readLocalJson<Record<string, number>>(this.storageKey('weak-characters')) ?? {};
+        this.confusionCounts = this.readLocalJson<Record<string, number>>(this.storageKey('confusions')) ?? {};
+        this.applyUiState(this.readLocalJson<Partial<CwUiState>>(this.storageKey('ui')) ?? null);
+        this.pendingMetricCount = this.readPendingMetrics().length;
+    }
+
+    private resetLocalStateDefaults(): void {
+        this.mode = 'letters';
+        this.trainingGoal = 'accuracy';
+        this.exerciseFormat = 'groups';
+        this.activePreset = null;
+        this.presetModified = false;
+        this.activeWorkspace = 'practice';
+        this.mobileSetupOpen = false;
+        this.showAllMetricConditions = false;
+        this.sessionTargetAttempts = 10;
+        this.selectedMetricPoint = '';
+        this.settingsSections = { advanced: false, content: true, speed: true, audio: false, timing: false, scoring: false };
+        this.qsoStage = 'mixed';
+        this.wordCategory = 'all';
+        this.audioEffect = 'clean';
+        this.wpm = 17;
+        this.farnsworthWpm = 7;
+        this.tone = 550;
+        this.groupSize = 5;
+        this.groupCount = 5;
+        this.letterDrill = 'random';
+        this.numberDrill = 'random';
+        this.mixedDrill = 'random';
+        this.mixedLetterPercent = 60;
+        this.kochLevel = 26;
+        this.troublePair = 'SH';
+        this.customCharacters = 'ABCDE12345';
+        this.adaptiveCharacters = false;
+        this.adaptiveSpeed = false;
+        this.instantCharacters = false;
+        this.strictSpacing = true;
+        this.repeatCount = 1;
+        this.countdownSeconds = 0;
+        this.timedMinutes = 0;
+        this.revealMode = 'check';
+        this.practiceAttempts = [];
+        this.metricTrends = [];
+        this.speedAccuracySeries = [];
+        this.proficiencySummaries = [];
+        this.hiddenMetricTraces = new Set<string>();
+    }
+
+    private applyUiState(ui: Partial<CwUiState> | null): void {
+        if (!ui) return;
+        if (ui.activeWorkspace) this.activeWorkspace = ui.activeWorkspace;
+        if (typeof ui.showAllMetricConditions === 'boolean') this.showAllMetricConditions = ui.showAllMetricConditions;
+        if (ui.trainingGoal) this.trainingGoal = ui.trainingGoal;
+        if (ui.mode) this.mode = ui.mode;
+        if (ui.exerciseFormat) this.exerciseFormat = ui.exerciseFormat;
+        if (ui.activePreset !== undefined) this.activePreset = ui.activePreset;
+        if (ui.wpm) this.wpm = ui.wpm;
+        if (ui.farnsworthWpm) this.farnsworthWpm = Math.min(ui.farnsworthWpm, this.wpm);
+        if (ui.audioEffect) this.audioEffect = ui.audioEffect;
+        if (ui.groupSize) this.groupSize = ui.groupSize;
+        if (ui.groupCount) this.groupCount = ui.groupCount;
+        if (ui.sessionTargetAttempts) this.sessionTargetAttempts = ui.sessionTargetAttempts;
+        if (ui.tone) this.tone = ui.tone;
+        if (ui.repeatCount) this.repeatCount = ui.repeatCount;
+        if (ui.countdownSeconds !== undefined) this.countdownSeconds = ui.countdownSeconds;
+        if (ui.timedMinutes !== undefined) this.timedMinutes = ui.timedMinutes;
+        if ((ui.uiStateVersion ?? 1) >= 2 && typeof ui.strictSpacing === 'boolean') this.strictSpacing = ui.strictSpacing;
+        if (typeof ui.adaptiveCharacters === 'boolean') this.adaptiveCharacters = ui.adaptiveCharacters;
+        if (typeof ui.adaptiveSpeed === 'boolean') this.adaptiveSpeed = ui.adaptiveSpeed;
+        if (ui.revealMode) this.revealMode = ui.revealMode;
+        if (ui.letterDrill) this.letterDrill = ui.letterDrill;
+        if (ui.numberDrill) this.numberDrill = ui.numberDrill;
+        if (ui.mixedDrill) this.mixedDrill = ui.mixedDrill;
+        if (ui.qsoStage) this.qsoStage = ui.qsoStage;
+        if (ui.wordCategory) this.wordCategory = ui.wordCategory;
+        if (ui.settingsSections) this.settingsSections = { ...this.settingsSections, ...ui.settingsSections };
+    }
+
+    private migrateLegacyOperatorState(operator: string): void {
+        const mappings = [
+            ['cw-copy-profile', this.storageKeyFor(operator, 'profile')],
+            ['cw-copy-ui', this.storageKeyFor(operator, 'ui')],
+            ['cw-copy-weak-words', this.storageKeyFor(operator, 'weak-words')],
+            ['cw-copy-weak-characters', this.storageKeyFor(operator, 'weak-characters')],
+            ['cw-copy-confusions', this.storageKeyFor(operator, 'confusions')],
+            ['cw-pending-metrics', this.storageKeyFor(operator, 'pending-metrics')],
+        ] as const;
+        mappings.forEach(([legacyKey, scopedKey]) => {
+            const legacyValue = localStorage.getItem(legacyKey);
+            if (legacyValue && !localStorage.getItem(scopedKey)) localStorage.setItem(scopedKey, legacyValue);
+        });
+    }
+
+    private sanitizeOperator(operator: string | null | undefined): string {
+        return this.normalize(operator ?? '').replace(/[^A-Z0-9/]/g, '').slice(0, 16);
+    }
+
+    private defaultProfile(call: string): StationProfile {
+        if (call === 'AF0FR') {
+            return {
+                call: 'AF0FR',
+                name: 'TAYLOR',
+                qth: 'OAKVILLE MO',
+                rig: 'XIEGU G90',
+                antenna: 'EFHW',
+                power: '20W',
+            };
+        }
+        return { call, name: '', qth: '', rig: '', antenna: '', power: '' };
+    }
+
+    private storageKey(key: string): string {
+        return this.storageKeyFor(this.activeOperator, key);
+    }
+
+    private storageKeyFor(operator: string, key: string): string {
+        return `cw-copy:${this.sanitizeOperator(operator) || 'AF0FR'}:${key}`;
+    }
+
+    private readLocalJson<T>(key: string): T | null {
+        const saved = localStorage.getItem(key);
+        if (!saved) return null;
+        try { return JSON.parse(saved) as T; } catch { return null; }
+    }
+
+    private currentUiState(): CwUiState {
+        return {
             uiStateVersion: this.uiStateVersion,
             activeWorkspace: this.activeWorkspace,
             showAllMetricConditions: this.showAllMetricConditions,
@@ -1991,7 +2189,11 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
             qsoStage: this.qsoStage,
             wordCategory: this.wordCategory,
             settingsSections: this.settingsSections,
-        }));
+        };
+    }
+
+    private persistUiState(): void {
+        localStorage.setItem(this.storageKey('ui'), JSON.stringify(this.currentUiState()));
     }
 
     private showToast(message: string, tone: ToastTone): void {
@@ -2053,9 +2255,9 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
                 Object.entries(attempt.characterScores ?? {}).forEach(([character, delta]) => {
                     scores[character] = Math.max(0, (scores[character] ?? 0) + delta);
                 });
-            });
+        });
         this.weakCharacterCounts = scores;
-        localStorage.setItem('cw-copy-weak-characters', JSON.stringify(scores));
+        localStorage.setItem(this.storageKey('weak-characters'), JSON.stringify(scores));
     }
 
     private applyServerConfusions(attempts: CwPracticeAttempt[]): void {
@@ -2066,7 +2268,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
             });
         });
         this.confusionCounts = confusions;
-        localStorage.setItem('cw-copy-confusions', JSON.stringify(confusions));
+        localStorage.setItem(this.storageKey('confusions'), JSON.stringify(confusions));
     }
 
     private currentDrillName(): string {

@@ -113,8 +113,26 @@ class CwPracticeAttemptCreate(BaseModel):
     extraCount: Optional[int] = Field(default=None, ge=0)
 
 
+class CwOperatorProfileUpsert(BaseModel):
+    callsign: str = Field(min_length=1, max_length=16)
+    name: str = Field(default="", max_length=80)
+    qth: str = Field(default="", max_length=120)
+    rig: str = Field(default="", max_length=120)
+    antenna: str = Field(default="", max_length=120)
+    power: str = Field(default="", max_length=40)
+    settings: dict = Field(default_factory=dict)
+
+
 def get_connection():
     return psycopg.connect(DATABASE_URL)
+
+
+def normalize_callsign(callsign: str) -> str:
+    return "".join(
+        character
+        for character in callsign.strip().upper()
+        if character.isalnum() or character == "/"
+    )[:16]
 
 
 def ensure_cw_metrics_table():
@@ -200,9 +218,44 @@ def ensure_cw_metrics_table():
             )
 
 
+def ensure_cw_operators_table():
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                create table if not exists cw_operators (
+                    callsign varchar(16) primary key,
+                    name varchar(80) not null default '',
+                    qth varchar(120) not null default '',
+                    rig varchar(120) not null default '',
+                    antenna varchar(120) not null default '',
+                    power varchar(40) not null default '',
+                    settings jsonb not null default '{}'::jsonb,
+                    created_at timestamptz not null default now(),
+                    updated_at timestamptz not null default now()
+                )
+                """
+            )
+            cur.execute(
+                """
+                insert into cw_operators (
+                    callsign,
+                    name,
+                    qth,
+                    rig,
+                    antenna,
+                    power
+                )
+                values ('AF0FR', 'TAYLOR', 'OAKVILLE MO', 'XIEGU G90', 'EFHW', '20W')
+                on conflict (callsign) do nothing
+                """
+            )
+
+
 @app.on_event("startup")
 def initialize_cw_metrics():
     ensure_cw_metrics_table()
+    ensure_cw_operators_table()
 
 
 def uuid_list_to_strings(value) -> list[str]:
@@ -302,6 +355,20 @@ def cw_attempt_row_to_dict(row):
     }
 
 
+def cw_operator_row_to_dict(row):
+    return {
+        "callsign": row[0],
+        "name": row[1],
+        "qth": row[2],
+        "rig": row[3],
+        "antenna": row[4],
+        "power": row[5],
+        "settings": row[6] or {},
+        "createdAt": row[7].isoformat(),
+        "updatedAt": row[8].isoformat(),
+    }
+
+
 def fetch_azimuth_line(cur, line_id: UUID):
     cur.execute(
         """
@@ -388,6 +455,111 @@ def debug_cors():
     return {
         "allowedOrigins": [origin.strip() for origin in ALLOWED_ORIGINS],
     }
+
+
+@app.get("/cw-operators/{callsign}")
+def get_cw_operator(callsign: str):
+    operator = normalize_callsign(callsign)
+    if not operator:
+        raise HTTPException(status_code=400, detail="Invalid operator callsign")
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    select
+                        callsign,
+                        name,
+                        qth,
+                        rig,
+                        antenna,
+                        power,
+                        settings,
+                        created_at,
+                        updated_at
+                    from cw_operators
+                    where callsign = %s
+                    """,
+                    (operator,),
+                )
+                row = cur.fetchone()
+
+        if row is None:
+            raise HTTPException(status_code=404, detail="CW operator not found")
+
+        return cw_operator_row_to_dict(row)
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        print(exc)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to load CW operator",
+        ) from exc
+
+
+@app.put("/cw-operators/{callsign}")
+def upsert_cw_operator(callsign: str, profile: CwOperatorProfileUpsert):
+    operator = normalize_callsign(callsign or profile.callsign)
+    if not operator:
+        raise HTTPException(status_code=400, detail="Invalid operator callsign")
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    insert into cw_operators (
+                        callsign,
+                        name,
+                        qth,
+                        rig,
+                        antenna,
+                        power,
+                        settings
+                    )
+                    values (%s, %s, %s, %s, %s, %s, %s)
+                    on conflict (callsign) do update set
+                        name = excluded.name,
+                        qth = excluded.qth,
+                        rig = excluded.rig,
+                        antenna = excluded.antenna,
+                        power = excluded.power,
+                        settings = excluded.settings,
+                        updated_at = now()
+                    returning
+                        callsign,
+                        name,
+                        qth,
+                        rig,
+                        antenna,
+                        power,
+                        settings,
+                        created_at,
+                        updated_at
+                    """,
+                    (
+                        operator,
+                        profile.name.strip().upper(),
+                        profile.qth.strip().upper(),
+                        profile.rig.strip().upper(),
+                        profile.antenna.strip().upper(),
+                        profile.power.strip().upper(),
+                        Jsonb(profile.settings),
+                    ),
+                )
+                row = cur.fetchone()
+
+        return cw_operator_row_to_dict(row)
+
+    except Exception as exc:
+        print(exc)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save CW operator",
+        ) from exc
 
 
 @app.get("/cw-practice-attempts")
