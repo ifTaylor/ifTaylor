@@ -892,6 +892,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
             this.applyExerciseFormat('guidedQso');
         }
         this.resetExercise();
+        this.persistUiState();
     }
 
     selectContent(mode: PracticeMode): void {
@@ -1995,7 +1996,8 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
                     antenna: this.normalize(serverProfile.antenna),
                     power: this.normalize(serverProfile.power),
                 };
-                if (serverProfile.settings) this.applyUiState(serverProfile.settings);
+                const hasLocalUiState = Boolean(localStorage.getItem(this.storageKey('ui')));
+                if (serverProfile.settings && !hasLocalUiState) this.applyUiState(serverProfile.settings);
                 localStorage.setItem(this.storageKey('profile'), JSON.stringify(this.profile));
                 this.persistUiState();
                 this.profileSaved = true;

@@ -45,21 +45,21 @@
                 <label class="block">
                     <span class="text-xs font-black uppercase tracking-wider text-slate-500">Training goal</span>
                     <select class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold sm:py-2.5" [value]="trainingGoal" (change)="selectTrainingGoal($any($event.target).value)">
-                        <option *ngFor="let goal of trainingGoals" [value]="goal.value">{{ goal.label }}</option>
+                        <option *ngFor="let goal of trainingGoals" [value]="goal.value" [selected]="trainingGoal === goal.value">{{ goal.label }}</option>
                     </select>
                     <span class="mt-1 hidden text-[10px] text-slate-500 sm:block">{{ activeTrainingGoalDescription }}</span>
                 </label>
                 <label class="block">
                     <span class="text-xs font-black uppercase tracking-wider text-slate-500">Content</span>
                     <select class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold sm:py-2.5" [value]="mode" (change)="selectContent($any($event.target).value)">
-                        <option *ngFor="let option of modes" [value]="option.value">{{ option.label }}</option>
+                        <option *ngFor="let option of modes" [value]="option.value" [selected]="mode === option.value">{{ option.label }}</option>
                     </select>
                     <span class="mt-1 hidden text-[10px] text-slate-500 sm:block">{{ activeContentDescription }}</span>
                 </label>
                 <label class="block">
                     <span class="text-xs font-black uppercase tracking-wider text-slate-500">Exercise format</span>
                     <select class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold sm:py-2.5" [value]="exerciseFormat" (change)="selectExerciseFormat($any($event.target).value)">
-                        <option *ngFor="let format of availableExerciseFormats" [value]="format.value">{{ format.label }}</option>
+                        <option *ngFor="let format of availableExerciseFormats" [value]="format.value" [selected]="exerciseFormat === format.value">{{ format.label }}</option>
                     </select>
                     <span class="mt-1 hidden text-[10px] text-slate-500 sm:block">Choose how the content is presented.</span>
                 </label>
@@ -83,13 +83,13 @@
                 <label *ngIf="mode === 'qso'" class="block">
                     <span class="text-xs font-black uppercase tracking-wider text-slate-500">QSO stage</span>
                     <select class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 font-semibold" [value]="qsoStage" (change)="selectQsoStage($any($event.target).value)">
-                        <option *ngFor="let stage of qsoStages" [value]="stage.value">{{ stage.label }}</option>
+                        <option *ngFor="let stage of qsoStages" [value]="stage.value" [selected]="qsoStage === stage.value">{{ stage.label }}</option>
                     </select>
                 </label>
                 <label *ngIf="mode === 'qsoWords'" class="block">
                     <span class="text-xs font-black uppercase tracking-wider text-slate-500">Vocabulary</span>
                     <select class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 font-semibold" [value]="wordCategory" (change)="selectWordCategory($any($event.target).value)">
-                        <option *ngFor="let category of wordCategories" [value]="category.value">{{ category.label }}</option>
+                        <option *ngFor="let category of wordCategories" [value]="category.value" [selected]="wordCategory === category.value">{{ category.label }}</option>
                     </select>
                 </label>
             </div>
@@ -102,15 +102,15 @@
                     <div class="grid gap-4 border-t border-slate-100 p-3">
                     <label *ngIf="mode === 'letters'" class="block">
                         <span class="text-sm font-bold">Letter drill</span>
-                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="letterDrill" (change)="selectDrill('letter', $any($event.target).value)"><option *ngFor="let drill of letterDrills" [value]="drill.value">{{ drill.label }}</option></select>
+                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="letterDrill" (change)="selectDrill('letter', $any($event.target).value)"><option *ngFor="let drill of letterDrills" [value]="drill.value" [selected]="letterDrill === drill.value">{{ drill.label }}</option></select>
                     </label>
                     <label *ngIf="mode === 'numbers'" class="block">
                         <span class="text-sm font-bold">Number drill</span>
-                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="numberDrill" (change)="selectDrill('number', $any($event.target).value)"><option *ngFor="let drill of numberDrills" [value]="drill.value">{{ drill.label }}</option></select>
+                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="numberDrill" (change)="selectDrill('number', $any($event.target).value)"><option *ngFor="let drill of numberDrills" [value]="drill.value" [selected]="numberDrill === drill.value">{{ drill.label }}</option></select>
                     </label>
                     <label *ngIf="mode === 'mixed'" class="block">
                         <span class="text-sm font-bold">Mixed drill</span>
-                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="mixedDrill" (change)="selectDrill('mixed', $any($event.target).value)"><option *ngFor="let drill of mixedDrills" [value]="drill.value">{{ drill.label }}</option></select>
+                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="mixedDrill" (change)="selectDrill('mixed', $any($event.target).value)"><option *ngFor="let drill of mixedDrills" [value]="drill.value" [selected]="mixedDrill === drill.value">{{ drill.label }}</option></select>
                     </label>
                     <label *ngIf="mode === 'letters' && letterDrill === 'koch'" class="block">
                         <span class="flex justify-between text-sm font-bold"><span>Koch characters</span><span>{{ kochLevel }}</span></span>
@@ -119,7 +119,7 @@
                     </label>
                     <label *ngIf="mode === 'letters' && letterDrill === 'trouble'" class="block">
                         <span class="text-sm font-bold">Trouble pair</span>
-                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="troublePair" (change)="selectOption('troublePair', $any($event.target).value)"><option *ngFor="let pair of troublePairs" [value]="pair">{{ pair.split('').join(' / ') }}</option></select>
+                        <select class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-semibold" [value]="troublePair" (change)="selectOption('troublePair', $any($event.target).value)"><option *ngFor="let pair of troublePairs" [value]="pair" [selected]="troublePair === pair">{{ pair.split('').join(' / ') }}</option></select>
                     </label>
                     <label *ngIf="(mode === 'letters' && letterDrill === 'custom') || (mode === 'mixed' && mixedDrill === 'custom')" class="block">
                         <span class="text-sm font-bold">Custom characters</span>
