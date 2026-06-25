@@ -22,7 +22,7 @@ export const routes: Routes = [
             { path: 'net_control', component: Af0frNetControlPage },
             { path: 'card_demo', component: CardDemoPage },
             { path: 'cw_qso', component: Af0frCwQsoPage },
-            { path: 'azimuth_map', component: Af0frAzimuthMapPage },
+            { path: 'signal', component: Af0frAzimuthMapPage },
         ],
     },
 ];
