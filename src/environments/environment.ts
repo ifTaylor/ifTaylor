@@ -5,6 +5,6 @@ const isLocalhost =
 export const environment = {
     production: !isLocalhost,
     apiUrl: isLocalhost
-        ? 'http://localhost:3000'
+        ? 'http://localhost:8000'
         : 'https://iftaylor-api.onrender.com',
 };

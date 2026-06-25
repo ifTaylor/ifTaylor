@@ -1,8 +1,10 @@
 import { AfterViewInit, Component, OnDestroy } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import * as L from 'leaflet';
 
 import { environment } from '../../../environments/environment';
+
 
 type AzimuthLine = {
     id: string;
@@ -67,13 +69,17 @@ type RepeaterOption = {
     frequencyMhz: string;
 };
 
+type AzimuthView = 'reports' | 'map';
+
 @Component({
     standalone: true,
     selector: 'af0fr-azimuth-map-page',
     templateUrl: './af0fr_azimuth_map.page.html',
+    imports: [FormsModule]
 })
 export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     private refreshIntervalId: number | null = null;
+    private savedReportHighlightTimeoutId: number | null = null;
     private map!: L.Map;
 
     private pendingStart: L.LatLng | null = null;
@@ -93,6 +99,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     selectedPointId: string | null = null;
 
     pendingDeleteReportId: string | null = null;
+    highlightedReportId: string | null = null;
 
     removalModeEnabled = false;
 
@@ -108,17 +115,57 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
 
     reports: SightingReport[] = [];
 
+    activeAzimuthView: AzimuthView = 'reports';
+
     reportDate = '';
     reportTime = '';
-    reportSourceValue = 'KB0TLL_147075';
+    reportSourceValue = 'K0EOR_147.030';
+    reportReverse = false;
     customFrequencyMhz = '';
     reportNotes = '';
     reportSaveMessage = '';
+    isSavingReport = false;
 
     editingCallsign = false;
     callsignDraft = '';
 
     readonly repeaterOptions: RepeaterOption[] = [
+        {
+            value: 'N8WIZ_145.190',
+            label: 'N8WIZ — 145.190 MHz',
+            sourceLabel: 'N8WIZ',
+            frequencyMhz: '145.190',
+        },
+        {
+            value: 'K0QOD_146.625',
+            label: 'K0QOD — 146.625 MHz',
+            sourceLabel: 'K0QOD',
+            frequencyMhz: '146.625',
+        },
+        {
+            value: 'W0KLX_146.700',
+            label: 'W0KLX — 146.700 MHz',
+            sourceLabel: 'W0KLX',
+            frequencyMhz: '146.700',
+        },
+        {
+            value: 'AB0HX_146.715',
+            label: 'AB0HX — 146.715 MHz',
+            sourceLabel: 'AB0HX',
+            frequencyMhz: '146.715',
+        },
+        {
+            value: 'KD0RIS_146.775',
+            label: 'KD0RIS — 146.775 MHz',
+            sourceLabel: 'KD0RIS',
+            frequencyMhz: '146.775',
+        },
+        {
+            value: 'AB0TL_146.835',
+            label: 'AB0TL — 146.835 MHz',
+            sourceLabel: 'AB0TL',
+            frequencyMhz: '146.835',
+        },
         {
             value: 'K0EOR_147.030',
             label: 'K0EOR — 147.030 MHz',
@@ -126,10 +173,16 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             frequencyMhz: '147.030',
         },
         {
-            value: 'KB0TLL_147075',
+            value: 'KB0TLL_147.075',
             label: 'KB0TLL — 147.075 MHz',
             sourceLabel: 'KB0TLL',
             frequencyMhz: '147.075',
+        },
+        {
+            value: 'N0WNC_147.195',
+            label: 'N0WNC — 147.195 MHz',
+            sourceLabel: 'N0WNC',
+            frequencyMhz: '147.195',
         },
         {
             value: 'OTHER',
@@ -153,6 +206,8 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     ];
 
     constructor(private http: HttpClient) {
+        const savedView = localStorage.getItem('azimuth-map-view');
+        this.activeAzimuthView = savedView === 'map' ? 'map' : 'reports';
         this.setReportTimeNow();
     }
 
@@ -245,6 +300,10 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             window.clearInterval(this.refreshIntervalId);
         }
 
+        if (this.savedReportHighlightTimeoutId !== null) {
+            window.clearTimeout(this.savedReportHighlightTimeoutId);
+        }
+
         this.disableCompass();
         this.disableLocation();
 
@@ -275,6 +334,16 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         window.setTimeout(resize, 100);
         window.setTimeout(resize, 300);
         window.setTimeout(resize, 750);
+    }
+
+    setAzimuthView(view: AzimuthView): void {
+        this.activeAzimuthView = view;
+        localStorage.setItem('azimuth-map-view', view);
+
+        if (view === 'map') {
+            this.forceMapResize();
+            this.refreshCompassPreview();
+        }
     }
 
     toggleLocation(): void {
@@ -929,6 +998,8 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
 
         if (!this.selectedSourceIsOther) {
             this.customFrequencyMhz = '';
+        } else {
+            this.reportReverse = false;
         }
     }
 
@@ -939,6 +1010,10 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         customFrequencyMhz: string,
         notes: string
     ): void {
+        if (this.isSavingReport) {
+            return;
+        }
+
         this.reportDate = reportDate;
         this.reportTime = reportTime;
         this.reportSourceValue = sourceValue;
@@ -963,6 +1038,8 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
                 alert('Enter the other frequency.');
                 return;
             }
+        } else if (this.reportReverse) {
+            sourceLabel = `${sourceLabel}-R`;
         }
 
         const reportPayload = {
@@ -974,17 +1051,38 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
             notes: this.reportNotes.trim() || null,
         };
 
+        this.isSavingReport = true;
+
         this.http.post<SightingReport>(`${environment.apiUrl}/sighting-reports`, reportPayload)
             .subscribe({
                 next: (savedReport) => {
                     this.reports.unshift(savedReport);
                     this.reportSaveMessage = `Report #${this.getReportDisplayNumber(savedReport)} saved. You can link map markers to it below.`;
+                    this.highlightSavedReport(savedReport.id);
+                    this.isSavingReport = false;
                 },
                 error: (error) => {
                     console.error('Failed to save sighting report', error);
                     alert('Failed to save signal report.');
+                    this.isSavingReport = false;
                 },
             });
+    }
+
+    private highlightSavedReport(reportId: string): void {
+        this.highlightedReportId = reportId;
+
+        if (this.savedReportHighlightTimeoutId !== null) {
+            window.clearTimeout(this.savedReportHighlightTimeoutId);
+        }
+
+        this.savedReportHighlightTimeoutId = window.setTimeout(() => {
+            if (this.highlightedReportId === reportId) {
+                this.highlightedReportId = null;
+            }
+
+            this.savedReportHighlightTimeoutId = null;
+        }, 5000);
     }
 
     private loadReports(): void {
@@ -1039,8 +1137,16 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     }
 
     getReportDisplayNumber(report: SightingReport): number {
-        const index = this.reports.findIndex(existing => existing.id === report.id);
+        const chronologicalReports = [...this.reports].sort(
+            (left, right) => this.getReportTimestamp(left) - this.getReportTimestamp(right)
+        );
+        const index = chronologicalReports.findIndex(existing => existing.id === report.id);
         return index >= 0 ? index + 1 : 0;
+    }
+
+    private getReportTimestamp(report: SightingReport): number {
+        const timestamp = Date.parse(report.createdAt || `${report.reportDate}T${report.reportTime}`);
+        return Number.isNaN(timestamp) ? 0 : timestamp;
     }
 
     getLineDisplayNumber(line: AzimuthLine): number {
@@ -1079,6 +1185,22 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
         return this.points.filter(point => this.getReportIdsForPoint(point).includes(report.id));
     }
 
+    getUnlinkedLinesForReport(report: SightingReport): AzimuthLine[] {
+        const reportCallsign = this.normalizeCallsign(report.callsign);
+        return this.lines.filter(line =>
+            this.getLineCallsign(line) === reportCallsign &&
+            !this.getReportIdsForLine(line).includes(report.id)
+        );
+    }
+
+    getUnlinkedPointsForReport(report: SightingReport): ReportPoint[] {
+        const reportCallsign = this.normalizeCallsign(report.callsign);
+        return this.points.filter(point =>
+            this.getPointCallsign(point) === reportCallsign &&
+            !this.getReportIdsForPoint(point).includes(report.id)
+        );
+    }
+
     getLinkedReportsForPoint(point: ReportPoint): SightingReport[] {
         const reportIds = this.getReportIdsForPoint(point);
         return this.reports.filter(report => reportIds.includes(report.id));
@@ -1086,7 +1208,11 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
 
     getUnlinkedReportsForPoint(point: ReportPoint): SightingReport[] {
         const reportIds = this.getReportIdsForPoint(point);
-        return this.reports.filter(report => !reportIds.includes(report.id));
+        const pointCallsign = this.getPointCallsign(point);
+        return this.reports.filter(report =>
+            this.normalizeCallsign(report.callsign) === pointCallsign &&
+            !reportIds.includes(report.id)
+        );
     }
 
     getLinkedReportsForLine(line: AzimuthLine): SightingReport[] {
@@ -1096,7 +1222,31 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
 
     getUnlinkedReportsForLine(line: AzimuthLine): SightingReport[] {
         const reportIds = this.getReportIdsForLine(line);
-        return this.reports.filter(report => !reportIds.includes(report.id));
+        const lineCallsign = this.getLineCallsign(line);
+        return this.reports.filter(report =>
+            this.normalizeCallsign(report.callsign) === lineCallsign &&
+            !reportIds.includes(report.id)
+        );
+    }
+
+    addReportPointLink(report: SightingReport, pointId: string): void {
+        const point = this.points.find(existing => existing.id === pointId);
+
+        if (!point) {
+            return;
+        }
+
+        this.addPointReport(point, report.id);
+    }
+
+    addReportLineLink(report: SightingReport, lineId: string): void {
+        const line = this.lines.find(existing => existing.id === lineId);
+
+        if (!line) {
+            return;
+        }
+
+        this.addLineReport(line, report.id);
     }
 
     addPointReport(point: ReportPoint, reportId: string): void {
@@ -1229,7 +1379,7 @@ export class Af0frAzimuthMapPage implements AfterViewInit, OnDestroy {
     }
 
     getReportChipLabel(report: SightingReport): string {
-        return `Report #${this.getReportDisplayNumber(report)} · ${report.sourceLabel} ${report.frequencyMhz} MHz · ${this.formatReportDateTime(report)}`;
+        return `#${this.getReportDisplayNumber(report)} · ${report.frequencyMhz} MHz · ${this.formatReportDateTime(report)}`;
     }
 
     getSourcePointSummary(sourcePointId?: string | null): string {

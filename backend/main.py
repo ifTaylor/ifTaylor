@@ -1,5 +1,6 @@
 import os
 from datetime import date, time
+from pathlib import Path
 from typing import Optional
 from uuid import UUID, uuid4
 
@@ -11,7 +12,7 @@ from pydantic import BaseModel, Field
 from psycopg.types.json import Jsonb
 
 
-load_dotenv()
+load_dotenv(Path(__file__).with_name(".env"))
 
 DATABASE_URL = os.environ["DATABASE_URL"]
 ALLOWED_ORIGINS = os.getenv(
@@ -1531,3 +1532,13 @@ def delete_azimuth_line(line_id: UUID):
             status_code=500,
             detail="Failed to delete azimuth line",
         ) from exc
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        app,
+        host=os.getenv("HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", "8000")),
+    )
