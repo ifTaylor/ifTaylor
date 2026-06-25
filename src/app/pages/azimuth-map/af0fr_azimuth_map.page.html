@@ -88,27 +88,27 @@
                 </div>
             </div>
 
-            <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,2fr)]">
-                <label class="block min-w-0">
+            <div class="mt-4 grid min-w-0 grid-cols-1 gap-3 overflow-hidden sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,2fr)]">
+                <label class="block min-w-0 max-w-full overflow-hidden">
                     <span class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
                         Date
                     </span>
                     <input
                             #reportDateBox
                             type="date"
-                            class="mt-1 block w-full min-w-0 max-w-full box-border rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-950"
+                            class="mt-1 block w-full min-w-0 max-w-full appearance-none box-border rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-950"
                             [value]="reportDate"
                     />
                 </label>
 
-                <label class="block min-w-0">
+                <label class="block min-w-0 max-w-full overflow-hidden">
                     <span class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
                         Time
                     </span>
                     <input
                             #reportTimeBox
                             type="time"
-                            class="mt-1 block w-full min-w-0 max-w-full box-border rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-950"
+                            class="mt-1 block w-full min-w-0 max-w-full appearance-none box-border rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-950"
                             [value]="reportTime"
                     />
                 </label>
