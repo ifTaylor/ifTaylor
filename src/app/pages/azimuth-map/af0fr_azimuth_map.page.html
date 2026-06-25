@@ -88,32 +88,34 @@
                 </div>
             </div>
 
-            <div class="mt-4 grid min-w-0 grid-cols-1 gap-3 overflow-hidden sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,2fr)]">
-                <label class="block min-w-0 max-w-full overflow-hidden">
-                    <span class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-                        Date
-                    </span>
-                    <input
-                            #reportDateBox
-                            type="date"
-                            class="mt-1 block w-full min-w-0 max-w-full appearance-none box-border rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-950"
-                            [value]="reportDate"
-                    />
-                </label>
+            <div class="mt-4 grid min-w-0 grid-cols-1 gap-3 overflow-hidden lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,2fr)]">
+                <div class="grid min-w-0 grid-cols-2 gap-2 lg:col-span-1">
+                    <label class="block min-w-0 max-w-full overflow-hidden">
+                        <span class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                            Date
+                        </span>
+                        <input
+                                #reportDateBox
+                                type="date"
+                                class="mt-1 block w-full min-w-0 max-w-full appearance-none box-border rounded-2xl border border-slate-300 bg-white px-3 py-3 text-base font-semibold text-slate-950"
+                                [value]="reportDate"
+                        />
+                    </label>
 
-                <label class="block min-w-0 max-w-full overflow-hidden">
-                    <span class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-                        Time
-                    </span>
-                    <input
-                            #reportTimeBox
-                            type="time"
-                            class="mt-1 block w-full min-w-0 max-w-full appearance-none box-border rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-950"
-                            [value]="reportTime"
-                    />
-                </label>
+                    <label class="block min-w-0 max-w-full overflow-hidden">
+                        <span class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                            Time
+                        </span>
+                        <input
+                                #reportTimeBox
+                                type="time"
+                                class="mt-1 block w-full min-w-0 max-w-full appearance-none box-border rounded-2xl border border-slate-300 bg-white px-3 py-3 text-base font-semibold text-slate-950"
+                                [value]="reportTime"
+                        />
+                    </label>
+                </div>
 
-                <div class="flex items-end sm:col-span-2 lg:col-span-1 lg:pb-2">
+                <div class="flex items-end lg:pb-2">
                     <button
                             type="button"
                             class="rounded-full bg-orange-500 px-5 py-2 text-sm font-semibold text-white ring-1 ring-orange-700"
@@ -123,13 +125,13 @@
                     </button>
                 </div>
 
-                <label class="block min-w-0 sm:col-span-2 lg:col-span-4">
+                <label class="block min-w-0 lg:col-span-3">
                     <span class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
                         Repeater / Frequency
                     </span>
                     <span class="mt-1 flex flex-col gap-2 sm:flex-row">
                         <select
-                                class="min-w-0 flex-1 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-950"
+                                class="min-w-0 flex-1 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-950"
                                 [ngModel]="reportSourceValue"
                                 (ngModelChange)="setReportSource($event)"
                         >
