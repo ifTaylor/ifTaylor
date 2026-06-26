@@ -241,6 +241,7 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
         'VELDA VILLAGE HILLS': { lat: 38.6959, lng: -90.2879 },
         'VILLA RIDGE': { lat: 38.4720, lng: -90.8868 },
         'VINITA PARK': { lat: 38.6909, lng: -90.3423 },
+        'WARE': { lat: 38.2137, lng: -90.6751 },
         'WARRENTON': { lat: 38.8114, lng: -91.1410 },
         'WASHINGTON': { lat: 38.5581, lng: -91.0121 },
         'WEBSTER GROVES': { lat: 38.5926, lng: -90.3573 },
