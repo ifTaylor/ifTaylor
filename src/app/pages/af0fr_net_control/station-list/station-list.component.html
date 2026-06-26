@@ -106,7 +106,14 @@
 
                     <div class="text-sm text-slate-300">
                         {{ station.callsign ? (station.name || 'Unknown') : 'No callsign' }}
-                        <span *ngIf="station.location">· {{ station.location }}</span>
+
+                        <span *ngIf="station.location">
+                            · {{ station.location }}
+                        </span>
+
+                        <span *ngIf="station.distance !== undefined">
+                            · {{ station.distance }} mi
+                        </span>
                     </div>
                 </div>
 

@@ -80,8 +80,6 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     private readonly repeaterLng = -90.537611;
 
     private readonly locationCoordinates: Record<string, { lat: number; lng: number }> = {
-        // Missouri - Jefferson County / south county / STL area
-// Missouri - Jefferson County / St. Louis metro / eastern MO expanded
         'AFFTON': { lat: 38.5506, lng: -90.3332 },
         'ANTONIA': { lat: 38.2867, lng: -90.3918 },
         'ARNOLD': { lat: 38.4328, lng: -90.3776 },
@@ -802,11 +800,18 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
             (station.member ? 'member' : station.firstTime ? 'unknown' : 'visitor')
         );
 
+        const location = station.location?.trim() || member?.city || '';
+        const coordinates = this.getCoordinatesForLocation(location);
+        const distance = coordinates
+            ? this.distanceMilesFromRepeater(coordinates.lat, coordinates.lng)
+            : member?.distanceMiles;
+
         return {
             ...station,
             callsign,
             name: station.name?.trim() || member?.name || '',
-            location: station.location?.trim() || member?.city || '',
+            location,
+            distance,
             trafficType,
             clubStatus,
             member: clubStatus === 'member',

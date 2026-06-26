@@ -15,6 +15,7 @@ export interface Station {
     callsign: string;
     name?: string;
     location?: string;
+    distance?: number;
     trafficType: TrafficType;
     clubStatus: ClubStatus;
     visitor: boolean;
