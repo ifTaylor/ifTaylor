@@ -1,5 +1,61 @@
 <div class="rounded-2xl border border-slate-700 bg-slate-900 p-4 shadow">
-    <h2 class="mb-4 text-lg font-semibold text-white">Stations</h2>
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-lg font-semibold text-white">Stations</h2>
+
+        <div class="rounded-full bg-slate-800 px-3 py-1 text-sm font-semibold text-slate-200">
+            {{ totalStations }} total
+        </div>
+    </div>
+
+    <div class="mb-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3 xl:grid-cols-5">
+        <div class="rounded-xl border border-slate-700 bg-slate-800 p-3">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Regular
+            </div>
+            <div class="mt-1 text-2xl font-bold text-white">
+                {{ regularStations }}
+            </div>
+        </div>
+
+        <div class="rounded-xl border border-slate-700 bg-slate-800 p-3">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Short time
+            </div>
+            <div class="mt-1 text-2xl font-bold text-white">
+                {{ shortTimeStations }}
+            </div>
+        </div>
+
+        <div class="rounded-xl border border-slate-700 bg-slate-800 p-3">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Waiting
+            </div>
+            <div class="mt-1 text-2xl font-bold text-white">
+                {{ waitingStations }}
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-4 flex flex-wrap gap-2 text-xs font-semibold">
+        <span class="rounded-full bg-orange-500 px-2.5 py-1 text-white">
+            {{ memberStations }} members
+        </span>
+
+        <span class="rounded-full bg-slate-600 px-2.5 py-1 text-white">
+            {{ visitorStations }} visitors
+        </span>
+
+        <span class="rounded-full bg-blue-600 px-2.5 py-1 text-white">
+            {{ unknownStations }} unknown
+        </span>
+
+        <span
+                *ngIf="activeStations"
+                class="rounded-full bg-blue-600 px-2.5 py-1 text-white"
+        >
+            {{ activeStations }} active
+        </span>
+    </div>
 
     <div class="space-y-3">
         <div
@@ -10,25 +66,46 @@
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <div class="flex flex-wrap items-center gap-2">
-                        <div class="font-semibold text-white">{{ station.callsign }}</div>
+                        <div class="font-semibold text-white">{{ station.callsign || station.name }}</div>
+
+                        <span
+                                *ngIf="station.member"
+                                class="rounded-full bg-orange-500 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white"
+                        >
+                            Member
+                        </span>
+
+                        <span
+                                *ngIf="station.visitor && !station.firstTime"
+                                class="rounded-full bg-slate-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white"
+                        >
+                            Visitor
+                        </span>
+
+                        <span
+                                *ngIf="station.firstTime"
+                                class="rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white"
+                        >
+                            Unknown
+                        </span>
 
                         <span
                                 *ngIf="station.status === 'complete'"
                                 class="rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white"
                         >
-              Completed
-            </span>
+                            Completed
+                        </span>
 
                         <span
                                 *ngIf="station.status === 'active'"
                                 class="rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white"
                         >
-              Active
-            </span>
+                            Active
+                        </span>
                     </div>
 
                     <div class="text-sm text-slate-300">
-                        {{ station.name || 'Unknown' }}
+                        {{ station.callsign ? (station.name || 'Unknown') : 'No callsign' }}
                         <span *ngIf="station.location">· {{ station.location }}</span>
                     </div>
                 </div>
@@ -38,15 +115,15 @@
                             class="rounded-full px-2 py-1 text-xs font-semibold"
                             [ngClass]="trafficClass(station.trafficType)"
                     >
-            {{ station.trafficType }}
-          </span>
+                        {{ trafficLabel(station.trafficType) }}
+                    </span>
 
                     <span
                             class="rounded-full px-2 py-1 text-xs font-semibold"
                             [ngClass]="statusClass(station.status)"
                     >
-            {{ station.status }}
-          </span>
+                        {{ station.status }}
+                    </span>
                 </div>
             </div>
 
@@ -68,12 +145,6 @@
                         [disabled]="station.status === 'complete'"
                 >
                     Complete
-                </button>
-                <button
-                        class="rounded-lg bg-rose-600 px-3 py-1 text-sm text-white"
-                        (click)="removeStation.emit(station.id)"
-                >
-                    Remove
                 </button>
             </div>
         </div>

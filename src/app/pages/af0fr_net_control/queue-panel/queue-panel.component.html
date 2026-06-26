@@ -1,20 +1,36 @@
 <div class="rounded-2xl border border-slate-700 bg-slate-900 p-4 shadow">
-    <h2 class="mb-4 text-lg font-semibold text-white">Queue</h2>
+    <h2 class="mb-4 text-lg font-semibold text-white">Confirmation Queue</h2>
 
     <div class="space-y-2">
         <div
                 *ngFor="let station of queue; let i = index"
                 class="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-800 p-3"
         >
-            <div class="text-white">
-                <span class="mr-2 text-slate-400">{{ i + 1 }}.</span>
-                {{ station.callsign }}
+            <div class="min-w-0 text-white">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-slate-400">{{ i + 1 }}.</span>
+                    <span class="font-semibold">{{ station.callsign || 'No call' }}</span>
+                    <span
+                            *ngIf="station.member"
+                            class="rounded-full bg-orange-500 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white"
+                    >
+                        Member
+                    </span>
+                    <span
+                            *ngIf="station.firstTime"
+                            class="rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white"
+                    >
+                        Unknown
+                    </span>
+                </div>
+                <div class="mt-1 text-sm text-slate-300">
+                    {{ station.name || 'Unknown' }}
+                    <span *ngIf="station.location"> - {{ station.location }}</span>
+                </div>
             </div>
 
             <div class="flex gap-2">
-                <button class="rounded bg-slate-700 px-2 py-1 text-sm text-white" (click)="moveUp.emit(station.id)">↑</button>
-                <button class="rounded bg-slate-700 px-2 py-1 text-sm text-white" (click)="moveDown.emit(station.id)">↓</button>
-                <button class="rounded bg-orange-500 px-3 py-1 text-sm text-white" (click)="activate.emit(station.id)">Call</button>
+                <button class="rounded bg-orange-500 px-3 py-1 text-sm font-semibold text-white hover:bg-orange-400" (click)="confirm.emit(station.id)">Confirm</button>
             </div>
         </div>
     </div>

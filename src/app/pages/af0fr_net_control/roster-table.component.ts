@@ -1,0 +1,130 @@
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import {
+    AfterViewInit,
+    Component,
+    ElementRef,
+    EventEmitter,
+    Input,
+    OnChanges,
+    Output,
+    SimpleChanges,
+    ViewChild,
+} from '@angular/core';
+import { ClubMember, ClubStatus } from './models/club-member.model';
+import { TrafficType } from './models/station.model';
+
+export interface RosterCheckInRequest {
+    member: ClubMember;
+    trafficType: TrafficType;
+}
+
+@Component({
+    selector: 'roster-table',
+    standalone: true,
+    imports: [CommonModule, FormsModule],
+    templateUrl: './roster-table.component.html',
+})
+export class RosterTable implements AfterViewInit, OnChanges {
+    @Input({ required: true }) roster: ClubMember[] = [];
+    @Input() searchCallsign = '';
+    @Input() checkedInCallsigns = new Set<string>();
+    @Input() editing = false;
+
+    @Output() checkIn = new EventEmitter<RosterCheckInRequest>();
+    @Output() memberChange = new EventEmitter<ClubMember>();
+    @Output() memberRemove = new EventEmitter<ClubMember>();
+
+    @ViewChild('scrollBody') private scrollBody?: ElementRef<HTMLDivElement>;
+
+    highlightedMemberId = '';
+    private viewReady = false;
+
+    get displayRoster(): ClubMember[] {
+        return [...this.roster].sort((a, b) => {
+            const aCall = a.callsign || 'ZZZZZZ';
+            const bCall = b.callsign || 'ZZZZZZ';
+            const byCallsign = aCall.localeCompare(bCall);
+
+            return byCallsign || a.name.localeCompare(b.name);
+        });
+    }
+
+    ngAfterViewInit(): void {
+        this.viewReady = true;
+        this.updateHighlight();
+    }
+
+    ngOnChanges(changes: SimpleChanges): void {
+        if (changes['roster'] || changes['searchCallsign']) {
+            this.updateHighlight();
+        }
+    }
+
+    isCheckedIn(member: ClubMember): boolean {
+        return !!member.callsign && this.checkedInCallsigns.has(member.callsign);
+    }
+
+    statusLabel(status: ClubStatus): string {
+        switch (status) {
+            case 'unknown':
+                return 'Unknown';
+            case 'visitor':
+                return 'Visitor';
+            default:
+                return 'Member';
+        }
+    }
+
+    statusClass(status: ClubStatus): string {
+        switch (status) {
+            case 'unknown':
+                return 'bg-blue-600 text-white';
+            case 'visitor':
+                return 'bg-slate-600 text-white';
+            default:
+                return 'bg-orange-500 text-white';
+        }
+    }
+
+    updateMember(member: ClubMember, changes: Partial<ClubMember>): void {
+        this.memberChange.emit({
+            ...member,
+            ...changes,
+            callsign: changes.callsign !== undefined
+                ? changes.callsign.trim().toUpperCase().replace(/Ø/g, '0').replace(/Ã˜/g, '0')
+                : member.callsign,
+            name: changes.name !== undefined ? changes.name.trim() : member.name,
+            city: changes.city !== undefined ? changes.city.trim() : member.city,
+        });
+    }
+
+    private updateHighlight(): void {
+        const query = this.searchCallsign.trim().toUpperCase();
+
+        if (!query) {
+            this.highlightedMemberId = '';
+            return;
+        }
+
+        const match = this.displayRoster.find((member) =>
+            member.callsign.toUpperCase().startsWith(query)
+        );
+
+        this.highlightedMemberId = match?.id ?? '';
+
+        if (this.viewReady && this.highlightedMemberId) {
+            queueMicrotask(() => this.scrollHighlightedIntoView());
+        }
+    }
+
+    private scrollHighlightedIntoView(): void {
+        const container = this.scrollBody?.nativeElement;
+        if (!container) return;
+
+        const row = container.querySelector<HTMLElement>(
+            `[data-member-id="${this.highlightedMemberId}"]`
+        );
+        row?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+}

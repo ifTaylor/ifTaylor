@@ -1,9 +1,8 @@
+import { ClubStatus } from './club-member.model';
+
 export type TrafficType =
-    | 'none'
-    | 'announcement'
-    | 'formal'
-    | 'priority'
-    | 'emergency';
+    | 'regular'
+    | 'shortTime';
 
 export type StationStatus =
     | 'waiting'
@@ -17,7 +16,10 @@ export interface Station {
     name?: string;
     location?: string;
     trafficType: TrafficType;
+    clubStatus: ClubStatus;
     visitor: boolean;
+    member: boolean;
+    memberId?: string;
     firstTime: boolean;
     notes?: string;
     status: StationStatus;

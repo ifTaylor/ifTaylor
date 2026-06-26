@@ -12,4 +12,6 @@ export class ScriptPanel {
     @Input() trafficPrompt = '';
     @Input() lateCheckinPrompt = '';
     @Input() closingScript = '';
+
+    collapsed = true;
 }

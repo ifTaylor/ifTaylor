@@ -5,7 +5,12 @@
         <input
                 formControlName="callsign"
                 placeholder="Callsign"
-                class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-white"
+                class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 font-semibold uppercase tracking-wide text-white"
+                autocapitalize="characters"
+                autocomplete="off"
+                spellcheck="false"
+                inputmode="text"
+                (input)="normalizeCallsignInput()"
         />
 
         <div class="grid gap-3 md:grid-cols-2">
@@ -21,16 +26,74 @@
             />
         </div>
 
-        <select
-                formControlName="trafficType"
-                class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-white"
-        >
-            <option value="none">No traffic</option>
-            <option value="announcement">Announcement</option>
-            <option value="formal">Formal traffic</option>
-            <option value="priority">Priority</option>
-            <option value="emergency">Emergency</option>
-        </select>
+        <div class="grid gap-2">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Check-in type</div>
+            <button
+                    type="button"
+                    class="relative grid grid-cols-2 rounded-lg border border-slate-600 bg-slate-800 p-1 text-sm font-semibold text-slate-200"
+                    (click)="toggleTrafficType()"
+            >
+                <span
+                        class="rounded-md px-3 py-1.5 text-center"
+                        [class.bg-blue-600]="form.controls.trafficType.value === 'shortTime'"
+                        [class.text-white]="form.controls.trafficType.value === 'shortTime'"
+                >
+                    Short time
+                </span>
+                <span
+                        class="rounded-md px-3 py-1.5 text-center"
+                        [class.bg-orange-500]="form.controls.trafficType.value === 'regular'"
+                        [class.text-white]="form.controls.trafficType.value === 'regular'"
+                >
+                    Regular
+                </span>
+            </button>
+        </div>
+
+        <div class="grid gap-2">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Club Status</div>
+            <div class="grid grid-cols-3 gap-2">
+            <button
+                    type="button"
+                    class="rounded-lg border px-2 py-2 text-sm font-semibold"
+                    [class.border-orange-400]="form.controls.clubStatus.value === 'member'"
+                    [class.bg-orange-500]="form.controls.clubStatus.value === 'member'"
+                    [class.text-white]="form.controls.clubStatus.value === 'member'"
+                    [class.border-slate-600]="form.controls.clubStatus.value !== 'member'"
+                    [class.bg-slate-800]="form.controls.clubStatus.value !== 'member'"
+                    [class.text-slate-200]="form.controls.clubStatus.value !== 'member'"
+                    (click)="setClubStatus('member')"
+            >
+                Member
+            </button>
+            <button
+                    type="button"
+                    class="rounded-lg border px-2 py-2 text-sm font-semibold"
+                    [class.border-slate-400]="form.controls.clubStatus.value === 'visitor'"
+                    [class.bg-slate-600]="form.controls.clubStatus.value === 'visitor'"
+                    [class.text-white]="form.controls.clubStatus.value === 'visitor'"
+                    [class.border-slate-600]="form.controls.clubStatus.value !== 'visitor'"
+                    [class.bg-slate-800]="form.controls.clubStatus.value !== 'visitor'"
+                    [class.text-slate-200]="form.controls.clubStatus.value !== 'visitor'"
+                    (click)="setClubStatus('visitor')"
+            >
+                Visitor
+            </button>
+            <button
+                    type="button"
+                    class="rounded-lg border px-2 py-2 text-sm font-semibold"
+                    [class.border-blue-400]="form.controls.clubStatus.value === 'unknown'"
+                    [class.bg-blue-600]="form.controls.clubStatus.value === 'unknown'"
+                    [class.text-white]="form.controls.clubStatus.value === 'unknown'"
+                    [class.border-slate-600]="form.controls.clubStatus.value !== 'unknown'"
+                    [class.bg-slate-800]="form.controls.clubStatus.value !== 'unknown'"
+                    [class.text-slate-200]="form.controls.clubStatus.value !== 'unknown'"
+                    (click)="setClubStatus('unknown')"
+            >
+                Unknown
+            </button>
+            </div>
+        </div>
 
         <textarea
                 formControlName="notes"
@@ -38,17 +101,6 @@
                 placeholder="Notes"
                 class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-white"
         ></textarea>
-
-        <div class="flex gap-4 text-sm text-slate-200">
-            <label class="flex items-center gap-2">
-                <input type="checkbox" formControlName="visitor" />
-                Visitor
-            </label>
-            <label class="flex items-center gap-2">
-                <input type="checkbox" formControlName="firstTime" />
-                First time
-            </label>
-        </div>
 
         <button
                 type="submit"

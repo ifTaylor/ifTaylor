@@ -1,7 +1,16 @@
 <div class="rounded-2xl border border-slate-700 bg-slate-900 p-4 shadow">
-    <h2 class="mb-4 text-lg font-semibold text-white">Script</h2>
+    <div class="flex items-center justify-between gap-3">
+        <h2 class="text-lg font-semibold text-white">Script</h2>
+        <button
+                type="button"
+                class="rounded-lg bg-slate-700 px-3 py-1 text-sm font-semibold text-white hover:bg-slate-600"
+                (click)="collapsed = !collapsed"
+        >
+            {{ collapsed ? 'Expand' : 'Collapse' }}
+        </button>
+    </div>
 
-    <div class="space-y-4 text-sm text-slate-200">
+    <div *ngIf="!collapsed" class="mt-4 grid gap-4 text-sm text-slate-200 md:grid-cols-2 xl:grid-cols-4">
         <section>
             <h3 class="mb-1 font-semibold text-orange-400">Opening</h3>
             <p>{{ openingScript }}</p>

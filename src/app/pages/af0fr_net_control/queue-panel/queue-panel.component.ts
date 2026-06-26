@@ -11,7 +11,5 @@ import { Station } from '../models/station.model';
 export class QueuePanel {
     @Input({ required: true }) queue: Station[] = [];
 
-    @Output() moveUp = new EventEmitter<string>();
-    @Output() moveDown = new EventEmitter<string>();
-    @Output() activate = new EventEmitter<string>();
+    @Output() confirm = new EventEmitter<string>();
 }

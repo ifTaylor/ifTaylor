@@ -17,7 +17,7 @@ load_dotenv(Path(__file__).with_name(".env"))
 DATABASE_URL = os.environ["DATABASE_URL"]
 ALLOWED_ORIGINS = os.getenv(
     "ALLOWED_ORIGINS",
-    "http://localhost:4200",
+    "http://localhost:4200,http://localhost:4201,http://127.0.0.1:4200,http://127.0.0.1:4201",
 ).split(",")
 
 app = FastAPI(title="AF0FR API")
@@ -26,7 +26,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in ALLOWED_ORIGINS],
     allow_credentials=False,
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -122,6 +122,10 @@ class CwOperatorProfileUpsert(BaseModel):
     antenna: str = Field(default="", max_length=120)
     power: str = Field(default="", max_length=40)
     settings: dict = Field(default_factory=dict)
+
+
+class NetControlStateUpsert(BaseModel):
+    payload: dict = Field(default_factory=dict)
 
 
 def get_connection():
@@ -253,10 +257,32 @@ def ensure_cw_operators_table():
             )
 
 
+def ensure_net_control_state_table():
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                create table if not exists net_control_state (
+                    id varchar(40) primary key,
+                    payload jsonb not null default '{}'::jsonb,
+                    updated_at timestamptz not null default now()
+                )
+                """
+            )
+            cur.execute(
+                """
+                insert into net_control_state (id, payload)
+                values ('current', '{}'::jsonb)
+                on conflict (id) do nothing
+                """
+            )
+
+
 @app.on_event("startup")
 def initialize_cw_metrics():
     ensure_cw_metrics_table()
     ensure_cw_operators_table()
+    ensure_net_control_state_table()
 
 
 def uuid_list_to_strings(value) -> list[str]:
@@ -370,6 +396,13 @@ def cw_operator_row_to_dict(row):
     }
 
 
+def net_control_state_row_to_dict(row):
+    return {
+        "payload": row[0] or {},
+        "updatedAt": row[1].isoformat(),
+    }
+
+
 def fetch_azimuth_line(cur, line_id: UUID):
     cur.execute(
         """
@@ -456,6 +489,63 @@ def debug_cors():
     return {
         "allowedOrigins": [origin.strip() for origin in ALLOWED_ORIGINS],
     }
+
+
+@app.get("/net-control/state")
+def get_net_control_state():
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    select payload, updated_at
+                    from net_control_state
+                    where id = 'current'
+                    """
+                )
+                row = cur.fetchone()
+
+        if row is None:
+            raise HTTPException(status_code=404, detail="Net control state not found")
+
+        return net_control_state_row_to_dict(row)
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        print(exc)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to load net control state",
+        ) from exc
+
+
+@app.put("/net-control/state")
+def put_net_control_state(state: NetControlStateUpsert):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    insert into net_control_state (id, payload, updated_at)
+                    values ('current', %s, now())
+                    on conflict (id) do update set
+                        payload = excluded.payload,
+                        updated_at = now()
+                    returning payload, updated_at
+                    """,
+                    (Jsonb(state.payload),),
+                )
+                row = cur.fetchone()
+
+        return net_control_state_row_to_dict(row)
+
+    except Exception as exc:
+        print(exc)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save net control state",
+        ) from exc
 
 
 @app.get("/cw-operators/{callsign}")

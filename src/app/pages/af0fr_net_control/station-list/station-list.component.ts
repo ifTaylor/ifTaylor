@@ -13,10 +13,16 @@ export class StationList {
 
     @Output() setActive = new EventEmitter<string>();
     @Output() markComplete = new EventEmitter<string>();
-    @Output() removeStation = new EventEmitter<string>();
 
     get displayStations(): Station[] {
         return [...this.stations].sort((a, b) => {
+            const aPriority = this.stationPriority(a);
+            const bPriority = this.stationPriority(b);
+
+            if (aPriority !== bPriority) {
+                return aPriority - bPriority;
+            }
+
             const aComplete = a.status === 'complete' ? 1 : 0;
             const bComplete = b.status === 'complete' ? 1 : 0;
 
@@ -28,19 +34,61 @@ export class StationList {
         });
     }
 
+    get totalStations(): number {
+        return this.stations.length;
+    }
+
+    get regularStations(): number {
+        return this.stations.filter((station) => station.trafficType === 'regular').length;
+    }
+
+    get shortTimeStations(): number {
+        return this.stations.filter((station) => station.trafficType === 'shortTime').length;
+    }
+
+    get activeStations(): number {
+        return this.stations.filter((station) => station.status === 'active').length;
+    }
+
+    get waitingStations(): number {
+        return this.stations.filter((station) => station.status === 'waiting').length;
+    }
+
+    get memberStations(): number {
+        return this.stations.filter((station) => station.member).length;
+    }
+
+    get visitorStations(): number {
+        return this.stations.filter((station) => station.visitor && !station.firstTime).length;
+    }
+
+    get unknownStations(): number {
+        return this.stations.filter((station) => station.firstTime).length;
+    }
+
+    private stationPriority(station: Station): number {
+        if (station.trafficType === 'regular' && station.status !== 'complete') {
+            return 0;
+        }
+
+        if (station.trafficType === 'regular') {
+            return 1;
+        }
+
+        return 2;
+    }
+
     trafficClass(traffic: Station['trafficType']): string {
         switch (traffic) {
-            case 'emergency':
-                return 'bg-red-600 text-white';
-            case 'priority':
-                return 'bg-orange-500 text-white';
-            case 'formal':
-                return 'bg-amber-500 text-black';
-            case 'announcement':
+            case 'shortTime':
                 return 'bg-blue-500 text-white';
             default:
                 return 'bg-slate-700 text-slate-100';
         }
+    }
+
+    trafficLabel(traffic: Station['trafficType']): string {
+        return traffic === 'shortTime' ? 'Short time' : 'Regular';
     }
 
     statusClass(status: Station['status']): string {

@@ -7,8 +7,59 @@
             <div class="pb-4 text-sm uppercase tracking-[0.32em] text-slate-950">
                 Net Control
             </div>
-            <div class="mb-6 rounded-2xl border border-slate-700 bg-slate-900/90 p-4 shadow">
+
+            <script-panel
+                    [openingScript]="openingScript"
+                    [trafficPrompt]="trafficPrompt"
+                    [lateCheckinPrompt]="lateCheckinPrompt"
+                    [closingScript]="closingScript"
+            />
+
+            <div class="mt-6 grid gap-6 xl:grid-cols-[minmax(18rem,0.7fr)_minmax(0,1.6fr)]">
+                <checkin-form
+                        (callsignChanged)="onCallsignSearch($event)"
+                        (stationAdded)="onStationAdded($event)"
+                />
+
+                <roster-table
+                        [roster]="clubMembers"
+                        [searchCallsign]="rosterSearchCallsign"
+                        [checkedInCallsigns]="checkedInCallsigns"
+                        [editing]="rosterEditing"
+                        (checkIn)="checkInRosterMember($event)"
+                        (memberChange)="updateRosterMember($event)"
+                        (memberRemove)="removeRosterMember($event)"
+                />
+            </div>
+
+            <div class="mt-6 grid gap-6 xl:grid-cols-2">
+                <queue-panel
+                        [queue]="queue"
+                        (confirm)="confirmCheckIn($event)"
+                />
+
+                <station-list
+                        [stations]="stations"
+                        (setActive)="setActiveStation($event)"
+                        (markComplete)="markStationComplete($event)"
+                />
+            </div>
+
+            <div class="mt-6">
+                <session-log [entries]="logEntries" />
+            </div>
+
+            <div class="mt-6 rounded-2xl border border-slate-700 bg-slate-900/90 p-4 shadow">
                 <div class="flex flex-wrap items-center gap-3">
+                    <span
+                            class="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                            [class.bg-emerald-600]="backendOnline"
+                            [class.text-white]="backendOnline"
+                            [class.bg-rose-700]="!backendOnline"
+                            [class.text-white]="!backendOnline"
+                    >
+                        {{ backendOnline ? 'Shared' : 'Local fallback' }}
+                    </span>
                     <button
                             type="button"
                             class="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-400"
@@ -45,7 +96,6 @@
                         Clear current
                     </button>
                 </div>
-
                 <div class="mt-4 flex flex-wrap items-center gap-3">
                     <select
                             class="min-w-[240px] rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white"
@@ -78,35 +128,16 @@
                         Delete saved
                     </button>
                 </div>
-            </div>
-
-            <div class="grid gap-6 xl:grid-cols-[1fr_1fr_1fr]">
-                <script-panel
-                        [openingScript]="openingScript"
-                        [trafficPrompt]="trafficPrompt"
-                        [lateCheckinPrompt]="lateCheckinPrompt"
-                        [closingScript]="closingScript"
-                />
-
-                <checkin-form (stationAdded)="onStationAdded($event)" />
-
-                <queue-panel
-                        [queue]="queue"
-                        (moveUp)="moveQueueUp($event)"
-                        (moveDown)="moveQueueDown($event)"
-                        (activate)="setActiveStation($event)"
-                />
-            </div>
-
-            <div class="mt-6 grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-                <station-list
-                        [stations]="stations"
-                        (setActive)="setActiveStation($event)"
-                        (markComplete)="markStationComplete($event)"
-                        (removeStation)="removeStation($event)"
-                />
-
-                <session-log [entries]="logEntries" />
+                <div class="mt-4 flex justify-end">
+                    <button
+                            type="button"
+                            class="h-7 w-7 rounded-full border border-slate-700 bg-slate-950 text-[10px] font-semibold text-slate-500 hover:border-orange-500 hover:text-orange-400"
+                            title="Roster edit mode"
+                            (click)="toggleRosterEditing()"
+                    >
+                        {{ rosterEditing ? 'On' : 'Edit' }}
+                    </button>
+                </div>
             </div>
         </div>
     </section>
