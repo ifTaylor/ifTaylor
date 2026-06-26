@@ -38,6 +38,7 @@
                         (confirm)="confirmCheckIn($event)"
                 />
 
+                <!-- ... existing code ... -->
                 <station-list
                         [stations]="stations"
                         (setActive)="setActiveStation($event)"
@@ -45,99 +46,118 @@
                 />
             </div>
 
-            <div class="mt-6">
-                <session-log [entries]="logEntries" />
-            </div>
-
-            <div class="mt-6 rounded-2xl border border-slate-700 bg-slate-900/90 p-4 shadow">
-                <div class="flex flex-wrap items-center gap-3">
+            <div class="mt-6 rounded-2xl border border-slate-700 bg-slate-900/90 shadow">
+                <!-- Header: status + roster edit toggle -->
+                <div class="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
                     <span
-                            class="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                            class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white"
                             [class.bg-emerald-600]="backendOnline"
-                            [class.text-white]="backendOnline"
                             [class.bg-rose-700]="!backendOnline"
-                            [class.text-white]="!backendOnline"
                     >
+                        <span class="h-1.5 w-1.5 rounded-full bg-white/90"></span>
                         {{ backendOnline ? 'Shared' : 'Local fallback' }}
                     </span>
-                    <button
-                            type="button"
-                            class="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-400"
-                            (click)="saveCurrentSession()"
-                    >
-                        Save net
-                    </button>
 
                     <button
                             type="button"
-                            class="rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-600"
-                            (click)="exportCurrentSession()"
-                    >
-                        Export JSON
-                    </button>
-
-                    <label
-                            class="cursor-pointer rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-600"
-                    >
-                        Import JSON
-                        <input
-                                type="file"
-                                accept="application/json,.json"
-                                class="hidden"
-                                (change)="importSession($event)"
-                        />
-                    </label>
-
-                    <button
-                            type="button"
-                            class="rounded-lg bg-rose-700 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600"
-                            (click)="clearCurrentSession()"
-                    >
-                        Clear current
-                    </button>
-                </div>
-                <div class="mt-4 flex flex-wrap items-center gap-3">
-                    <select
-                            class="min-w-[240px] rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white"
-                            [(ngModel)]="selectedSavedSessionId"
-                    >
-                        <option value="">Select saved net</option>
-                        <option
-                                *ngFor="let session of savedSessions"
-                                [value]="session.id"
-                        >
-                            {{ session.name }} · {{ session.savedAt | date:'short' }}
-                        </option>
-                    </select>
-
-                    <button
-                            type="button"
-                            class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
-                            (click)="loadSelectedSession()"
-                            [disabled]="!selectedSavedSessionId"
-                    >
-                        Load saved
-                    </button>
-
-                    <button
-                            type="button"
-                            class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500"
-                            (click)="deleteSelectedSession()"
-                            [disabled]="!selectedSavedSessionId"
-                    >
-                        Delete saved
-                    </button>
-                </div>
-                <div class="mt-4 flex justify-end">
-                    <button
-                            type="button"
-                            class="h-7 w-7 rounded-full border border-slate-700 bg-slate-950 text-[10px] font-semibold text-slate-500 hover:border-orange-500 hover:text-orange-400"
-                            title="Roster edit mode"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-semibold hover:border-orange-500 hover:text-orange-400"
+                            [class.text-orange-400]="rosterEditing"
+                            [class.border-orange-500]="rosterEditing"
+                            [class.text-slate-400]="!rosterEditing"
+                            title="Toggle roster edit mode"
                             (click)="toggleRosterEditing()"
                     >
-                        {{ rosterEditing ? 'On' : 'Edit' }}
+                        {{ rosterEditing ? 'Editing roster' : 'Edit roster' }}
                     </button>
                 </div>
+
+                <!-- Session actions -->
+                <div class="px-4 py-4">
+                    <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        Current session
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button
+                                type="button"
+                                class="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-400"
+                                (click)="saveCurrentSession()"
+                        >
+                            Save net
+                        </button>
+
+                        <button
+                                type="button"
+                                class="rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+                                (click)="exportCurrentSession()"
+                        >
+                            Export
+                        </button>
+
+                        <label
+                                class="cursor-pointer rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+                        >
+                            Import
+                            <input
+                                    type="file"
+                                    accept="application/json,.json"
+                                    class="hidden"
+                                    (change)="importSession($event)"
+                            />
+                        </label>
+
+                        <button
+                                type="button"
+                                class="ml-auto rounded-lg border border-rose-800 bg-transparent px-4 py-2 text-sm font-semibold text-rose-300 hover:bg-rose-900/40 hover:text-rose-200"
+                                (click)="clearCurrentSession()"
+                        >
+                            Clear current
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Saved nets -->
+                <div class="border-t border-slate-800 px-4 py-4">
+                    <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        Saved nets
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select
+                                class="min-w-[240px] flex-1 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white"
+                                [(ngModel)]="selectedSavedSessionId"
+                        >
+                            <option value="">Select saved net</option>
+                            <option
+                                    *ngFor="let session of savedSessions"
+                                    [value]="session.id"
+                            >
+                                {{ session.savedAt | date:'short' }}
+                                —
+                                {{ session.stations?.length || 0 }} stations
+                            </option>
+                        </select>
+
+                        <button
+                                type="button"
+                                class="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                (click)="loadSelectedSession()"
+                                [disabled]="!selectedSavedSessionId"
+                        >
+                            Load
+                        </button>
+
+                        <button
+                                type="button"
+                                class="rounded-lg border border-rose-800 bg-transparent px-4 py-2 text-sm font-semibold text-rose-300 hover:bg-rose-900/40 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                (click)="deleteSelectedSession()"
+                                [disabled]="!selectedSavedSessionId"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6">
+                <session-log [entries]="logEntries" />
             </div>
         </div>
     </section>

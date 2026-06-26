@@ -259,15 +259,10 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     }
 
     saveCurrentSession(): void {
-        const defaultName = `Net ${new Date().toLocaleString()}`;
-        const name = window.prompt('Save this net as:', defaultName)?.trim();
-
-        if (!name) return;
-
         const session: SavedNetControlSession = {
             ...this.buildSessionSnapshot(),
             id: crypto.randomUUID(),
-            name,
+            name: `Net ${new Date().toLocaleString()}`,
             savedAt: new Date().toISOString(),
         };
 
@@ -277,6 +272,17 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
         localStorage.setItem(this.savedSessionsKey, JSON.stringify(updated));
         this.savedSessions = updated;
         this.selectedSavedSessionId = session.id;
+
+        this.clearCurrentSessionAfterSave();
+    }
+
+    private clearCurrentSessionAfterSave(): void {
+        this.stations = [];
+        this.queue = [];
+        this.logEntries = [];
+        this.rosterSearchCallsign = '';
+
+        this.persistState();
     }
 
     loadSelectedSession(): void {
