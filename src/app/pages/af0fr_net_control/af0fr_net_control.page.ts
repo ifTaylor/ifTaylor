@@ -88,7 +88,7 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     clubMembers: ClubMember[] = JCARC_ROSTER;
     rosterSearchCallsign = '';
     backendOnline = false;
-    rosterEditing = false;
+    editing = false;
 
     savedSessions: SavedNetControlSession[] = [];
     selectedSavedSessionId = '';
@@ -221,7 +221,7 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     }
 
     toggleRosterEditing(): void {
-        this.rosterEditing = !this.rosterEditing;
+        this.editing = !this.editing;
     }
 
     setActiveStation(stationId: string): void {
