@@ -29,8 +29,12 @@ interface SavedNetControlSession {
     logEntries: LogEntry[];
 }
 
+interface NetControlSharedPayload extends Omit<SavedNetControlSession, 'id' | 'name' | 'savedAt'> {
+    savedSessions?: SavedNetControlSession[];
+}
+
 interface NetControlStateResponse {
-    payload: Omit<SavedNetControlSession, 'id' | 'name' | 'savedAt'>;
+    payload: NetControlSharedPayload;
     updatedAt: string;
 }
 
@@ -308,6 +312,8 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
         localStorage.setItem(this.savedSessionsKey, JSON.stringify(updated));
         this.savedSessions = updated;
         this.selectedSavedSessionId = '';
+
+        this.persistState();
     }
 
     exportCurrentSession(): void {
@@ -391,7 +397,7 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
         this.logEntries = [entry, ...this.logEntries];
     }
 
-    private buildSessionSnapshot(): Omit<SavedNetControlSession, 'id' | 'name' | 'savedAt'> {
+    private buildSessionSnapshot(): NetControlSharedPayload {
         return {
             openingScript: this.openingScript,
             trafficPrompt: this.trafficPrompt,
@@ -401,10 +407,11 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
             stations: this.stations,
             queue: this.queue,
             logEntries: this.logEntries,
+            savedSessions: this.savedSessions,
         };
     }
 
-    private applySession(session: Partial<Omit<SavedNetControlSession, 'id' | 'name' | 'savedAt'>>): void {
+    private applySession(session: Partial<NetControlSharedPayload>): void {
         this.openingScript = session.openingScript ?? this.openingScript;
         this.trafficPrompt = session.trafficPrompt ?? this.trafficPrompt;
         this.lateCheckinPrompt = session.lateCheckinPrompt ?? this.lateCheckinPrompt;
@@ -413,6 +420,11 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
         this.stations = (session.stations ?? []).map((station) => this.normalizeStation(station));
         this.queue = (session.queue ?? []).map((station) => this.normalizeStation(station));
         this.logEntries = session.logEntries ?? [];
+
+        if (Array.isArray(session.savedSessions)) {
+            this.savedSessions = session.savedSessions;
+            localStorage.setItem(this.savedSessionsKey, JSON.stringify(this.savedSessions));
+        }
     }
 
     private loadSharedState(initialLoad: boolean): void {
