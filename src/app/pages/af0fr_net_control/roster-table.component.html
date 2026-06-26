@@ -8,9 +8,11 @@
         <table class="w-full table-fixed border-collapse text-left text-sm">
             <thead class="sticky top-0 z-10 bg-slate-950 text-xs uppercase tracking-wide text-slate-300">
             <tr>
-                <th class="w-[42%] px-3 py-2 font-semibold md:w-[14%]">Callsign</th>
+                <th class="w-[40%] px-3 py-2 font-semibold md:w-[13%]">
+                    Callsign
+                </th>
 
-                <th class="hidden w-[28%] px-3 py-2 font-semibold md:table-cell">
+                <th class="hidden w-[24%] px-3 py-2 font-semibold md:table-cell">
                     Name
                 </th>
 
@@ -18,11 +20,15 @@
                     City
                 </th>
 
-                <th class="hidden w-[16%] px-3 py-2 font-semibold md:table-cell">
+                <th class="hidden w-[10%] px-3 py-2 text-right font-semibold lg:table-cell">
+                    Distance
+                </th>
+
+                <th class="hidden w-[14%] px-3 py-2 font-semibold md:table-cell">
                     Club status
                 </th>
 
-                <th class="w-[58%] px-3 py-2 text-right font-semibold md:w-[24%]">
+                <th class="w-[60%] px-3 py-2 text-right font-semibold md:w-[21%]">
                     {{ editing ? 'Actions' : 'Check-in' }}
                 </th>
             </tr>
@@ -47,9 +53,21 @@
                             placeholder="No call"
                             (change)="updateMember(member, { callsign: callsignBox.value })"
                     />
+
                     <ng-template #callsignText>
                         <div class="truncate font-semibold">
                             {{ member.callsign || 'No call' }}
+                        </div>
+
+                        <div class="mt-0.5 text-xs text-slate-400 md:hidden">
+                            <ng-container *ngIf="member.city">
+                                {{ member.city }}
+                            </ng-container>
+
+                            <ng-container *ngIf="member.distanceMiles !== undefined">
+                                <ng-container *ngIf="member.city"> · </ng-container>
+                                {{ member.distanceMiles }} mi
+                            </ng-container>
                         </div>
                     </ng-template>
                 </td>
@@ -62,6 +80,7 @@
                             [value]="member.name"
                             (change)="updateMember(member, { name: nameBox.value })"
                     />
+
                     <ng-template #nameText>
                         <div class="truncate">{{ member.name }}</div>
                     </ng-template>
@@ -75,8 +94,19 @@
                             [value]="member.city || ''"
                             (change)="updateMember(member, { city: cityBox.value })"
                     />
+
                     <ng-template #cityText>
                         <div class="truncate">{{ member.city || '' }}</div>
+                    </ng-template>
+                </td>
+
+                <td class="hidden px-3 py-2 text-right tabular-nums text-slate-300 lg:table-cell">
+                    <ng-container *ngIf="member.distanceMiles !== undefined; else unknownDistance">
+                        {{ member.distanceMiles }} mi
+                    </ng-container>
+
+                    <ng-template #unknownDistance>
+                        —
                     </ng-template>
                 </td>
 
@@ -91,6 +121,7 @@
                         <option value="visitor">Visitor</option>
                         <option value="unknown">Unknown</option>
                     </select>
+
                     <ng-template #statusText>
                         <span
                                 class="rounded-full px-2 py-1 text-xs font-semibold"
