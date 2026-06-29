@@ -121,15 +121,6 @@ def list_net_control_roster_members():
         with get_connection() as conn:
             with conn.cursor() as cur:
                 roster = fetch_net_control_roster(cur)
-
-        print(
-            "net-control roster load",
-            {
-                "count": len(roster),
-                "manual": [m["callsign"] for m in roster if m.get("source") == "manual"][-10:],
-            },
-        )
-
         return roster
 
     except Exception as exc:

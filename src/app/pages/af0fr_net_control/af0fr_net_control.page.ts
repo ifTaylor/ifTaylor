@@ -320,9 +320,14 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     rosterSearchCallsign = '';
     backendOnline = false;
     editing = false;
+    pendingClearCurrentSession = false;
+    isClearingCurrentSession = false;
+    pendingRemoveRosterMemberId = '';
+    removingRosterMemberId = '';
 
     savedSessions: SavedNetControlSession[] = [];
     selectedSavedSessionId = '';
+    savedSessionName = this.buildDefaultSessionName();
 
     constructor(private http: HttpClient) {}
 
@@ -451,15 +456,23 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     }
 
     removeRosterMember(member: ClubMember): void {
-        const label = member.callsign || member.name;
-        const confirmed = window.confirm(`Remove ${label} from the roster?`);
-        if (!confirmed) return;
+        if (this.removingRosterMemberId) return;
+
+        if (this.pendingRemoveRosterMemberId !== member.id) {
+            this.pendingRemoveRosterMemberId = member.id;
+            return;
+        }
 
         this.deleteRosterMember(member);
     }
 
     toggleRosterEditing(): void {
         this.editing = !this.editing;
+
+        if (!this.editing) {
+            this.pendingClearCurrentSession = false;
+            this.pendingRemoveRosterMemberId = '';
+        }
     }
 
     setActiveStation(stationId: string): void {
@@ -501,17 +514,20 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     }
 
     saveCurrentSession(): void {
+        const savedAt = new Date().toISOString();
+        const name = this.savedSessionName.trim() || this.buildDefaultSessionName();
         const session: SavedNetControlSession = {
             ...this.buildSessionSnapshot(),
             id: crypto.randomUUID(),
-            name: `Net ${new Date().toLocaleString()}`,
-            savedAt: new Date().toISOString(),
+            name,
+            savedAt,
         };
 
         const updated = [session, ...this.savedSessions];
 
         this.savedSessions = updated;
         this.selectedSavedSessionId = session.id;
+        this.savedSessionName = this.buildDefaultSessionName();
 
         this.clearCurrentSessionAfterSave();
     }
@@ -604,16 +620,32 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     }
 
     clearCurrentSession(): void {
-        const confirmed = window.confirm(
-            'Clear the current net session? This only clears the active session.'
-        );
+        if (this.isClearingCurrentSession) return;
 
-        if (!confirmed) return;
+        if (!this.pendingClearCurrentSession) {
+            this.pendingClearCurrentSession = true;
+            return;
+        }
 
+        const previousSession = this.buildSessionSnapshot();
+
+        this.isClearingCurrentSession = true;
         this.stations = [];
         this.queue = [];
         this.logEntries = [];
-        this.persistState();
+        this.rosterSearchCallsign = '';
+
+        this.saveSharedState(
+            () => {
+                this.pendingClearCurrentSession = false;
+                this.isClearingCurrentSession = false;
+            },
+            () => {
+                this.applySession(previousSession);
+                this.pendingClearCurrentSession = false;
+                this.isClearingCurrentSession = false;
+            }
+        );
     }
 
     private addLog(
@@ -643,6 +675,10 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
             logEntries: this.logEntries,
             savedSessions: this.savedSessions,
         };
+    }
+
+    private buildDefaultSessionName(): string {
+        return `Net ${new Date().toLocaleString()}`;
     }
 
     private applySession(session: Partial<NetControlSharedPayload>): void {
@@ -701,7 +737,7 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
         });
     }
 
-    private saveSharedState(): void {
+    private saveSharedState(afterSave?: () => void, afterError?: () => void): void {
         this.isSavingRemote = true;
         this.http.put<NetControlStateResponse>(
             `${environment.apiUrl}/net-control/session`,
@@ -712,11 +748,13 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
                 this.lastRemoteUpdatedAt = state.updatedAt;
                 this.applySession(state.payload);
                 this.isSavingRemote = false;
+                afterSave?.();
             },
             error: (error) => {
                 this.backendOnline = false;
                 this.isSavingRemote = false;
                 console.error('Failed to save shared net control state', error);
+                afterError?.();
             },
         });
     }
@@ -763,6 +801,7 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     }
 
     private deleteRosterMember(member: ClubMember): void {
+        this.removingRosterMemberId = member.id;
         this.http.delete<NetControlStateResponse>(
             `${environment.apiUrl}/net-control/roster-members/${encodeURIComponent(member.id)}`
         ).subscribe({
@@ -771,9 +810,13 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
                 this.lastRemoteUpdatedAt = state.updatedAt;
                 this.applySession(state.payload);
                 this.refreshRosterMembers();
+                this.pendingRemoveRosterMemberId = '';
+                this.removingRosterMemberId = '';
             },
             error: (error) => {
                 console.error('Failed to delete roster member', error);
+                this.pendingRemoveRosterMemberId = '';
+                this.removingRosterMemberId = '';
             },
         });
     }
