@@ -1,0 +1,46 @@
+def cw_attempt_row_to_dict(row):
+    return {
+        "id": str(row[0]),
+        "operator": row[1],
+        "mode": row[2],
+        "drill": row[3],
+        "accuracy": row[4],
+        "correctCharacters": row[5],
+        "totalCharacters": row[6],
+        "wpm": row[7],
+        "farnsworthWpm": row[8],
+        "durationSeconds": row[9],
+        "missedCharacters": row[10] or {},
+        "characterScores": row[11] or {},
+        "confusions": row[12] or {},
+        "trainingGoal": row[13],
+        "exerciseFormat": row[14],
+        "audioEffect": row[15],
+        "repeatCount": row[16],
+        "groupSize": row[17],
+        "strictSpacing": row[18],
+        "timedMinutes": row[19],
+        "playCount": row[20],
+        "revealedBeforeCheck": row[21],
+        "sessionId": row[22],
+        "characterAttempts": row[23] or {},
+        "characterCorrect": row[24] or {},
+        "missingCount": row[25],
+        "incorrectCount": row[26],
+        "extraCount": row[27],
+        "createdAt": row[28].isoformat(),
+    }
+
+
+def cw_operator_row_to_dict(row):
+    return {
+        "callsign": row[0],
+        "name": row[1],
+        "qth": row[2],
+        "rig": row[3],
+        "antenna": row[4],
+        "power": row[5],
+        "settings": row[6] or {},
+        "createdAt": row[7].isoformat(),
+        "updatedAt": row[8].isoformat(),
+    }
