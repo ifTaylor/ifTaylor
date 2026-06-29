@@ -508,6 +508,7 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
     };
 
     private readonly joinedProsigns = new Set(['AR', 'AS', 'BT', 'KN', 'SK']);
+    private readonly audioPaddingSeconds = 1;
 
     constructor(private http: HttpClient) {
         this.initializeOperatorState();
@@ -1498,13 +1499,34 @@ export class Af0frCwQsoPage implements OnInit, OnDestroy {
 
     private prepareTimeline(): void {
         const baseTimeline = this.buildTimeline();
-        const baseDuration = baseTimeline.length ? baseTimeline[baseTimeline.length - 1].start + baseTimeline[baseTimeline.length - 1].duration : 0;
+        const baseDuration = baseTimeline.length
+            ? baseTimeline[baseTimeline.length - 1].start + baseTimeline[baseTimeline.length - 1].duration
+            : 0;
+
         this.timeline = [];
+
         for (let repetition = 0; repetition < this.repeatCount; repetition += 1) {
-            const offset = this.countdownSeconds + repetition * (baseDuration + 1);
-            this.timeline.push(...baseTimeline.map((event) => ({ start: event.start + offset, duration: event.duration })));
+            const offset =
+                this.countdownSeconds
+                + this.audioPaddingSeconds
+                + repetition * (baseDuration + 1);
+
+            this.timeline.push(
+                ...baseTimeline.map((event) => ({
+                    start: event.start + offset,
+                    duration: event.duration,
+                }))
+            );
         }
-        this.playbackDuration = this.timeline.length ? this.timeline[this.timeline.length - 1].start + this.timeline[this.timeline.length - 1].duration : 0;
+
+        const lastToneEnd = this.timeline.length
+            ? this.timeline[this.timeline.length - 1].start + this.timeline[this.timeline.length - 1].duration
+            : 0;
+
+        this.playbackDuration = this.timeline.length
+            ? lastToneEnd + this.audioPaddingSeconds
+            : 0;
+
         this.playbackPosition = 0;
     }
 
