@@ -1,0 +1,345 @@
+<main class="min-h-screen bg-orange-500 px-3 py-4 text-slate-950 sm:px-4 sm:py-8">
+    <div class="mx-auto max-w-7xl space-y-4 sm:space-y-6">
+        <header class="rounded-2xl bg-slate-950 p-4 text-white shadow-xl sm:p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <div class="mt-1 text-sm uppercase tracking-[0.34em] text-orange-400">Logbook</div>
+                </div>
+                <a href="/af0fr#toolbox" class="shrink-0 text-sm font-semibold text-orange-300 hover:text-orange-200">Back</a>
+            </div>
+            <div class="grid gap-3 border-t border-slate-800 p-2 grid-cols-2">
+                <label class="block">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Operator call</span>
+                    <input class="mt-1 min-h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 font-mono text-sm font-bold uppercase text-white outline-none focus:border-orange-500" [(ngModel)]="operatorCall" autocorrect="off" spellcheck="false">
+                </label>
+                <label class="block">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Grid</span>
+                    <input class="mt-1 min-h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 font-mono text-sm font-bold uppercase text-white outline-none focus:border-orange-500" [(ngModel)]="stationGrid" autocorrect="off" spellcheck="false">
+                </label>
+            </div>
+            <details class="mt-1 rounded-xl bg-slate-900">
+                <summary class="cursor-pointer list-none px-4 py-3 text-sm font-black text-slate-200">
+                    More settings
+                </summary>
+                <div class="grid gap-3 border-t border-slate-800 p-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <label class="block">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Name</span>
+                        <input class="mt-1 min-h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm font-bold text-white outline-none focus:border-orange-500" [(ngModel)]="operatorName">
+                    </label>
+                    <label class="block">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Power W</span>
+                        <input class="mt-1 min-h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 font-mono text-sm font-bold text-white outline-none focus:border-orange-500" [(ngModel)]="stationPower">
+                    </label>
+                    <label class="block">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">City</span>
+                        <input class="mt-1 min-h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm font-bold text-white outline-none focus:border-orange-500" [(ngModel)]="stationCity">
+                    </label>
+                    <label class="block">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">State</span>
+                        <input class="mt-1 min-h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm font-bold uppercase text-white outline-none focus:border-orange-500" [(ngModel)]="stationState">
+                    </label>
+                    <label class="block">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Rig</span>
+                        <input class="mt-1 min-h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm font-bold text-white outline-none focus:border-orange-500" [(ngModel)]="stationRig">
+                    </label>
+                    <label class="block">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Antenna</span>
+                        <input class="mt-1 min-h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm font-bold text-white outline-none focus:border-orange-500" [(ngModel)]="stationAntenna">
+                    </label>
+                    <label class="block sm:col-span-2 lg:col-span-3">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Country</span>
+                        <input class="mt-1 min-h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm font-bold text-white outline-none focus:border-orange-500" [(ngModel)]="stationCountry">
+                    </label>
+                    <button type="button" class="min-h-10 rounded-xl bg-orange-500 px-5 text-sm font-black text-white hover:bg-orange-400" (click)="saveProfile()">Save settings</button>
+                </div>
+            </details>
+        </header>
+
+        <section class="rounded-2xl bg-slate-950 p-2 text-white shadow-xl">
+            <div class="flex gap-2 overflow-x-auto pb-2" aria-label="Named logbooks">
+                <button *ngFor="let logbook of logbooks" type="button" class="min-h-11 min-w-max rounded-xl px-4 text-left text-sm font-black transition" [class.bg-orange-500]="activeLogId === logbook.id" [class.text-white]="activeLogId === logbook.id" [class.bg-slate-900]="activeLogId !== logbook.id" [class.text-slate-300]="activeLogId !== logbook.id" (click)="selectLogbook(logbook.id)">
+                    {{ logbook.name }}
+                    <span class="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[10px]">{{ logbook.entries.length }}</span>
+                </button>
+            </div>
+            <div class="grid gap-2 border-t border-slate-800 pt-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                <input class="min-h-11 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm font-bold text-white outline-none focus:border-orange-500" [(ngModel)]="newLogName" placeholder="New logbook name">
+                <button type="button" class="min-h-11 rounded-xl bg-orange-500 px-4 text-sm font-black text-white hover:bg-orange-400" (click)="addLogbook()">Add log</button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" class="min-h-11 rounded-xl bg-slate-800 px-4 text-sm font-black text-slate-100 hover:bg-slate-700" (click)="renameActiveLogbook()">Rename</button>
+                    <button type="button" class="min-h-11 rounded-xl bg-red-950 px-4 text-sm font-black text-red-100 hover:bg-red-900" (click)="deleteActiveLogbook()">Delete</button>
+                </div>
+            </div>
+        </section>
+
+        <nav class="grid grid-cols-2 rounded-2xl bg-slate-950 p-1.5 text-white shadow-xl lg:grid-cols-4" aria-label="Logbook sections">
+            <button type="button" class="min-h-11 rounded-xl px-4 py-2 text-sm font-black transition" [class.bg-orange-500]="activeView === 'qsoEntry'" [class.text-white]="activeView === 'qsoEntry'" [class.text-slate-400]="activeView !== 'qsoEntry'" (click)="selectView('qsoEntry')">QSO entry</button>
+            <button type="button" class="min-h-11 rounded-xl px-4 py-2 text-sm font-black transition" [class.bg-orange-500]="activeView === 'sessionLog'" [class.text-white]="activeView === 'sessionLog'" [class.text-slate-400]="activeView !== 'sessionLog'" (click)="selectView('sessionLog')">Session log</button>
+            <button type="button" class="min-h-11 rounded-xl px-4 py-2 text-sm font-black transition" [class.bg-orange-500]="activeView === 'spots'" [class.text-white]="activeView === 'spots'" [class.text-slate-400]="activeView !== 'spots'" (click)="selectView('spots')">POTA spots</button>
+            <button type="button" class="min-h-11 rounded-xl px-4 py-2 text-sm font-black transition" [class.bg-orange-500]="activeView === 'dxSummit'" [class.text-white]="activeView === 'dxSummit'" [class.text-slate-400]="activeView !== 'dxSummit'" (click)="selectView('dxSummit')">DX Summit</button>
+        </nav>
+
+        <section class="space-y-4">
+            <form *ngIf="activeView === 'qsoEntry'" class="sticky top-3 z-20 rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-200 sm:p-5" (ngSubmit)="saveEntry()">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <div class="text-xs font-black uppercase tracking-wider text-slate-500">QSO entry</div>
+                        <h2 class="mt-1 text-2xl font-black">{{ editingId ? 'Edit contact' : 'New contact' }} for {{ activeLogbook.name }}</h2>
+                    </div>
+                    <button type="button" class="min-h-10 rounded-xl bg-slate-100 px-4 text-sm font-black text-slate-700 hover:bg-slate-200" (click)="clearForm()">Clear</button>
+                </div>
+
+                <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+                    <label class="block sm:col-span-2 lg:col-span-2">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">Callsign</span>
+                        <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-mono text-lg font-black uppercase outline-none focus:border-orange-500" [(ngModel)]="form.callsign" name="callsign" required autocorrect="off" spellcheck="false">
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">Date</span>
+                        <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-semibold outline-none focus:border-orange-500" [(ngModel)]="form.qsoDate" name="qsoDate" type="date" required>
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">UTC time</span>
+                        <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-semibold outline-none focus:border-orange-500" [(ngModel)]="form.timeOn" name="timeOn" type="time" required>
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">Band</span>
+                        <select class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 font-semibold outline-none focus:border-orange-500" [(ngModel)]="form.band" name="band">
+                            <option *ngFor="let band of bands" [value]="band">{{ band }}</option>
+                        </select>
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">Frequency MHz</span>
+                        <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-mono font-semibold outline-none focus:border-orange-500" [(ngModel)]="form.frequency" name="frequency" placeholder="14.250">
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">Mode</span>
+                        <select class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 font-semibold outline-none focus:border-orange-500" [(ngModel)]="form.mode" name="mode">
+                            <option *ngFor="let mode of modes" [value]="mode">{{ mode }}</option>
+                        </select>
+                    </label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="block">
+                            <span class="text-xs font-black uppercase tracking-wider text-slate-500">Sent</span>
+                            <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-mono font-semibold outline-none focus:border-orange-500" [(ngModel)]="form.rstSent" name="rstSent">
+                        </label>
+                        <label class="block">
+                            <span class="text-xs font-black uppercase tracking-wider text-slate-500">Rcvd</span>
+                            <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-mono font-semibold outline-none focus:border-orange-500" [(ngModel)]="form.rstReceived" name="rstReceived">
+                        </label>
+                    </div>
+                    <label class="block">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">Name</span>
+                        <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-semibold outline-none focus:border-orange-500" [(ngModel)]="form.name" name="name">
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">QTH</span>
+                        <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-semibold outline-none focus:border-orange-500" [(ngModel)]="form.qth" name="qth">
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">State</span>
+                        <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-semibold uppercase outline-none focus:border-orange-500" [(ngModel)]="form.state" name="state" maxlength="8">
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">Country</span>
+                        <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-semibold outline-none focus:border-orange-500" [(ngModel)]="form.country" name="country">
+                    </label>
+                    <label class="block sm:col-span-2 lg:col-span-2">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">POTA reference</span>
+                        <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-mono font-semibold uppercase outline-none focus:border-orange-500" [(ngModel)]="form.parkReference" name="parkReference" placeholder="US-1234">
+                    </label>
+                    <label class="block sm:col-span-2 lg:col-span-4">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">Notes</span>
+                        <textarea class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 py-2 font-semibold outline-none focus:border-orange-500" [(ngModel)]="form.notes" name="notes"></textarea>
+                    </label>
+                </div>
+
+                <button type="submit" class="mt-4 min-h-12 w-full rounded-xl bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800">{{ editingId ? 'Update QSO' : 'Add QSO' }}</button>
+            </form>
+
+            <div *ngIf="activeView === 'sessionLog'" class="rounded-2xl bg-white p-4 shadow-xl sm:p-5">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <div class="text-xs font-black uppercase tracking-wider text-slate-500">Session log</div>
+                        <div class="mt-1 text-sm font-semibold text-slate-800">{{ qsoCount }} QSOs</div>
+                        <h2 class="mt-1 text-2xl font-black">{{ activeLogbook.name }}</h2>
+                    </div>
+                    <button type="button" class="min-h-11 rounded-xl bg-orange-500 px-5 text-sm font-black text-white hover:bg-orange-400 disabled:cursor-not-allowed disabled:bg-slate-300" [disabled]="exportDisabled" (click)="exportAdif()">Export .adi</button>
+                </div>
+
+                <div *ngIf="!entries.length" class="mt-4 rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm font-semibold text-slate-500">No QSOs yet.</div>
+
+                <div *ngIf="entries.length" class="mt-4 overflow-x-auto">
+                    <table class="w-full min-w-[820px] border-separate border-spacing-0 text-left text-sm">
+                        <thead>
+                            <tr class="text-xs uppercase tracking-wider text-slate-500">
+                                <th class="border-b border-slate-200 px-3 py-2">Time</th>
+                                <th class="border-b border-slate-200 px-3 py-2">Call</th>
+                                <th class="border-b border-slate-200 px-3 py-2">Band</th>
+                                <th class="border-b border-slate-200 px-3 py-2">Mode</th>
+                                <th class="border-b border-slate-200 px-3 py-2">POTA</th>
+                                <th class="border-b border-slate-200 px-3 py-2">Notes</th>
+                                <th class="border-b border-slate-200 px-3 py-2 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let entry of sortedEntries" class="align-top">
+                                <td class="border-b border-slate-100 px-3 py-3 font-mono text-xs">{{ entry.qsoDate }} {{ entry.timeOn }}</td>
+                                <td class="border-b border-slate-100 px-3 py-3 font-mono font-black">{{ entry.callsign }}</td>
+                                <td class="border-b border-slate-100 px-3 py-3">{{ entry.band }}<span *ngIf="entry.frequency" class="block text-xs text-slate-500">{{ entry.frequency }}</span></td>
+                                <td class="border-b border-slate-100 px-3 py-3">{{ entry.mode }}</td>
+                                <td class="border-b border-slate-100 px-3 py-3 font-mono text-xs">{{ entry.parkReference }}</td>
+                                <td class="max-w-sm border-b border-slate-100 px-3 py-3 text-slate-600">{{ entry.notes }}</td>
+                                <td class="border-b border-slate-100 px-3 py-3 text-right">
+                                    <button type="button" class="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black hover:bg-slate-200" (click)="editEntry(entry)">Edit</button>
+                                    <button type="button" class="ml-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-black text-red-700 hover:bg-red-100" (click)="deleteEntry(entry.id)">Delete</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section *ngIf="activeView === 'spots'" class="grid gap-4 lg:grid-cols-[minmax(320px,390px)_minmax(0,1fr)] lg:gap-6">
+            <div class="rounded-2xl bg-white p-4 shadow-xl sm:p-5">
+                <div class="text-xs font-black uppercase tracking-wider text-slate-500">Live helper</div>
+                <h2 class="mt-1 text-2xl font-black">Nearest active POTA spots</h2>
+
+                <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                    <label class="block">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">ZIP</span>
+                        <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-mono font-semibold outline-none focus:border-orange-500" [(ngModel)]="potaZip" name="potaZip">
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">Programs</span>
+                        <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-mono font-semibold uppercase outline-none focus:border-orange-500" [(ngModel)]="potaPrograms" name="potaPrograms" placeholder="US,CA or ALL">
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">Mode</span>
+                        <select class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 font-semibold outline-none focus:border-orange-500" [(ngModel)]="potaMode" name="potaMode">
+                            <option value="ANY">ANY</option>
+                            <option *ngFor="let mode of modes" [value]="mode">{{ mode }}</option>
+                        </select>
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">Band</span>
+                        <select class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 font-semibold outline-none focus:border-orange-500" [(ngModel)]="potaBand" name="potaBand">
+                            <option value="ANY">ANY</option>
+                            <option *ngFor="let band of bands" [value]="band">{{ band }}</option>
+                        </select>
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">Rows</span>
+                        <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-semibold outline-none focus:border-orange-500" [(ngModel)]="potaLimit" name="potaLimit" type="number" min="1" max="100">
+                    </label>
+                </div>
+
+                <button type="button" class="mt-4 min-h-12 w-full rounded-xl bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800 disabled:cursor-wait disabled:bg-slate-400" [disabled]="potaLoading" (click)="loadPotaSpots()">{{ potaLoading ? 'Loading spots' : 'Load POTA spots' }}</button>
+
+                <div *ngIf="potaSkipped.inactive || potaSkipped.program || potaSkipped.mode || potaSkipped.band || potaSkipped.noCoordinates || potaSkipped.duplicates" class="mt-4 grid grid-cols-2 gap-2 text-xs">
+                    <div class="rounded-lg bg-slate-100 px-3 py-2"><strong>{{ potaSkipped.inactive }}</strong> inactive</div>
+                    <div class="rounded-lg bg-slate-100 px-3 py-2"><strong>{{ potaSkipped.program }}</strong> program</div>
+                    <div class="rounded-lg bg-slate-100 px-3 py-2"><strong>{{ potaSkipped.mode }}</strong> mode</div>
+                    <div class="rounded-lg bg-slate-100 px-3 py-2"><strong>{{ potaSkipped.band }}</strong> band</div>
+                    <div class="rounded-lg bg-slate-100 px-3 py-2"><strong>{{ potaSkipped.noCoordinates }}</strong> coords</div>
+                    <div class="rounded-lg bg-slate-100 px-3 py-2"><strong>{{ potaSkipped.duplicates }}</strong> dupes</div>
+                </div>
+            </div>
+
+            <div class="rounded-2xl bg-white p-4 shadow-xl sm:p-5">
+                <div *ngIf="potaError" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800">{{ potaError }}</div>
+                <div *ngIf="!potaError && !potaRows.length" class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm font-semibold text-slate-500">Load spots to see nearby activators.</div>
+
+                <div *ngIf="potaRows.length" class="overflow-x-auto">
+                    <table class="w-full min-w-[880px] border-separate border-spacing-0 text-left text-sm">
+                        <thead>
+                            <tr class="text-xs uppercase tracking-wider text-slate-500">
+                                <th class="border-b border-slate-200 px-3 py-2">Miles</th>
+                                <th class="border-b border-slate-200 px-3 py-2">Call</th>
+                                <th class="border-b border-slate-200 px-3 py-2">Ref</th>
+                                <th class="border-b border-slate-200 px-3 py-2">Freq</th>
+                                <th class="border-b border-slate-200 px-3 py-2">Mode</th>
+                                <th class="border-b border-slate-200 px-3 py-2">Park</th>
+                                <th class="border-b border-slate-200 px-3 py-2 text-right">Log</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let row of potaRows" class="align-top">
+                                <td class="border-b border-slate-100 px-3 py-3 font-mono">{{ row.miles | number:'1.1-1' }}</td>
+                                <td class="border-b border-slate-100 px-3 py-3 font-mono font-black">{{ row.activator }}</td>
+                                <td class="border-b border-slate-100 px-3 py-3 font-mono text-xs">{{ row.reference }}</td>
+                                <td class="border-b border-slate-100 px-3 py-3 font-mono text-xs">{{ row.frequency }}<span class="block text-slate-500">{{ row.band }}</span></td>
+                                <td class="border-b border-slate-100 px-3 py-3">{{ row.mode }}</td>
+                                <td class="max-w-md border-b border-slate-100 px-3 py-3">{{ row.park }}<span *ngIf="row.comments" class="block pt-1 text-xs text-slate-500">{{ row.comments }}</span></td>
+                                <td class="border-b border-slate-100 px-3 py-3 text-right">
+                                    <button type="button" class="rounded-lg bg-orange-500 px-3 py-2 text-xs font-black text-white hover:bg-orange-400" (click)="usePotaSpot(row)">Use</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section *ngIf="activeView === 'dxSummit'" class="grid gap-4 lg:grid-cols-[minmax(320px,390px)_minmax(0,1fr)] lg:gap-6">
+            <div class="rounded-2xl bg-white p-4 shadow-xl sm:p-5">
+                <div class="text-xs font-black uppercase tracking-wider text-slate-500">DX Summit</div>
+                <h2 class="mt-1 text-2xl font-black">Recent spots parser</h2>
+
+                <div class="mt-4 grid gap-3">
+                    <label class="block">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">API URL</span>
+                        <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-mono text-xs font-semibold outline-none focus:border-orange-500" [(ngModel)]="dxSummitUrl" name="dxSummitUrl">
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">Rows</span>
+                        <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-semibold outline-none focus:border-orange-500" [(ngModel)]="dxSummitLimit" name="dxSummitLimit" type="number" min="1" max="200">
+                    </label>
+                    <button type="button" class="min-h-12 rounded-xl bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800 disabled:cursor-wait disabled:bg-slate-400" [disabled]="dxSummitLoading" (click)="loadDxSummit()">{{ dxSummitLoading ? 'Loading spots' : 'Try live fetch' }}</button>
+                    <label class="block">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-500">Pasted spots or JSON</span>
+                        <textarea class="mt-1 min-h-56 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono text-xs outline-none focus:border-orange-500" [(ngModel)]="dxSummitRaw" name="dxSummitRaw"></textarea>
+                    </label>
+                    <button type="button" class="min-h-12 rounded-xl bg-orange-500 px-5 text-sm font-black text-white hover:bg-orange-400" (click)="parseDxSummit()">Parse spots</button>
+                </div>
+            </div>
+
+            <div class="rounded-2xl bg-white p-4 shadow-xl sm:p-5">
+                <div *ngIf="dxSummitError" class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800">{{ dxSummitError }}</div>
+                <div *ngIf="!dxSummitRows.length" class="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm font-semibold text-slate-500">Fetch recent DX Summit spots or paste copied spots/JSON to parse them.</div>
+
+                <div *ngIf="dxSummitRows.length" class="overflow-x-auto">
+                    <table class="w-full min-w-[840px] border-separate border-spacing-0 text-left text-sm">
+                        <thead>
+                            <tr class="text-xs uppercase tracking-wider text-slate-500">
+                                <th class="border-b border-slate-200 px-3 py-2">Time</th>
+                                <th class="border-b border-slate-200 px-3 py-2">Spotter</th>
+                                <th class="border-b border-slate-200 px-3 py-2">Call</th>
+                                <th class="border-b border-slate-200 px-3 py-2">Freq</th>
+                                <th class="border-b border-slate-200 px-3 py-2">Mode</th>
+                                <th class="border-b border-slate-200 px-3 py-2">Country</th>
+                                <th class="border-b border-slate-200 px-3 py-2">Comment</th>
+                                <th class="border-b border-slate-200 px-3 py-2 text-right">Log</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let row of dxSummitRows" class="align-top">
+                                <td class="border-b border-slate-100 px-3 py-3 font-mono text-xs">{{ row.time }}</td>
+                                <td class="border-b border-slate-100 px-3 py-3 font-mono text-xs">{{ row.spotter }}</td>
+                                <td class="border-b border-slate-100 px-3 py-3 font-mono font-black">{{ row.callsign }}</td>
+                                <td class="border-b border-slate-100 px-3 py-3 font-mono text-xs">{{ row.frequency }}<span class="block text-slate-500">{{ row.band }}</span></td>
+                                <td class="border-b border-slate-100 px-3 py-3">{{ row.mode || '-' }}</td>
+                                <td class="border-b border-slate-100 px-3 py-3">{{ row.country }}</td>
+                                <td class="max-w-md border-b border-slate-100 px-3 py-3 text-slate-600">{{ row.comment }}</td>
+                                <td class="border-b border-slate-100 px-3 py-3 text-right">
+                                    <button type="button" class="rounded-lg bg-orange-500 px-3 py-2 text-xs font-black text-white hover:bg-orange-400" (click)="useDxSpot(row)">Use</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+</main>

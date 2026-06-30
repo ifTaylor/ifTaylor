@@ -5,6 +5,7 @@ import { Af0frNetControlPage } from './pages/af0fr_net_control/af0fr_net_control
 import {CardDemoPage} from "./pages/card_demo/card_demo.page";
 import { Af0frCwQsoPage } from "./pages/cw/af0fr_cw_qso.page";
 import { Af0frAzimuthMapPage } from "./pages/azimuth-map/af0fr_azimuth_map.page";
+import { Af0frLogbookPage } from "./pages/af0fr_logbook/af0fr_logbook.page";
 
 export function af0frMatcher(segments: UrlSegment[]): UrlMatchResult | null {
     if (segments.length > 0 && segments[0].path.toLowerCase() === 'af0fr') {
@@ -23,6 +24,7 @@ export const routes: Routes = [
             { path: 'card_demo', component: CardDemoPage },
             { path: 'cw_qso', component: Af0frCwQsoPage },
             { path: 'signal', component: Af0frAzimuthMapPage },
+            { path: 'logbook', component: Af0frLogbookPage },
         ],
     },
 ];
