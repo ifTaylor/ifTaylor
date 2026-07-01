@@ -12,7 +12,6 @@ import { SessionLog } from './session-log/session-log.component';
 import { Station } from './models/station.model';
 import { LogEntry } from './models/log-entry.model';
 import { ClubMember, ClubStatus } from './models/club-member.model';
-import { JCARC_ROSTER } from './data/jcarc-roster';
 import { RosterCheckInRequest, RosterTable } from './roster-table.component';
 
 interface SavedNetControlSession {
@@ -23,7 +22,6 @@ interface SavedNetControlSession {
     trafficPrompt: string;
     lateCheckinPrompt: string;
     closingScript: string;
-    roster?: ClubMember[];
     stations: Station[];
     queue: Station[];
     logEntries: LogEntry[];
@@ -53,10 +51,6 @@ interface NetControlStateResponse {
     templateUrl: './af0fr_net_control.page.html',
 })
 export class Af0frNetControlPage implements OnInit, OnDestroy {
-    private readonly autosaveKey = 'af0fr-net-control-autosave';
-    private readonly savedSessionsKey = 'af0fr-net-control-saved-sessions';
-    private readonly manualRosterKey = 'af0fr-net-control-manual-roster';
-
     private readonly scriptVersionKey = 'af0fr-net-control-script-version';
     private readonly currentScriptVersion = 'jcarc-monday-practice-net-2026-06';
 
@@ -322,32 +316,35 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     stations: Station[] = [];
     queue: Station[] = [];
     logEntries: LogEntry[] = [];
-    manualRoster: ClubMember[] = [];
-    clubMembers: ClubMember[] = JCARC_ROSTER;
+    clubMembers: ClubMember[] = [];
     rosterSearchCallsign = '';
     backendOnline = false;
     editing = false;
+    pendingClearCurrentSession = false;
+    isClearingCurrentSession = false;
+    pendingRemoveRosterMemberId = '';
+    removingRosterMemberId = '';
 
     savedSessions: SavedNetControlSession[] = [];
     selectedSavedSessionId = '';
+    savedSessionName = this.buildDefaultSessionName();
 
     constructor(private http: HttpClient) {}
 
     ngOnInit(): void {
-        this.loadManualRoster();
-        this.loadSavedSessions();
-        this.restoreAutosave();
-
         const storedScriptVersion = localStorage.getItem(this.scriptVersionKey);
 
         if (storedScriptVersion !== this.currentScriptVersion) {
             this.resetScriptsToCurrentDefaults();
             localStorage.setItem(this.scriptVersionKey, this.currentScriptVersion);
-            this.persistState();
         }
 
+        this.refreshRosterMembers();
         this.loadSharedState(true);
-        this.pollSubscription = interval(2500).subscribe(() => this.loadSharedState(false));
+        this.pollSubscription = interval(2500).subscribe(() => {
+            this.loadSharedState(false);
+            this.refreshRosterMembers();
+        });
     }
 
     ngOnDestroy(): void {
@@ -363,23 +360,36 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     }
 
     onStationAdded(station: Station): void {
-        const normalizedStation = this.normalizeStation({
+        let normalizedStation = this.normalizeStation({
             ...station,
             status: station.trafficType === 'shortTime' ? 'complete' : station.status,
         });
 
-        this.upsertManualMember(normalizedStation);
+        const rosterMember = this.buildRosterMemberFromStation(normalizedStation);
+        normalizedStation = this.normalizeStation({
+            ...normalizedStation,
+            memberId: rosterMember.id,
+        });
+        const logMessage = `${normalizedStation.callsign || normalizedStation.name} checked in as ${this.statusLabel(normalizedStation.clubStatus)} for ${this.trafficLabel(normalizedStation.trafficType)}.`;
 
-        this.stations = [...this.stations, normalizedStation];
-        this.queue = [...this.queue, normalizedStation];
-
-        this.addLog(
-            'checkin',
-            `${normalizedStation.callsign || normalizedStation.name} checked in as ${this.statusLabel(normalizedStation.clubStatus)} for ${this.trafficLabel(normalizedStation.trafficType)}.`,
-            normalizedStation.id
-        );
-
-        this.persistState();
+        this.http.post<NetControlStateResponse>(
+            `${environment.apiUrl}/net-control/checkins`,
+            {
+                ...normalizedStation,
+                logMessage,
+            }
+        ).subscribe({
+            next: (state) => {
+                this.backendOnline = true;
+                this.lastRemoteUpdatedAt = state.updatedAt;
+                this.applySession(state.payload);
+                this.refreshRosterMembers();
+            },
+            error: (error) => {
+                this.backendOnline = false;
+                console.error('Failed to add check-in', error);
+            },
+        });
     }
 
     confirmCheckIn(stationId: string): void {
@@ -416,10 +426,6 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
         const normalizedMember = this.normalizeMember(member);
         if (!normalizedMember) return;
 
-        this.clubMembers = this.clubMembers.map((entry) =>
-            entry.id === normalizedMember.id ? normalizedMember : entry
-        );
-
         this.stations = this.stations.map((station) =>
             station.memberId === normalizedMember.id
                 ? this.normalizeStation({
@@ -443,23 +449,30 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
                 : station
         );
 
-        this.persistState();
+        this.saveRosterMember(normalizedMember, () => {
+            this.refreshRosterMembers();
+            this.persistState();
+        });
     }
 
     removeRosterMember(member: ClubMember): void {
-        const label = member.callsign || member.name;
-        const confirmed = window.confirm(`Remove ${label} from the roster?`);
-        if (!confirmed) return;
+        if (this.removingRosterMemberId) return;
 
-        this.clubMembers = this.clubMembers.filter((entry) => entry.id !== member.id);
-        this.stations = this.stations.filter((station) => station.memberId !== member.id);
-        this.queue = this.queue.filter((station) => station.memberId !== member.id);
-        this.addLog('system', `${label} removed from roster.`);
-        this.persistState();
+        if (this.pendingRemoveRosterMemberId !== member.id) {
+            this.pendingRemoveRosterMemberId = member.id;
+            return;
+        }
+
+        this.deleteRosterMember(member);
     }
 
     toggleRosterEditing(): void {
         this.editing = !this.editing;
+
+        if (!this.editing) {
+            this.pendingClearCurrentSession = false;
+            this.pendingRemoveRosterMemberId = '';
+        }
     }
 
     setActiveStation(stationId: string): void {
@@ -501,19 +514,20 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     }
 
     saveCurrentSession(): void {
+        const savedAt = new Date().toISOString();
+        const name = this.savedSessionName.trim() || this.buildDefaultSessionName();
         const session: SavedNetControlSession = {
             ...this.buildSessionSnapshot(),
             id: crypto.randomUUID(),
-            name: `Net ${new Date().toLocaleString()}`,
-            savedAt: new Date().toISOString(),
+            name,
+            savedAt,
         };
 
-        const existing = this.getStoredSessions();
-        const updated = [session, ...existing];
+        const updated = [session, ...this.savedSessions];
 
-        localStorage.setItem(this.savedSessionsKey, JSON.stringify(updated));
         this.savedSessions = updated;
         this.selectedSavedSessionId = session.id;
+        this.savedSessionName = this.buildDefaultSessionName();
 
         this.clearCurrentSessionAfterSave();
     }
@@ -547,7 +561,6 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
             (session) => session.id !== this.selectedSavedSessionId
         );
 
-        localStorage.setItem(this.savedSessionsKey, JSON.stringify(updated));
         this.savedSessions = updated;
         this.selectedSavedSessionId = '';
 
@@ -607,16 +620,32 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     }
 
     clearCurrentSession(): void {
-        const confirmed = window.confirm(
-            'Clear the current net session? This only clears the active session.'
-        );
+        if (this.isClearingCurrentSession) return;
 
-        if (!confirmed) return;
+        if (!this.pendingClearCurrentSession) {
+            this.pendingClearCurrentSession = true;
+            return;
+        }
 
+        const previousSession = this.buildSessionSnapshot();
+
+        this.isClearingCurrentSession = true;
         this.stations = [];
         this.queue = [];
         this.logEntries = [];
-        this.persistState();
+        this.rosterSearchCallsign = '';
+
+        this.saveSharedState(
+            () => {
+                this.pendingClearCurrentSession = false;
+                this.isClearingCurrentSession = false;
+            },
+            () => {
+                this.applySession(previousSession);
+                this.pendingClearCurrentSession = false;
+                this.isClearingCurrentSession = false;
+            }
+        );
     }
 
     private addLog(
@@ -641,7 +670,6 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
             trafficPrompt: this.trafficPrompt,
             lateCheckinPrompt: this.lateCheckinPrompt,
             closingScript: this.closingScript,
-            roster: this.clubMembers,
             stations: this.stations,
             queue: this.queue,
             logEntries: this.logEntries,
@@ -649,24 +677,26 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
         };
     }
 
+    private buildDefaultSessionName(): string {
+        return `Net ${new Date().toLocaleString()}`;
+    }
+
     private applySession(session: Partial<NetControlSharedPayload>): void {
         this.openingScript = session.openingScript ?? this.openingScript;
         this.trafficPrompt = session.trafficPrompt ?? this.trafficPrompt;
         this.lateCheckinPrompt = session.lateCheckinPrompt ?? this.lateCheckinPrompt;
         this.closingScript = session.closingScript ?? this.closingScript;
-        this.clubMembers = this.normalizeRoster(session.roster);
         this.stations = (session.stations ?? []).map((station) => this.normalizeStation(station));
         this.queue = (session.queue ?? []).map((station) => this.normalizeStation(station));
         this.logEntries = session.logEntries ?? [];
 
         if (Array.isArray(session.savedSessions)) {
             this.savedSessions = session.savedSessions;
-            localStorage.setItem(this.savedSessionsKey, JSON.stringify(this.savedSessions));
         }
     }
 
     private loadSharedState(initialLoad: boolean): void {
-        this.http.get<NetControlStateResponse>(`${environment.apiUrl}/net-control/state`).subscribe({
+        this.http.get<NetControlStateResponse>(`${environment.apiUrl}/net-control/session`).subscribe({
             next: (state) => {
                 this.backendOnline = true;
 
@@ -707,47 +737,29 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
         });
     }
 
-    private saveSharedState(): void {
+    private saveSharedState(afterSave?: () => void, afterError?: () => void): void {
         this.isSavingRemote = true;
         this.http.put<NetControlStateResponse>(
-            `${environment.apiUrl}/net-control/state`,
+            `${environment.apiUrl}/net-control/session`,
             { payload: this.buildSessionSnapshot() }
         ).subscribe({
             next: (state) => {
                 this.backendOnline = true;
                 this.lastRemoteUpdatedAt = state.updatedAt;
+                this.applySession(state.payload);
                 this.isSavingRemote = false;
+                afterSave?.();
             },
             error: (error) => {
                 this.backendOnline = false;
                 this.isSavingRemote = false;
                 console.error('Failed to save shared net control state', error);
+                afterError?.();
             },
         });
     }
 
-    private loadManualRoster(): void {
-        const raw = localStorage.getItem(this.manualRosterKey);
-
-        if (!raw) {
-            this.syncClubMembers();
-            return;
-        }
-
-        try {
-            const parsed = JSON.parse(raw);
-            this.manualRoster = Array.isArray(parsed)
-                ? parsed.map((member) => this.normalizeMember(member)).filter(Boolean) as ClubMember[]
-                : [];
-        } catch (error) {
-            console.error('Failed to load manual roster', error);
-            this.manualRoster = [];
-        }
-
-        this.syncClubMembers();
-    }
-
-    private upsertManualMember(station: Station): void {
+    private buildRosterMemberFromStation(station: Station): ClubMember {
         const existingIndex = station.callsign
             ? this.clubMembers.findIndex((entry) => entry.callsign === station.callsign)
             : -1;
@@ -771,22 +783,55 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
                 : undefined,
         };
 
-        if (existingIndex >= 0) {
-            this.clubMembers = this.clubMembers.map((entry, index) =>
-                index === existingIndex ? { ...entry, ...member } : entry
-            );
-        } else {
-            this.clubMembers = [...this.clubMembers, member];
-        }
+        return member;
     }
 
-    private syncClubMembers(): void {
-        const seededCallsigns = new Set(JCARC_ROSTER.map((member) => member.callsign).filter(Boolean));
-        const manualOnly = this.manualRoster.filter(
-            (member) => member.callsign && !seededCallsigns.has(member.callsign)
-        );
+    private saveRosterMember(member: ClubMember, afterSave?: () => void): void {
+        this.http.put<ClubMember>(
+            `${environment.apiUrl}/net-control/roster-members/${encodeURIComponent(member.id)}`,
+            member
+        ).subscribe({
+            next: () => {
+                afterSave?.();
+            },
+            error: (error) => {
+                console.error('Failed to save roster member', error);
+            },
+        });
+    }
 
-        this.clubMembers = [...JCARC_ROSTER, ...manualOnly];
+    private deleteRosterMember(member: ClubMember): void {
+        this.removingRosterMemberId = member.id;
+        this.http.delete<NetControlStateResponse>(
+            `${environment.apiUrl}/net-control/roster-members/${encodeURIComponent(member.id)}`
+        ).subscribe({
+            next: (state) => {
+                this.backendOnline = true;
+                this.lastRemoteUpdatedAt = state.updatedAt;
+                this.applySession(state.payload);
+                this.refreshRosterMembers();
+                this.pendingRemoveRosterMemberId = '';
+                this.removingRosterMemberId = '';
+            },
+            error: (error) => {
+                console.error('Failed to delete roster member', error);
+                this.pendingRemoveRosterMemberId = '';
+                this.removingRosterMemberId = '';
+            },
+        });
+    }
+
+    private refreshRosterMembers(): void {
+        this.http.get<ClubMember[]>(
+            `${environment.apiUrl}/net-control/roster-members`
+        ).subscribe({
+            next: (members) => {
+                this.clubMembers = this.normalizeRoster(members);
+            },
+            error: (error) => {
+                console.error('Failed to load roster members', error);
+            },
+        });
     }
 
     private normalizeStation(station: Station): Station {
@@ -824,19 +869,12 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     }
 
     private normalizeRoster(roster: ClubMember[] | undefined): ClubMember[] {
-        const incoming = roster?.length ? roster : JCARC_ROSTER;
+        const incoming = Array.isArray(roster) ? roster : [];
         const normalized = incoming
             .map((member) => this.normalizeMember(member))
             .filter((member): member is ClubMember => !!member);
-        const callsigns = new Set(normalized.map((member) => member.callsign).filter(Boolean));
-        const seededIds = new Set(normalized.map((member) => member.id));
-        const missingSeedRows = JCARC_ROSTER.filter(
-            (member) =>
-                !seededIds.has(member.id) &&
-                (!member.callsign || !callsigns.has(member.callsign))
-        );
 
-        return [...normalized, ...missingSeedRows];
+        return normalized;
     }
 
     private normalizeMember(value: unknown): ClubMember | null {
@@ -912,42 +950,7 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     }
 
     private persistState(): void {
-        const snapshot = {
-            ...this.buildSessionSnapshot(),
-            savedAt: new Date().toISOString(),
-        };
-
-        localStorage.setItem(this.autosaveKey, JSON.stringify(snapshot));
         this.saveSharedState();
-    }
-
-    private restoreAutosave(): void {
-        const raw = localStorage.getItem(this.autosaveKey);
-        if (!raw) return;
-
-        try {
-            const parsed = JSON.parse(raw);
-            this.applySession(parsed);
-        } catch (error) {
-            console.error('Failed to restore autosave', error);
-        }
-    }
-
-    private loadSavedSessions(): void {
-        this.savedSessions = this.getStoredSessions();
-    }
-
-    private getStoredSessions(): SavedNetControlSession[] {
-        const raw = localStorage.getItem(this.savedSessionsKey);
-        if (!raw) return [];
-
-        try {
-            const parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (error) {
-            console.error('Failed to load saved sessions', error);
-            return [];
-        }
     }
 
     private normalizeLocationKey(value: string | undefined): string {

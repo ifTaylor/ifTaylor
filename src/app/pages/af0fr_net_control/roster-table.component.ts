@@ -30,6 +30,8 @@ export class RosterTable implements AfterViewInit, OnChanges {
     @Input() searchCallsign = '';
     @Input() checkedInCallsigns = new Set<string>();
     @Input() editing = false;
+    @Input() pendingRemoveMemberId = '';
+    @Input() removingMemberId = '';
 
     @Output() checkIn = new EventEmitter<RosterCheckInRequest>();
     @Output() memberChange = new EventEmitter<ClubMember>();
@@ -63,6 +65,14 @@ export class RosterTable implements AfterViewInit, OnChanges {
 
     isCheckedIn(member: ClubMember): boolean {
         return !!member.callsign && this.checkedInCallsigns.has(member.callsign);
+    }
+
+    removeButtonLabel(member: ClubMember): string {
+        if (this.removingMemberId === member.id) {
+            return 'Removing...';
+        }
+
+        return this.pendingRemoveMemberId === member.id ? 'Confirm' : 'Remove';
     }
 
     statusLabel(status: ClubStatus): string {

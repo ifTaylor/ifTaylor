@@ -26,6 +26,8 @@
                         [searchCallsign]="rosterSearchCallsign"
                         [checkedInCallsigns]="checkedInCallsigns"
                         [editing]="editing"
+                        [pendingRemoveMemberId]="pendingRemoveRosterMemberId"
+                        [removingMemberId]="removingRosterMemberId"
                         (checkIn)="checkInRosterMember($event)"
                         (memberChange)="updateRosterMember($event)"
                         (memberRemove)="removeRosterMember($event)"
@@ -77,6 +79,13 @@
                         Current session
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
+                        <input
+                                type="text"
+                                class="min-w-[220px] flex-1 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-slate-500"
+                                [(ngModel)]="savedSessionName"
+                                placeholder="Net name"
+                        />
+
                         <button
                                 type="button"
                                 class="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-400"
@@ -107,10 +116,14 @@
                         @if (editing) {
                             <button
                                     type="button"
-                                    class="ml-auto rounded-lg border border-rose-800 bg-transparent px-4 py-2 text-sm font-semibold text-rose-300 hover:bg-rose-900/40 hover:text-rose-200"
+                                    class="ml-auto rounded-lg border px-4 py-2 text-sm font-semibold disabled:cursor-wait disabled:opacity-75"
+                                    [ngClass]="pendingClearCurrentSession
+                                        ? 'border-rose-600 bg-rose-600 text-white'
+                                        : 'border-rose-800 bg-transparent text-rose-300 hover:bg-rose-900/40 hover:text-rose-200'"
                                     (click)="clearCurrentSession()"
+                                    [disabled]="isClearingCurrentSession"
                             >
-                                Clear current
+                                {{ isClearingCurrentSession ? 'Clearing...' : pendingClearCurrentSession ? 'Confirm clear' : 'Clear current' }}
                             </button>
                         }
                     </div>
@@ -131,9 +144,9 @@
                                     *ngFor="let session of savedSessions"
                                     [value]="session.id"
                             >
-                                {{ session.savedAt | date:'short' }}
+                                {{ session.name || (session.savedAt | date:'short') }}
                                 —
-                                {{ session.stations?.length || 0 }} stations
+                                {{ session.stations.length || 0 }} stations
                             </option>
                         </select>
 
