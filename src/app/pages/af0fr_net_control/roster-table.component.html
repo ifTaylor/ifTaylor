@@ -36,7 +36,7 @@
 
             <tbody class="divide-y divide-slate-700">
             <tr
-                    *ngFor="let member of displayRoster"
+                    *ngFor="let member of displayRoster; trackBy: trackByMemberId"
                     class="bg-slate-800 text-slate-100 transition-colors"
                     [class.bg-orange-950]="member.id === highlightedMemberId"
                     [class.outline]="member.id === highlightedMemberId"
@@ -49,9 +49,11 @@
                             *ngIf="editing; else callsignText"
                             #callsignBox
                             class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-1 font-semibold text-white"
-                            [value]="member.callsign"
+                            [value]="draftValue(member, 'callsign')"
                             placeholder="No call"
-                            (change)="updateMember(member, { callsign: callsignBox.value })"
+                            (input)="updateDraft(member, 'callsign', callsignBox.value)"
+                            (blur)="commitDraft(member)"
+                            (keydown.enter)="commitDraft(member); callsignBox.blur()"
                     />
 
                     <ng-template #callsignText>
@@ -77,8 +79,10 @@
                             *ngIf="editing; else nameText"
                             #nameBox
                             class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-1 text-white"
-                            [value]="member.name"
-                            (change)="updateMember(member, { name: nameBox.value })"
+                            [value]="draftValue(member, 'name')"
+                            (input)="updateDraft(member, 'name', nameBox.value)"
+                            (blur)="commitDraft(member)"
+                            (keydown.enter)="commitDraft(member); nameBox.blur()"
                     />
 
                     <ng-template #nameText>
@@ -91,8 +95,10 @@
                             *ngIf="editing; else cityText"
                             #cityBox
                             class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-1 text-white"
-                            [value]="member.city || ''"
-                            (change)="updateMember(member, { city: cityBox.value })"
+                            [value]="draftValue(member, 'city')"
+                            (input)="updateDraft(member, 'city', cityBox.value)"
+                            (blur)="commitDraft(member)"
+                            (keydown.enter)="commitDraft(member); cityBox.blur()"
                     />
 
                     <ng-template #cityText>

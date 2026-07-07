@@ -3,7 +3,7 @@
         <h2 class="text-lg font-semibold text-white">Stations</h2>
 
         <div class="rounded-full bg-slate-800 px-3 py-1 text-sm font-semibold text-slate-200">
-            {{ totalStations }} total
+            {{ hasMembershipFilter ? filteredStationsCount + ' shown / ' : '' }}{{ totalStations }} total
         </div>
     </div>
 
@@ -37,17 +37,47 @@
     </div>
 
     <div class="mb-4 flex flex-wrap gap-2 text-xs font-semibold">
-        <span class="rounded-full bg-orange-500 px-2.5 py-1 text-white">
+        <button
+                type="button"
+                class="rounded-full px-2.5 py-1 text-white transition"
+                [class.bg-orange-500]="membershipFilterActive('member') || !hasMembershipFilter"
+                [class.bg-orange-900]="hasMembershipFilter && !membershipFilterActive('member')"
+                [class.opacity-60]="hasMembershipFilter && !membershipFilterActive('member')"
+                (click)="toggleMembershipFilter('member')"
+        >
             {{ memberStations }} members
-        </span>
+        </button>
 
-        <span class="rounded-full bg-slate-600 px-2.5 py-1 text-white">
+        <button
+                type="button"
+                class="rounded-full px-2.5 py-1 text-white transition"
+                [class.bg-slate-600]="membershipFilterActive('visitor') || !hasMembershipFilter"
+                [class.bg-slate-800]="hasMembershipFilter && !membershipFilterActive('visitor')"
+                [class.opacity-60]="hasMembershipFilter && !membershipFilterActive('visitor')"
+                (click)="toggleMembershipFilter('visitor')"
+        >
             {{ visitorStations }} visitors
-        </span>
+        </button>
 
-        <span class="rounded-full bg-blue-600 px-2.5 py-1 text-white">
+        <button
+                type="button"
+                class="rounded-full px-2.5 py-1 text-white transition"
+                [class.bg-blue-600]="membershipFilterActive('unknown') || !hasMembershipFilter"
+                [class.bg-blue-950]="hasMembershipFilter && !membershipFilterActive('unknown')"
+                [class.opacity-60]="hasMembershipFilter && !membershipFilterActive('unknown')"
+                (click)="toggleMembershipFilter('unknown')"
+        >
             {{ unknownStations }} unknown
-        </span>
+        </button>
+
+        <button
+                *ngIf="hasMembershipFilter"
+                type="button"
+                class="rounded-full border border-slate-600 px-2.5 py-1 text-slate-200 transition hover:border-slate-400 hover:text-white"
+                (click)="clearMembershipFilters()"
+        >
+            Clear
+        </button>
 
         <span
                 *ngIf="activeStations"
@@ -59,7 +89,7 @@
 
     <div class="space-y-3">
         <div
-                *ngFor="let station of displayStations"
+                *ngFor="let station of displayStations; trackBy: trackByStationId"
                 class="rounded-xl border border-slate-700 bg-slate-800 p-3"
                 [class.opacity-75]="station.status === 'complete'"
         >
@@ -136,6 +166,30 @@
 
             <div class="mt-2 text-sm text-slate-300" *ngIf="station.notes">
                 {{ station.notes }}
+            </div>
+
+            <div *ngIf="editing" class="mt-3 grid gap-2 rounded-xl border border-slate-700 bg-slate-900/70 p-3 sm:grid-cols-[minmax(10rem,12rem)_minmax(0,1fr)]">
+                <label class="block">
+                    <span class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Net status</span>
+                    <select
+                            class="mt-1 w-full rounded border border-slate-600 bg-slate-950 px-2 py-1.5 text-sm text-white"
+                            [value]="station.trafficType"
+                            (change)="updateTrafficType(station, $any($event.target).value)"
+                    >
+                        <option value="shortTime">Short time</option>
+                        <option value="regular">Regular</option>
+                    </select>
+                </label>
+
+                <label class="block">
+                    <span class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Notes</span>
+                    <textarea
+                            class="mt-1 min-h-10 w-full rounded border border-slate-600 bg-slate-950 px-2 py-1.5 text-sm text-white"
+                            [value]="station.notes || ''"
+                            (blur)="updateNotes(station, notesBox.value)"
+                            #notesBox
+                    ></textarea>
+                </label>
             </div>
 
             <div class="mt-3 flex flex-wrap gap-2">

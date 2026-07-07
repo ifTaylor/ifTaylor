@@ -41,6 +41,7 @@ export class RosterTable implements AfterViewInit, OnChanges {
 
     highlightedMemberId = '';
     private viewReady = false;
+    private drafts = new Map<string, Pick<ClubMember, 'callsign' | 'name' | 'city'>>();
 
     get displayRoster(): ClubMember[] {
         return [...this.roster].sort((a, b) => {
@@ -60,6 +61,10 @@ export class RosterTable implements AfterViewInit, OnChanges {
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['roster'] || changes['searchCallsign']) {
             this.updateHighlight();
+        }
+
+        if (changes['editing'] || changes['roster']) {
+            this.syncDrafts();
         }
     }
 
@@ -97,6 +102,39 @@ export class RosterTable implements AfterViewInit, OnChanges {
         }
     }
 
+    trackByMemberId(_index: number, member: ClubMember): string {
+        return member.id;
+    }
+
+    draftValue(member: ClubMember, field: keyof Pick<ClubMember, 'callsign' | 'name' | 'city'>): string {
+        return this.drafts.get(member.id)?.[field] ?? member[field] ?? '';
+    }
+
+    updateDraft(member: ClubMember, field: keyof Pick<ClubMember, 'callsign' | 'name' | 'city'>, value: string): void {
+        const draft = this.drafts.get(member.id) ?? {
+            callsign: member.callsign,
+            name: member.name,
+            city: member.city ?? '',
+        };
+
+        this.drafts.set(member.id, { ...draft, [field]: value });
+    }
+
+    commitDraft(member: ClubMember): void {
+        const draft = this.drafts.get(member.id);
+        if (!draft) return;
+
+        const callsign = draft.callsign.trim().toUpperCase().replace(/Ø/g, '0').replace(/Ã˜/g, '0');
+        const name = draft.name.trim();
+        const city = draft.city?.trim() ?? '';
+
+        if (callsign === member.callsign && name === member.name && city === (member.city ?? '')) {
+            return;
+        }
+
+        this.memberChange.emit({ ...member, callsign, name, city });
+    }
+
     updateMember(member: ClubMember, changes: Partial<ClubMember>): void {
         this.memberChange.emit({
             ...member,
@@ -107,6 +145,31 @@ export class RosterTable implements AfterViewInit, OnChanges {
             name: changes.name !== undefined ? changes.name.trim() : member.name,
             city: changes.city !== undefined ? changes.city.trim() : member.city,
         });
+    }
+
+    private syncDrafts(): void {
+        if (!this.editing) {
+            this.drafts.clear();
+            return;
+        }
+
+        const rosterIds = new Set(this.roster.map((member) => member.id));
+
+        for (const member of this.roster) {
+            if (!this.drafts.has(member.id)) {
+                this.drafts.set(member.id, {
+                    callsign: member.callsign,
+                    name: member.name,
+                    city: member.city ?? '',
+                });
+            }
+        }
+
+        for (const memberId of this.drafts.keys()) {
+            if (!rosterIds.has(memberId)) {
+                this.drafts.delete(memberId);
+            }
+        }
     }
 
     private updateHighlight(): void {
