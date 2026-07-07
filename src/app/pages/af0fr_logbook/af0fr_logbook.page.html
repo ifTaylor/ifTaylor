@@ -90,6 +90,13 @@
                 </div>
 
                 <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+                    <label class="flex min-h-11 items-center gap-3 rounded-xl border border-slate-300 px-3">
+                        <input class="h-5 w-5 accent-orange-500" type="checkbox" [ngModel]="form.contest === 'SST'" name="sstLog" (ngModelChange)="setSstLog($event)">
+                        <span>
+                            <span class="block text-xs font-black uppercase tracking-wider text-slate-500">SST Log</span>
+                            <span class="block text-xs font-semibold text-slate-600">Name + S/P or DXc</span>
+                        </span>
+                    </label>
                     <label class="block sm:col-span-2 lg:col-span-2">
                         <span class="text-xs font-black uppercase tracking-wider text-slate-500">Callsign</span>
                         <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-mono text-lg font-black uppercase outline-none focus:border-orange-500" [(ngModel)]="form.callsign" name="callsign" required autocorrect="off" spellcheck="false">
@@ -144,6 +151,22 @@
                         <span class="text-xs font-black uppercase tracking-wider text-slate-500">Country</span>
                         <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-semibold outline-none focus:border-orange-500" [(ngModel)]="form.country" name="country">
                     </label>
+                    <div *ngIf="form.contest === 'SST'" class="sm:col-span-2 lg:col-span-6 rounded-xl border border-orange-200 bg-orange-50 p-3">
+                        <div class="grid gap-3 sm:grid-cols-3">
+                            <div>
+                                <div class="text-[10px] font-black uppercase tracking-wider text-orange-700">SST received</div>
+                                <div class="mt-1 font-mono text-sm font-black text-slate-950">{{ form.name || 'NAME' }} {{ form.state || form.country || 'SPC' }}</div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] font-black uppercase tracking-wider text-orange-700">Multiplier</div>
+                                <div class="mt-1 font-mono text-sm font-black text-slate-950">{{ sstMultiplierForEntry(form)?.label || '-' }}</div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] font-black uppercase tracking-wider text-orange-700">Sent</div>
+                                <div class="mt-1 font-mono text-sm font-black text-slate-950">{{ sstSentExchange() || '-' }}</div>
+                            </div>
+                        </div>
+                    </div>
                     <label class="block sm:col-span-2 lg:col-span-2">
                         <span class="text-xs font-black uppercase tracking-wider text-slate-500">POTA reference</span>
                         <input class="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-mono font-semibold uppercase outline-none focus:border-orange-500" [(ngModel)]="form.parkReference" name="parkReference" placeholder="US-1234">
@@ -164,35 +187,67 @@
                         <div class="mt-1 text-sm font-semibold text-slate-800">{{ qsoCount }} QSOs</div>
                         <h2 class="mt-1 text-2xl font-black">{{ activeLogbook.name }}</h2>
                     </div>
-                    <button type="button" class="min-h-11 rounded-xl bg-orange-500 px-5 text-sm font-black text-white hover:bg-orange-400 disabled:cursor-not-allowed disabled:bg-slate-300" [disabled]="exportDisabled" (click)="exportAdif()">Export .adi</button>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" class="min-h-11 rounded-xl bg-orange-500 px-5 text-sm font-black text-white hover:bg-orange-400 disabled:cursor-not-allowed disabled:bg-slate-300" [disabled]="exportDisabled" (click)="exportAdif()">Export .adi</button>
+                        <button type="button" class="min-h-11 rounded-xl bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300" [disabled]="!sstQsoCount" (click)="exportSstCabrillo()">Export SST Cabrillo</button>
+                    </div>
                 </div>
 
                 <div *ngIf="!entries.length" class="mt-4 rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm font-semibold text-slate-500">No QSOs yet.</div>
 
+                <div *ngIf="sstQsoCount" class="mt-4 grid gap-2 sm:grid-cols-4">
+                    <div class="rounded-xl bg-slate-100 px-4 py-3">
+                        <div class="text-[10px] font-black uppercase tracking-wider text-slate-500">SST QSOs</div>
+                        <div class="mt-1 text-2xl font-black">{{ sstQsoCount }}</div>
+                    </div>
+                    <div class="rounded-xl bg-slate-100 px-4 py-3">
+                        <div class="text-[10px] font-black uppercase tracking-wider text-slate-500">S/P</div>
+                        <div class="mt-1 text-2xl font-black">{{ sstSpMultiplierCount }}</div>
+                    </div>
+                    <div class="rounded-xl bg-slate-100 px-4 py-3">
+                        <div class="text-[10px] font-black uppercase tracking-wider text-slate-500">DXc</div>
+                        <div class="mt-1 text-2xl font-black">{{ sstDxcMultiplierCount }}</div>
+                    </div>
+                    <div class="rounded-xl bg-slate-100 px-4 py-3">
+                        <div class="text-[10px] font-black uppercase tracking-wider text-slate-500">SST score</div>
+                        <div class="mt-1 text-2xl font-black">{{ sstScore }}</div>
+                    </div>
+                </div>
+
                 <div *ngIf="entries.length" class="mt-4 overflow-x-auto">
-                    <table class="w-full min-w-[820px] border-separate border-spacing-0 text-left text-sm">
+                    <table class="w-full min-w-[1040px] border-separate border-spacing-0 text-left text-sm">
                         <thead>
                             <tr class="text-xs uppercase tracking-wider text-slate-500">
                                 <th class="border-b border-slate-200 px-3 py-2">Time</th>
+                                <th class="border-b border-slate-200 px-3 py-2">Log</th>
                                 <th class="border-b border-slate-200 px-3 py-2">Call</th>
                                 <th class="border-b border-slate-200 px-3 py-2">Band</th>
                                 <th class="border-b border-slate-200 px-3 py-2">Mode</th>
+                                <th class="border-b border-slate-200 px-3 py-2">S/P</th>
+                                <th class="border-b border-slate-200 px-3 py-2">DXc</th>
                                 <th class="border-b border-slate-200 px-3 py-2">POTA</th>
                                 <th class="border-b border-slate-200 px-3 py-2">Notes</th>
                                 <th class="border-b border-slate-200 px-3 py-2 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr *ngFor="let entry of sortedEntries" class="align-top">
-                                <td class="border-b border-slate-100 px-3 py-3 font-mono text-xs">{{ entry.qsoDate }} {{ entry.timeOn }}</td>
-                                <td class="border-b border-slate-100 px-3 py-3 font-mono font-black">{{ entry.callsign }}</td>
-                                <td class="border-b border-slate-100 px-3 py-3">{{ entry.band }}<span *ngIf="entry.frequency" class="block text-xs text-slate-500">{{ entry.frequency }}</span></td>
-                                <td class="border-b border-slate-100 px-3 py-3">{{ entry.mode }}</td>
-                                <td class="border-b border-slate-100 px-3 py-3 font-mono text-xs">{{ entry.parkReference }}</td>
-                                <td class="max-w-sm border-b border-slate-100 px-3 py-3 text-slate-600">{{ entry.notes }}</td>
+                            <tr *ngFor="let row of sstRows" class="align-top">
+                                <td class="border-b border-slate-100 px-3 py-3 font-mono text-xs">{{ row.entry.qsoDate }} {{ row.entry.timeOn }}</td>
+                                <td class="border-b border-slate-100 px-3 py-3 text-xs font-black">{{ row.entry.contest === 'SST' ? 'SST' : '-' }}</td>
+                                <td class="border-b border-slate-100 px-3 py-3 font-mono font-black">{{ row.entry.callsign }}<span *ngIf="row.entry.contest === 'SST'" class="block text-xs font-semibold text-slate-500">{{ sstReceivedExchange(row.entry) }}</span></td>
+                                <td class="border-b border-slate-100 px-3 py-3">{{ row.entry.band }}<span *ngIf="row.entry.frequency" class="block text-xs text-slate-500">{{ row.entry.frequency }}</span></td>
+                                <td class="border-b border-slate-100 px-3 py-3">{{ row.entry.mode }}</td>
+                                <td class="border-b border-slate-100 px-3 py-3">
+                                    <span *ngIf="row.spMultiplier" class="inline-flex min-h-7 items-center rounded-lg bg-emerald-100 px-2 font-mono text-xs font-black text-emerald-800">✓ {{ row.spMultiplier.label }}</span>
+                                </td>
+                                <td class="border-b border-slate-100 px-3 py-3">
+                                    <span *ngIf="row.dxcMultiplier" class="inline-flex min-h-7 items-center rounded-lg bg-emerald-100 px-2 font-mono text-xs font-black text-emerald-800">✓ {{ row.dxcMultiplier.label }}</span>
+                                </td>
+                                <td class="border-b border-slate-100 px-3 py-3 font-mono text-xs">{{ row.entry.parkReference }}</td>
+                                <td class="max-w-sm border-b border-slate-100 px-3 py-3 text-slate-600">{{ row.entry.notes }}</td>
                                 <td class="border-b border-slate-100 px-3 py-3 text-right">
-                                    <button type="button" class="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black hover:bg-slate-200" (click)="editEntry(entry)">Edit</button>
-                                    <button type="button" class="ml-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-black text-red-700 hover:bg-red-100" (click)="deleteEntry(entry.id)">Delete</button>
+                                    <button type="button" class="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black hover:bg-slate-200" (click)="editEntry(row.entry)">Edit</button>
+                                    <button type="button" class="ml-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-black text-red-700 hover:bg-red-100" (click)="deleteEntry(row.entry.id)">Delete</button>
                                 </td>
                             </tr>
                         </tbody>
