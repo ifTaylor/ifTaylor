@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 
 from app.controllers.net_control import (
     append_current_checkin,
@@ -60,10 +60,22 @@ def put_net_control_state(state: NetControlStateUpsert):
 
 
 @router.get("/net-control/session")
-def get_net_control_session():
+def get_net_control_session(updated_after: str | None = None):
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
+                if updated_after:
+                    cur.execute(
+                        """
+                        select updated_at
+                        from net_control_sessions
+                        where id = 'current'
+                        """
+                    )
+                    row = cur.fetchone()
+                    if row is not None and row[0].isoformat() == updated_after:
+                        return Response(status_code=204)
+
                 return fetch_net_control_snapshot(cur)
 
     except Exception as exc:
