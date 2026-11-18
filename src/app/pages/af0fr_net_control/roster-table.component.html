@@ -36,7 +36,7 @@
 
             <tbody class="divide-y divide-slate-700">
             <tr
-                    *ngFor="let member of displayRoster"
+                    *ngFor="let member of displayRoster; trackBy: trackMember"
                     class="bg-slate-800 text-slate-100 transition-colors"
                     [class.bg-orange-950]="member.id === highlightedMemberId"
                     [class.outline]="member.id === highlightedMemberId"

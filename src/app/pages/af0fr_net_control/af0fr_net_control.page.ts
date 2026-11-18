@@ -343,7 +343,9 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
         this.loadSharedState(true);
         this.pollSubscription = interval(2500).subscribe(() => {
             this.loadSharedState(false);
-            this.refreshRosterMembers();
+            if (!this.editing) {
+                this.refreshRosterMembers();
+            }
         });
     }
 

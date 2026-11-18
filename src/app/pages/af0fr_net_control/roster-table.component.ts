@@ -63,6 +63,10 @@ export class RosterTable implements AfterViewInit, OnChanges {
         }
     }
 
+    trackMember(_index: number, member: ClubMember): string {
+        return member.id;
+    }
+
     isCheckedIn(member: ClubMember): boolean {
         return !!member.callsign && this.checkedInCallsigns.has(member.callsign);
     }
@@ -110,6 +114,10 @@ export class RosterTable implements AfterViewInit, OnChanges {
     }
 
     private updateHighlight(): void {
+        if (this.editing) {
+            return;
+        }
+
         const query = this.searchCallsign.trim().toUpperCase();
 
         if (!query) {
