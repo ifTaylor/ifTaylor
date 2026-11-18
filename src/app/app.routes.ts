@@ -6,6 +6,7 @@ import {CardDemoPage} from "./pages/card_demo/card_demo.page";
 import { Af0frCwQsoPage } from "./pages/cw/af0fr_cw_qso.page";
 import { Af0frAzimuthMapPage } from "./pages/azimuth-map/af0fr_azimuth_map.page";
 import { Af0frLogbookPage } from "./pages/af0fr_logbook/af0fr_logbook.page";
+import { CalendarTestPage } from "./pages/calendar-test/calendar-test.page";
 
 export function af0frMatcher(segments: UrlSegment[]): UrlMatchResult | null {
     if (segments.length > 0 && segments[0].path.toLowerCase() === 'af0fr') {
@@ -16,6 +17,7 @@ export function af0frMatcher(segments: UrlSegment[]): UrlMatchResult | null {
 
 export const routes: Routes = [
     { path: '', component: HomePage },
+    { path: 'calendar-test', component: CalendarTestPage },
     {
         matcher: af0frMatcher,
         children: [

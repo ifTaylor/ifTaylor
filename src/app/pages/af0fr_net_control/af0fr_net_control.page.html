@@ -43,8 +43,10 @@
                 <!-- ... existing code ... -->
                 <station-list
                         [stations]="stations"
+                        [editing]="editing"
                         (setActive)="setActiveStation($event)"
                         (markComplete)="markStationComplete($event)"
+                        (stationChange)="updateStation($event)"
                 />
             </div>
 

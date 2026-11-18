@@ -6,9 +6,11 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 type LogbookView = 'qsoEntry' | 'sessionLog' | 'spots' | 'dxSummit';
+type ContestMode = 'GENERAL' | 'SST';
 
 interface LogbookEntry {
     id: string;
+    contest: ContestMode;
     callsign: string;
     qsoDate: string;
     timeOn: string;
@@ -23,6 +25,19 @@ interface LogbookEntry {
     country: string;
     parkReference: string;
     notes: string;
+}
+
+interface SstMultiplierMark {
+    key: string;
+    label: string;
+    column: 'S/P' | 'DXc';
+}
+
+interface SstEntryRow {
+    entry: LogbookEntry;
+    multipliers: SstMultiplierMark[];
+    spMultiplier: SstMultiplierMark | null;
+    dxcMultiplier: SstMultiplierMark | null;
 }
 
 interface NamedLogbook {
@@ -108,13 +123,13 @@ export class Af0frLogbookPage implements OnInit {
     private readonly logsStorageKey = 'af0fr-logbook-logs';
     private readonly activeLogKey = 'af0fr-logbook-active-log';
     private readonly profileKey = 'af0fr-logbook-profile';
+    private readonly contestModeKey = 'af0fr-logbook-mode';
     private readonly potaSpotsUrl = 'https://api.pota.app/spot/activator';
     private readonly zipUrl = 'https://api.zippopotam.us/us/';
     private readonly potaParksUrl = 'https://api.pota.app/program/parks/';
 
     readonly bands = ['160m', '80m', '60m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '6m', '2m', '70cm'];
     readonly modes = ['SSB', 'CW', 'FM', 'FT8', 'FT4', 'AM', 'RTTY', 'JS8'];
-
     activeView: LogbookView = 'qsoEntry';
     operatorCall = 'AF0FR';
     operatorName = '';
@@ -129,6 +144,7 @@ export class Af0frLogbookPage implements OnInit {
     activeLogId = '';
     newLogName = '';
     editingId = '';
+    currentContest: ContestMode = 'GENERAL';
     form: LogbookEntry = this.blankEntry();
 
     potaZip = '63129';
@@ -152,6 +168,7 @@ export class Af0frLogbookPage implements OnInit {
 
     ngOnInit(): void {
         this.restoreProfile();
+        this.restoreContestMode();
         this.restoreLogbooks();
     }
 
@@ -179,6 +196,38 @@ export class Af0frLogbookPage implements OnInit {
 
     get qsoCount(): number {
         return this.entries.length;
+    }
+
+    get sstRows(): SstEntryRow[] {
+        return this.buildSstRows(this.sortedEntries.slice().reverse()).reverse();
+    }
+
+    get sstQsoCount(): number {
+        return this.entries.filter((entry) => entry.contest === 'SST').length;
+    }
+
+    get sstMultiplierCount(): number {
+        const multipliers = new Set<string>();
+
+        for (const row of this.buildSstRows(this.entries)) {
+            for (const multiplier of row.multipliers) {
+                multipliers.add(multiplier.key);
+            }
+        }
+
+        return multipliers.size;
+    }
+
+    get sstSpMultiplierCount(): number {
+        return this.sstMultiplierColumnCount('S/P');
+    }
+
+    get sstDxcMultiplierCount(): number {
+        return this.sstMultiplierColumnCount('DXc');
+    }
+
+    get sstScore(): number {
+        return this.sstQsoCount * this.sstMultiplierCount;
     }
 
     get exportDisabled(): boolean {
@@ -267,6 +316,19 @@ export class Af0frLogbookPage implements OnInit {
             return;
         }
 
+        if (normalized.contest === 'SST') {
+            const exchangeError = this.sstExchangeError(normalized);
+            if (exchangeError) {
+                window.alert(exchangeError);
+                return;
+            }
+
+            const dupe = this.findSstDupe(normalized, this.editingId);
+            if (dupe && !window.confirm(`${normalized.callsign} is already logged for SST on ${normalized.band}. Save anyway?`)) {
+                return;
+            }
+        }
+
         const updatedEntries = this.editingId
             ? this.entries.map((entry) => entry.id === this.editingId ? { ...normalized, id: this.editingId } : entry)
             : [{ ...normalized, id: crypto.randomUUID() }, ...this.entries];
@@ -297,6 +359,21 @@ export class Af0frLogbookPage implements OnInit {
         this.form = this.blankEntry();
     }
 
+    setSstLog(enabled: boolean): void {
+        const contest: ContestMode = enabled ? 'SST' : 'GENERAL';
+        const defaults = this.blankEntry(contest);
+
+        this.currentContest = contest;
+        localStorage.setItem(this.contestModeKey, contest);
+        this.form = this.normalizeEntry({
+            ...this.form,
+            contest,
+            mode: defaults.mode,
+            rstSent: defaults.rstSent,
+            rstReceived: defaults.rstReceived,
+        }, contest);
+    }
+
     exportAdif(): void {
         if (!this.entries.length) return;
 
@@ -317,6 +394,36 @@ export class Af0frLogbookPage implements OnInit {
 
         anchor.href = url;
         anchor.download = `af0fr-${logName}-${timestamp}.adi`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+    }
+
+    exportSstCabrillo(): void {
+        const entries = this.sortedEntries.filter((entry) => entry.contest === 'SST');
+        if (!entries.length) return;
+
+        const lines = [
+            'START-OF-LOG: 3.0',
+            'CREATED-BY: AF0FR Logbook',
+            'CONTEST: K1USNSST',
+            `CALLSIGN: ${this.operatorCall || 'NOCALL'}`,
+            `LOCATION: ${this.stationState || 'DX'}`,
+            `OPERATORS: ${this.operatorCall || 'NOCALL'}`,
+            'CATEGORY-OPERATOR: SINGLE-OP',
+            'CATEGORY-MODE: CW',
+            'CATEGORY-POWER: LOW',
+            'CLAIMED-SCORE: ' + this.sstScore,
+            ...entries.slice().reverse().map((entry) => this.entryToSstCabrilloQso(entry)),
+            'END-OF-LOG:',
+        ];
+        const blob = new Blob([`${lines.join('\r\n')}\r\n`], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const logName = this.activeLogbook.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'sst';
+
+        anchor.href = url;
+        anchor.download = `af0fr-${logName}-k1usnsst-${timestamp}.log`;
         anchor.click();
         URL.revokeObjectURL(url);
     }
@@ -538,6 +645,11 @@ export class Af0frLogbookPage implements OnInit {
         }
     }
 
+    private restoreContestMode(): void {
+        this.currentContest = localStorage.getItem(this.contestModeKey) === 'SST' ? 'SST' : 'GENERAL';
+        this.form = this.blankEntry();
+    }
+
     private restoreLogbooks(): void {
         const raw = localStorage.getItem(this.logsStorageKey);
 
@@ -624,18 +736,21 @@ export class Af0frLogbookPage implements OnInit {
         };
     }
 
-    private blankEntry(): LogbookEntry {
+    private blankEntry(contest: ContestMode = this.currentContest): LogbookEntry {
         const now = new Date();
+        const sst = contest === 'SST';
+
         return {
             id: '',
+            contest,
             callsign: '',
             qsoDate: now.toISOString().slice(0, 10),
             timeOn: now.toISOString().slice(11, 16),
             band: '20m',
             frequency: '',
-            mode: 'SSB',
-            rstSent: '59',
-            rstReceived: '59',
+            mode: sst ? 'CW' : 'SSB',
+            rstSent: sst ? '599' : '59',
+            rstReceived: sst ? '599' : '59',
             name: '',
             qth: '',
             state: '',
@@ -645,19 +760,21 @@ export class Af0frLogbookPage implements OnInit {
         };
     }
 
-    private normalizeEntry(entry: Partial<LogbookEntry>): LogbookEntry {
-        const blank = this.blankEntry();
+    private normalizeEntry(entry: Partial<LogbookEntry>, defaultContest: ContestMode = 'GENERAL'): LogbookEntry {
+        const contest = entry.contest === 'SST' ? 'SST' : defaultContest;
+        const blank = this.blankEntry(contest);
 
         return {
             id: entry.id ?? '',
+            contest,
             callsign: this.normalizeCallsign(entry.callsign ?? ''),
             qsoDate: entry.qsoDate ?? blank.qsoDate,
             timeOn: (entry.timeOn ?? blank.timeOn).slice(0, 5),
             band: entry.band ?? blank.band,
             frequency: (entry.frequency ?? '').trim(),
-            mode: (entry.mode ?? blank.mode).trim().toUpperCase(),
-            rstSent: (entry.rstSent ?? blank.rstSent).trim(),
-            rstReceived: (entry.rstReceived ?? blank.rstReceived).trim(),
+            mode: (entry.mode ?? (contest === 'SST' ? 'CW' : blank.mode)).trim().toUpperCase(),
+            rstSent: (entry.rstSent ?? (contest === 'SST' ? '599' : blank.rstSent)).trim(),
+            rstReceived: (entry.rstReceived ?? (contest === 'SST' ? '599' : blank.rstReceived)).trim(),
             name: (entry.name ?? '').trim(),
             qth: (entry.qth ?? '').trim(),
             state: (entry.state ?? '').trim().toUpperCase(),
@@ -690,6 +807,9 @@ export class Af0frLogbookPage implements OnInit {
             ['MY_RIG', this.stationRig],
             ['MY_ANTENNA', this.stationAntenna],
             ['TX_PWR', this.stationPower],
+            ['CONTEST_ID', entry.contest === 'SST' ? 'K1USN-SST' : ''],
+            ['SRX_STRING', entry.contest === 'SST' ? this.sstReceivedExchange(entry) : ''],
+            ['STX_STRING', entry.contest === 'SST' ? this.sstSentExchange() : ''],
             ['SIG', entry.parkReference ? 'POTA' : ''],
             ['SIG_INFO', entry.parkReference],
             ['COMMENT', entry.notes],
@@ -705,6 +825,172 @@ export class Af0frLogbookPage implements OnInit {
 
     private normalizeCallsign(value: string): string {
         return value.trim().toUpperCase().replace(/Ø/g, '0');
+    }
+
+    private buildSstRows(entries: LogbookEntry[]): SstEntryRow[] {
+        const seenMultipliers = new Set<string>();
+        const rows: SstEntryRow[] = [];
+
+        for (const entry of entries) {
+            if (entry.contest !== 'SST') {
+                rows.push({ entry, multipliers: [], spMultiplier: null, dxcMultiplier: null });
+                continue;
+            }
+
+            const multiplier = this.sstMultiplierForEntry(entry);
+            const multipliers = multiplier && !seenMultipliers.has(multiplier.key) ? [multiplier] : [];
+
+            if (multiplier) {
+                seenMultipliers.add(multiplier.key);
+            }
+
+            rows.push({
+                entry,
+                multipliers,
+                spMultiplier: multipliers.find((mark) => mark.column === 'S/P') ?? null,
+                dxcMultiplier: multipliers.find((mark) => mark.column === 'DXc') ?? null,
+            });
+        }
+
+        return rows;
+    }
+
+    private sstMultiplierColumnCount(column: SstMultiplierMark['column']): number {
+        const multipliers = new Set<string>();
+
+        for (const row of this.buildSstRows(this.entries)) {
+            for (const multiplier of row.multipliers) {
+                if (multiplier.column === column) {
+                    multipliers.add(multiplier.key);
+                }
+            }
+        }
+
+        return multipliers.size;
+    }
+
+    private sstExchangeError(entry: LogbookEntry): string {
+        if (!entry.name) {
+            return 'SST entries require the received name.';
+        }
+
+        if (!this.sstMultiplierForEntry(entry)) {
+            return 'SST entries require a valid State/Province or DX country.';
+        }
+
+        return '';
+    }
+
+    private findSstDupe(entry: LogbookEntry, editingId = ''): LogbookEntry | undefined {
+        return this.entries.find((candidate) =>
+            candidate.id !== editingId &&
+            candidate.contest === 'SST' &&
+            candidate.callsign === entry.callsign &&
+            candidate.band === entry.band
+        );
+    }
+
+    sstMultiplierForEntry(entry: LogbookEntry): SstMultiplierMark | null {
+        const spc = this.normalizeSstSpc(entry.state || entry.qth);
+
+        if (spc) {
+            return {
+                key: `${entry.band}|SPC|${spc}`,
+                label: spc,
+                column: 'S/P',
+            };
+        }
+
+        const country = this.sstCountryPrefix(entry);
+        if (!country) return null;
+
+        return {
+            key: `${entry.band}|COUNTRY|${country}`,
+            label: country,
+            column: 'DXc',
+        };
+    }
+
+    sstReceivedExchange(entry: LogbookEntry): string {
+        return [entry.name, entry.state || entry.country].filter(Boolean).join(' ');
+    }
+
+    sstSentExchange(): string {
+        return [this.operatorName, this.stationState || this.stationCountry].filter(Boolean).join(' ');
+    }
+
+    private normalizeSstSpc(value: string): string {
+        const candidate = value.trim().toUpperCase();
+        const statesAndProvinces = new Set([
+            'AL', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'ID', 'IL', 'IN', 'IA', 'KS',
+            'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY',
+            'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV',
+            'WI', 'WY', 'DC', 'AB', 'BC', 'LB', 'MB', 'NB', 'NF', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT',
+        ]);
+
+        return statesAndProvinces.has(candidate) ? candidate : '';
+    }
+
+    private sstCountryPrefix(entry: LogbookEntry): string {
+        const country = entry.country.trim().toUpperCase();
+        const call = entry.callsign.replace(/\/.*/, '');
+
+        if (/^KL7/.test(call)) return 'KL';
+        if (/^KH6/.test(call)) return 'KH6';
+        if (/^KP[234]/.test(call)) return 'KP';
+        if (/^(K|N|W|A[A-L]|VA|VE|VO|VY)/.test(call)) return '';
+        return country && !['USA', 'UNITED STATES', 'US', 'CANADA', 'CA'].includes(country) ? country : '';
+    }
+
+    private entryToSstCabrilloQso(entry: LogbookEntry): string {
+        const sentExchange = this.sstSentExchange() || [this.operatorName || this.operatorCall, this.stationState || 'DX'].join(' ');
+        const frequency = this.cabrilloFrequency(entry);
+
+        return [
+            'QSO:',
+            this.padCabrillo(frequency, 5),
+            this.padCabrillo(entry.mode || 'CW', 2),
+            entry.qsoDate,
+            entry.timeOn.replace(':', ''),
+            this.padCabrillo(this.operatorCall || 'NOCALL', 13),
+            this.padCabrillo(sentExchange, 15),
+            this.padCabrillo(entry.callsign, 13),
+            this.padCabrillo(entry.name, 10),
+            this.padCabrillo(this.sstExchangeValue(entry), 5),
+        ].join(' ').trimEnd();
+    }
+
+    private sstExchangeValue(entry: LogbookEntry): string {
+        return this.normalizeSstSpc(entry.state || entry.qth) || this.sstCountryPrefix(entry) || entry.country.trim().toUpperCase();
+    }
+
+    private cabrilloFrequency(entry: LogbookEntry): string {
+        const mhz = Number(entry.frequency);
+        if (!Number.isNaN(mhz) && mhz > 0) {
+            return String(Math.round(mhz * 1000));
+        }
+
+        const bandFrequency: Record<string, string> = {
+            '160m': '1800',
+            '80m': '3500',
+            '60m': '5350',
+            '40m': '7000',
+            '30m': '10100',
+            '20m': '14000',
+            '17m': '18068',
+            '15m': '21000',
+            '12m': '24890',
+            '10m': '28000',
+            '6m': '50000',
+            '2m': '144000',
+            '70cm': '432000',
+        };
+
+        return bandFrequency[entry.band] ?? entry.band.toUpperCase();
+    }
+
+    private padCabrillo(value: string, width: number): string {
+        return value.trim().replace(/\s+/g, ' ').slice(0, width).padEnd(width, ' ');
     }
 
     private parseDxLine(line: string): DxSpotRow | null {

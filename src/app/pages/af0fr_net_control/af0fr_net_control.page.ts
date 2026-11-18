@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { interval, Subscription } from 'rxjs';
+import { finalize, interval, Subscription } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { CheckinForm } from './checkin-form/checkin-form.component';
 import { StationList } from './station-list/station-list.component';
@@ -69,6 +69,14 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     private pollSubscription?: Subscription;
     private lastRemoteUpdatedAt = '';
     private isSavingRemote = false;
+    private isLoadingRemote = false;
+    private isLoadingRoster = false;
+    private readonly pollIntervalMs = 30_000;
+    private readonly visibilityChangeHandler = () => {
+        if (!document.hidden && !this.editing) {
+            this.loadSharedState(false);
+        }
+    };
 
     private readonly repeaterLat = 38.333667;
     private readonly repeaterLng = -90.537611;
@@ -341,16 +349,18 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
 
         this.refreshRosterMembers();
         this.loadSharedState(true);
-        this.pollSubscription = interval(2500).subscribe(() => {
+        document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+        this.pollSubscription = interval(this.pollIntervalMs).subscribe(() => {
+            if (this.editing || document.hidden) return;
+
             this.loadSharedState(false);
-            if (!this.editing) {
-                this.refreshRosterMembers();
-            }
+            this.refreshRosterMembers();
         });
     }
 
     ngOnDestroy(): void {
         this.pollSubscription?.unsubscribe();
+        document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
     }
 
     get checkedInCallsigns(): Set<string> {
@@ -428,6 +438,9 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
         const normalizedMember = this.normalizeMember(member);
         if (!normalizedMember) return;
 
+        this.clubMembers = this.normalizeRoster(
+            this.clubMembers.map((entry) => entry.id === normalizedMember.id ? normalizedMember : entry)
+        );
         this.stations = this.stations.map((station) =>
             station.memberId === normalizedMember.id
                 ? this.normalizeStation({
@@ -452,7 +465,9 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
         );
 
         this.saveRosterMember(normalizedMember, () => {
-            this.refreshRosterMembers();
+            if (!this.editing) {
+                this.refreshRosterMembers();
+            }
             this.persistState();
         });
     }
@@ -474,6 +489,7 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
         if (!this.editing) {
             this.pendingClearCurrentSession = false;
             this.pendingRemoveRosterMemberId = '';
+            this.refreshRosterMembers();
         }
     }
 
@@ -512,6 +528,28 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
         this.queue = this.queue.filter((station) => station.id !== stationId);
 
         this.addLog('info', `${target.callsign || target.name} marked complete.`, stationId);
+        this.persistState();
+    }
+
+    updateStation(station: Station): void {
+        const normalizedStation = this.normalizeStation(station);
+        const current = this.stations.find((entry) => entry.id === normalizedStation.id);
+
+        this.stations = this.stations.map((entry) =>
+            entry.id === normalizedStation.id ? normalizedStation : entry
+        );
+        this.queue = this.queue.map((entry) =>
+            entry.id === normalizedStation.id ? normalizedStation : entry
+        );
+
+        if (current && current.trafficType !== normalizedStation.trafficType) {
+            this.addLog(
+                'info',
+                `${normalizedStation.callsign || normalizedStation.name} changed to ${this.trafficLabel(normalizedStation.trafficType)}.`,
+                normalizedStation.id
+            );
+        }
+
         this.persistState();
     }
 
@@ -698,9 +736,23 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     }
 
     private loadSharedState(initialLoad: boolean): void {
-        this.http.get<NetControlStateResponse>(`${environment.apiUrl}/net-control/session`).subscribe({
+        if (this.isLoadingRemote) return;
+
+        this.isLoadingRemote = true;
+        const updatedAfter = this.lastRemoteUpdatedAt
+            ? `?updated_after=${encodeURIComponent(this.lastRemoteUpdatedAt)}`
+            : '';
+
+        this.http.get<NetControlStateResponse | null>(
+            `${environment.apiUrl}/net-control/session${updatedAfter}`
+        ).pipe(
+            finalize(() => this.isLoadingRemote = false)
+        ).subscribe({
             next: (state) => {
                 this.backendOnline = true;
+
+                // The API returns 204 when the session has not changed.
+                if (!state) return;
 
                 if (!state.payload || Object.keys(state.payload).length === 0) {
                     if (initialLoad) {
@@ -824,8 +876,13 @@ export class Af0frNetControlPage implements OnInit, OnDestroy {
     }
 
     private refreshRosterMembers(): void {
+        if (this.editing || this.isLoadingRoster) return;
+
+        this.isLoadingRoster = true;
         this.http.get<ClubMember[]>(
             `${environment.apiUrl}/net-control/roster-members`
+        ).pipe(
+            finalize(() => this.isLoadingRoster = false)
         ).subscribe({
             next: (members) => {
                 this.clubMembers = this.normalizeRoster(members);

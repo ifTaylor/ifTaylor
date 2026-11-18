@@ -6,6 +6,7 @@ import {EchoLink} from "./echo_link/echolink.component";
 import {Toolbox} from "./toolbox/toolbox.component";
 import {Keyer} from "./keyer/keyer.component";
 import {AntennaBuildEFHW} from "./antenna-build-efhw/antenna-build-efhw.component";
+import {StraightKey} from "./straight-key/straight-key.component";
 
 @Component({
     standalone: true,
@@ -17,7 +18,8 @@ import {AntennaBuildEFHW} from "./antenna-build-efhw/antenna-build-efhw.componen
         AntennaBuild,
         EchoLink,
         Keyer,
-        AntennaBuildEFHW
+        AntennaBuildEFHW,
+        StraightKey
     ]
 })
 export class Af0frPage {}
